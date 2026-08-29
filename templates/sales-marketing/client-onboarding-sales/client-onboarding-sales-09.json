@@ -1,0 +1,39 @@
+{
+  "id": "client-onboarding-sales-09",
+  "category": "Sales & Marketing",
+  "categoryId": "sales-marketing",
+  "subcategory": "Client Onboarding (Sales)",
+  "subcategoryId": "client-onboarding-sales",
+  "title": "Renewal Transition Client Onboarding Checklist",
+  "description": "A renewal transition client onboarding checklist — walks a new client through getting started after signing.",
+  "estimatedMinutes": 7,
+  "difficulty": "quick",
+  "tags": [
+    "client",
+    "onboarding",
+    "renewal",
+    "client onboarding sales"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "client_name",
+      "label": "Client Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "items",
+      "label": "Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "One item per line"
+    }
+  ],
+  "bodyTemplate": "CLIENT ONBOARDING CHECKLIST\nOwner: {{owner}}\nClient Name: {{client_name}}\nRenewal Transition — walks a new client through getting started after signing.\n\n--------------------------------------------------------------------\n\n{{items}}"
+}

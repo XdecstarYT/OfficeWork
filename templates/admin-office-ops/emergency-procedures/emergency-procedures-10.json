@@ -1,0 +1,58 @@
+{
+  "id": "emergency-procedures-10",
+  "category": "Administrative & Office Operations",
+  "categoryId": "admin-office-ops",
+  "subcategory": "Emergency Procedures",
+  "subcategoryId": "emergency-procedures",
+  "title": "Building Lockdown Emergency Procedure",
+  "description": "A building lockdown emergency procedure — outlines the steps staff should take in an emergency.",
+  "estimatedMinutes": 22,
+  "difficulty": "detailed",
+  "tags": [
+    "emergency",
+    "procedure",
+    "building",
+    "emergency procedures"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "emergency_type",
+      "label": "Emergency Type",
+      "type": "select",
+      "required": false,
+      "options": [
+        "Fire",
+        "Severe Weather",
+        "Medical",
+        "Security Threat",
+        "Power Outage",
+        "Other"
+      ]
+    },
+    {
+      "id": "objectives",
+      "label": "Procedure Steps",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "timeline",
+      "label": "Timeline",
+      "type": "textarea",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "EMERGENCY PROCEDURE\nBuilding Lockdown — outlines the steps staff should take in an emergency.\nOwner: {{owner}}                        Date: {{date}}\nEmergency Type: {{emergency_type}}\n\n--------------------------------------------------------------------\nOBJECTIVES\n--------------------------------------------------------------------\n{{objectives}}\n\nTimeline:\n{{timeline}}"
+}

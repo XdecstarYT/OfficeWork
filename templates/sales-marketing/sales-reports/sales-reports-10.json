@@ -1,0 +1,57 @@
+{
+  "id": "sales-reports-10",
+  "category": "Sales & Marketing",
+  "categoryId": "sales-marketing",
+  "subcategory": "Sales Reports",
+  "subcategoryId": "sales-reports",
+  "title": "Year-End Sales Report",
+  "description": "A year-end sales report — reports on sales performance for a given period.",
+  "estimatedMinutes": 20,
+  "difficulty": "detailed",
+  "tags": [
+    "sales",
+    "report",
+    "year-end",
+    "sales reports"
+  ],
+  "fields": [
+    {
+      "id": "author",
+      "label": "Prepared By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "period",
+      "label": "Reporting Period",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. Q2 2026"
+    },
+    {
+      "id": "total_revenue",
+      "label": "Total Revenue",
+      "type": "currency",
+      "required": false
+    },
+    {
+      "id": "region",
+      "label": "Region / Territory",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "summary",
+      "label": "Summary",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "SALES REPORT\nYear-End — reports on sales performance for a given period.\nPrepared By: {{author}}                 Date: {{date}}\nReporting Period: {{period}}            Total Revenue: {{total_revenue}}\nRegion / Territory: {{region}}\n\n--------------------------------------------------------------------\n\n{{summary}}"
+}

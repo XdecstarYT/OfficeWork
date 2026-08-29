@@ -1,0 +1,92 @@
+{
+  "id": "security-reports-01",
+  "category": "IT & Technical",
+  "categoryId": "it-technical",
+  "subcategory": "Security Incident Reports",
+  "subcategoryId": "security-reports",
+  "title": "Phishing Attempt Security Incident Report",
+  "description": "A phishing attempt security incident report — documents a security-related incident and the response taken.",
+  "estimatedMinutes": 12,
+  "difficulty": "standard",
+  "tags": [
+    "security",
+    "incident",
+    "phishing",
+    "security reports"
+  ],
+  "fields": [
+    {
+      "id": "subject_name",
+      "label": "Reported By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "department",
+      "label": "Department",
+      "type": "select",
+      "required": false,
+      "options": [
+        "Sales",
+        "Marketing",
+        "Engineering",
+        "Finance",
+        "Human Resources",
+        "Operations",
+        "Customer Support",
+        "Executive"
+      ]
+    },
+    {
+      "id": "incident_type",
+      "label": "Incident Type",
+      "type": "select",
+      "required": true,
+      "options": [
+        "Phishing",
+        "Malware",
+        "Unauthorized Access",
+        "Data Leak",
+        "Physical Security",
+        "Other"
+      ]
+    },
+    {
+      "id": "severity",
+      "label": "Severity",
+      "type": "select",
+      "required": true,
+      "options": [
+        "Critical",
+        "High",
+        "Medium",
+        "Low"
+      ]
+    },
+    {
+      "id": "details",
+      "label": "Description & Response",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "approver_name",
+      "label": "Security Lead",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "SECURITY INCIDENT REPORT\nPhishing Attempt — documents a security-related incident and the response taken.\nReported By: {{subject_name}}           Date: {{date}}\nDepartment: {{department}}              Incident Type: {{incident_type}}\nSeverity: {{severity}}\n\n--------------------------------------------------------------------\n\n{{details}}\n--------------------------------------------------------------------\n\nApprover: {{approver_name}}\n\nSignature: {{signature}}"
+}

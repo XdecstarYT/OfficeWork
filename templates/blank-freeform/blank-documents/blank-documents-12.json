@@ -1,0 +1,18 @@
+{
+  "id": "blank-documents-12",
+  "category": "Blank & Freeform",
+  "categoryId": "blank-freeform",
+  "subcategory": "Blank Documents",
+  "subcategoryId": "blank-documents",
+  "title": "Blank Sign-In Sheet",
+  "description": "A simple sign-in sheet for any event, visit, or meeting — just a title and an open list.",
+  "estimatedMinutes": 3,
+  "difficulty": "quick",
+  "tags": ["blank", "sign-in", "freeform", "log"],
+  "fields": [
+    { "id": "event_title", "label": "Event / Purpose", "type": "text", "required": true, "placeholder": "e.g. All-Hands Meeting" },
+    { "id": "date", "label": "Date", "type": "date", "required": true },
+    { "id": "entries", "label": "Sign-In Entries", "type": "textarea", "required": true, "placeholder": "Name | Time In, one per line" }
+  ],
+  "bodyTemplate": "SIGN-IN SHEET\n\n{{event_title}}\nDate: {{date}}\n\n--------------------------------------------------------------------\nName | Time In\n--------------------------------------------------------------------\n{{entries}}"
+}

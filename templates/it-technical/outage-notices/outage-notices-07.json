@@ -1,0 +1,50 @@
+{
+  "id": "outage-notices-07",
+  "category": "IT & Technical",
+  "categoryId": "it-technical",
+  "subcategory": "System Outage Notices",
+  "subcategoryId": "outage-notices",
+  "title": "Data Center Migration System Outage Notice",
+  "description": "A data center migration system outage notice — communicates a planned or unplanned system outage to affected users.",
+  "estimatedMinutes": 11,
+  "difficulty": "quick",
+  "tags": [
+    "system",
+    "outage",
+    "data",
+    "outage notices"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "system_affected",
+      "label": "System Affected",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "expected_resolution",
+      "label": "Expected Resolution",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "body",
+      "label": "Details",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "issued_by",
+      "label": "Issued By",
+      "type": "text",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "NOTICE\n\nSYSTEM OUTAGE NOTICE\nData Center Migration — communicates a planned or unplanned system outage to affected users.\nDate: {{date}}\nSystem Affected: {{system_affected}}    Expected Resolution: {{expected_resolution}}\n\n--------------------------------------------------------------------\n\n{{body}}\n\n--------------------------------------------------------------------\n\nIssued by: {{issued_by}}"
+}

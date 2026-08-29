@@ -1,0 +1,44 @@
+{
+  "id": "data-privacy-01",
+  "category": "Legal & Compliance",
+  "categoryId": "legal-compliance",
+  "subcategory": "Data Privacy Documentation",
+  "subcategoryId": "data-privacy",
+  "title": "Customer-Facing Data Privacy Notice",
+  "description": "A customer-facing data privacy notice — explains how personal data is collected, used, and protected.",
+  "estimatedMinutes": 7,
+  "difficulty": "quick",
+  "tags": [
+    "data",
+    "privacy",
+    "customer-facing",
+    "data privacy"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "data_types",
+      "label": "Types of Data Covered",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "body",
+      "label": "Details",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "issued_by",
+      "label": "Issued By",
+      "type": "text",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "NOTICE\n\nDATA PRIVACY NOTICE\nCustomer-Facing — explains how personal data is collected, used, and protected.\nDate: {{date}}\n\n--------------------------------------------------------------------\n\nTypes of Data Covered:\n{{data_types}}\n{{body}}\n\n--------------------------------------------------------------------\n\nIssued by: {{issued_by}}"
+}

@@ -1,0 +1,58 @@
+{
+  "id": "complaint-responses-10",
+  "category": "Customer Service",
+  "categoryId": "customer-service",
+  "subcategory": "Complaint Responses",
+  "subcategoryId": "complaint-responses",
+  "title": "Social Media Complaint Response Letter",
+  "description": "A social media complaint response letter — formally responds to a customer complaint.",
+  "estimatedMinutes": 10,
+  "difficulty": "quick",
+  "tags": [
+    "complaint",
+    "response",
+    "social",
+    "complaint responses"
+  ],
+  "fields": [
+    {
+      "id": "sender_name",
+      "label": "Your Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "Your name"
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "recipient_name",
+      "label": "Recipient Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "complaint_summary",
+      "label": "Complaint Summary",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "details",
+      "label": "Message",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Write the body of the letter here."
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "{{date}}\n\n{{recipient_name}}\n\nDear {{recipient_name}},\n\nComplaint Summary:\n{{complaint_summary}}\n{{details}}\n\nSincerely,\n\n{{signature}}\n{{sender_name}}"
+}

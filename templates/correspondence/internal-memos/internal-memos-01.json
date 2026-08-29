@@ -1,0 +1,52 @@
+{
+  "id": "internal-memos-01",
+  "category": "Correspondence & Communication",
+  "categoryId": "correspondence",
+  "subcategory": "Internal Memos",
+  "subcategoryId": "internal-memos",
+  "title": "Team Internal Memo",
+  "description": "A team internal memo — shares a short internal update or instruction with staff or a team.",
+  "estimatedMinutes": 6,
+  "difficulty": "quick",
+  "tags": [
+    "internal",
+    "memo",
+    "team",
+    "internal memos"
+  ],
+  "fields": [
+    {
+      "id": "to",
+      "label": "To",
+      "type": "text",
+      "required": true,
+      "placeholder": "Recipient(s)"
+    },
+    {
+      "id": "from",
+      "label": "From",
+      "type": "text",
+      "required": true,
+      "placeholder": "Your name"
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "subject",
+      "label": "Re / Subject",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "body",
+      "label": "Body",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "MEMORANDUM\n\nTo: {{to}}\nFrom: {{from}}\nDate: {{date}}\nRe: {{subject}}\n\n--------------------------------------------------------------------\n\n{{body}}"
+}

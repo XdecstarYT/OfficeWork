@@ -1,0 +1,39 @@
+{
+  "id": "customer-onboarding-cs-04",
+  "category": "Customer Service",
+  "categoryId": "customer-service",
+  "subcategory": "Customer Onboarding Guides",
+  "subcategoryId": "customer-onboarding-cs",
+  "title": "Free Trial Customer Onboarding Guide",
+  "description": "A free trial customer onboarding guide — helps a new customer get started with the product or service.",
+  "estimatedMinutes": 13,
+  "difficulty": "quick",
+  "tags": [
+    "customer",
+    "onboarding",
+    "free",
+    "customer onboarding cs"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "customer_name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "items",
+      "label": "Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "One item per line"
+    }
+  ],
+  "bodyTemplate": "CUSTOMER ONBOARDING GUIDE\nOwner: {{owner}}\nCustomer Name: {{customer_name}}\nFree Trial — helps a new customer get started with the product or service.\n\n--------------------------------------------------------------------\n\n{{items}}"
+}

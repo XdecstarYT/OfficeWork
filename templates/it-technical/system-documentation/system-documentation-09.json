@@ -1,0 +1,57 @@
+{
+  "id": "system-documentation-09",
+  "category": "IT & Technical",
+  "categoryId": "it-technical",
+  "subcategory": "System Documentation",
+  "subcategoryId": "system-documentation",
+  "title": "Onboarding Guide System Documentation",
+  "description": "An onboarding guide system documentation — provides reference documentation for an internal system or process.",
+  "estimatedMinutes": 18,
+  "difficulty": "detailed",
+  "tags": [
+    "system",
+    "documentation",
+    "onboarding",
+    "system documentation"
+  ],
+  "fields": [
+    {
+      "id": "author",
+      "label": "Prepared By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "period",
+      "label": "Reporting Period",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. Q2 2026"
+    },
+    {
+      "id": "system_name",
+      "label": "System Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "owner_team",
+      "label": "Owner Team",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "summary",
+      "label": "Summary",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "SYSTEM DOCUMENTATION\nOnboarding Guide — provides reference documentation for an internal system or process.\nPrepared By: {{author}}                 Date: {{date}}\nReporting Period: {{period}}            System Name: {{system_name}}\nOwner Team: {{owner_team}}\n\n--------------------------------------------------------------------\n\n{{summary}}"
+}

@@ -1,0 +1,37 @@
+{
+  "id": "timesheets-11",
+  "category": "Administrative & Office Operations",
+  "categoryId": "admin-office-ops",
+  "subcategory": "Timesheets",
+  "subcategoryId": "timesheets",
+  "title": "Timesheet",
+  "description": "Records hours worked for a pay period.",
+  "estimatedMinutes": 12,
+  "difficulty": "standard",
+  "tags": [
+    "timesheet",
+    "general",
+    "timesheets"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "employee_name",
+      "label": "Employee Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "entries",
+      "label": "Hours Logged",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "TIMESHEET\n\nDate: {{date}}\nEmployee Name: {{employee_name}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

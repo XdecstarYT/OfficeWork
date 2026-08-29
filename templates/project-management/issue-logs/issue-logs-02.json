@@ -1,0 +1,37 @@
+{
+  "id": "issue-logs-02",
+  "category": "Project Management",
+  "categoryId": "project-management",
+  "subcategory": "Issue Logs",
+  "subcategoryId": "issue-logs",
+  "title": "Sprint-Based Issue Log",
+  "description": "A sprint-based issue log — tracks project issues and their resolution status.",
+  "estimatedMinutes": 10,
+  "difficulty": "standard",
+  "tags": [
+    "issue",
+    "sprint-based",
+    "issue logs"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "project_name",
+      "label": "Project Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "entries",
+      "label": "Issue Entries",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "ISSUE LOG\nSprint-Based — tracks project issues and their resolution status.\nDate: {{date}}\nProject Name: {{project_name}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

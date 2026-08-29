@@ -1,0 +1,51 @@
+{
+  "id": "social-media-calendars-04",
+  "category": "Sales & Marketing",
+  "categoryId": "sales-marketing",
+  "subcategory": "Social Media Content Calendars",
+  "subcategoryId": "social-media-calendars",
+  "title": "Holiday Social Media Content Calendar",
+  "description": "A holiday social media content calendar — plans social media posts and themes across a time period.",
+  "estimatedMinutes": 26,
+  "difficulty": "detailed",
+  "tags": [
+    "social",
+    "media",
+    "holiday",
+    "social media calendars"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "platforms",
+      "label": "Platforms",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. Instagram, LinkedIn"
+    },
+    {
+      "id": "objectives",
+      "label": "Content Themes",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "timeline",
+      "label": "Timeline",
+      "type": "textarea",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "SOCIAL MEDIA CONTENT CALENDAR\nHoliday — plans social media posts and themes across a time period.\nOwner: {{owner}}                        Date: {{date}}\nPlatforms: {{platforms}}\n\n--------------------------------------------------------------------\nOBJECTIVES\n--------------------------------------------------------------------\n{{objectives}}\n\nTimeline:\n{{timeline}}"
+}

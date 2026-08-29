@@ -1,0 +1,86 @@
+{
+  "id": "payroll-forms-07",
+  "category": "Finance & Accounting",
+  "categoryId": "finance-accounting",
+  "subcategory": "Payroll Forms",
+  "subcategoryId": "payroll-forms",
+  "title": "Overtime Payroll Adjustment Form",
+  "description": "An overtime payroll adjustment form — documents a change to an employee's payroll processing.",
+  "estimatedMinutes": 16,
+  "difficulty": "standard",
+  "tags": [
+    "payroll",
+    "adjustment",
+    "overtime",
+    "payroll forms"
+  ],
+  "fields": [
+    {
+      "id": "subject_name",
+      "label": "Employee Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "department",
+      "label": "Department",
+      "type": "select",
+      "required": false,
+      "options": [
+        "Sales",
+        "Marketing",
+        "Engineering",
+        "Finance",
+        "Human Resources",
+        "Operations",
+        "Customer Support",
+        "Executive"
+      ]
+    },
+    {
+      "id": "effective_date",
+      "label": "Effective Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "adjustment_type",
+      "label": "Adjustment Type",
+      "type": "select",
+      "required": true,
+      "options": [
+        "Salary Change",
+        "Bonus",
+        "Correction",
+        "Deduction Change",
+        "Direct Deposit Update",
+        "Other"
+      ]
+    },
+    {
+      "id": "details",
+      "label": "Details",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "approver_name",
+      "label": "Payroll Manager",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "PAYROLL ADJUSTMENT FORM\nOvertime Adjustment — documents a change to an employee's payroll processing.\nEmployee Name: {{subject_name}}         Date: {{date}}\nDepartment: {{department}}              Effective Date: {{effective_date}}\nAdjustment Type: {{adjustment_type}}\n\n--------------------------------------------------------------------\n\n{{details}}\n--------------------------------------------------------------------\n\nApprover: {{approver_name}}\n\nSignature: {{signature}}"
+}

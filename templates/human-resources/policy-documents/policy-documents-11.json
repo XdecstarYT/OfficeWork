@@ -1,0 +1,44 @@
+{
+  "id": "policy-documents-11",
+  "category": "Human Resources",
+  "categoryId": "human-resources",
+  "subcategory": "Policy Documents",
+  "subcategoryId": "policy-documents",
+  "title": "HR Policy Document",
+  "description": "Communicates a company policy covering conduct, leave, or benefits.",
+  "estimatedMinutes": 11,
+  "difficulty": "quick",
+  "tags": [
+    "policy",
+    "document",
+    "general",
+    "policy documents"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "policy_owner",
+      "label": "Policy Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "body",
+      "label": "Details",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "issued_by",
+      "label": "Issued By",
+      "type": "text",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "NOTICE\n\nHR POLICY DOCUMENT\n\nDate: {{date}}\nPolicy Owner: {{policy_owner}}\n\n--------------------------------------------------------------------\n\n{{body}}\n\n--------------------------------------------------------------------\n\nIssued by: {{issued_by}}"
+}

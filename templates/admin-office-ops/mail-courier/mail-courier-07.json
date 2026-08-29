@@ -1,0 +1,38 @@
+{
+  "id": "mail-courier-07",
+  "category": "Administrative & Office Operations",
+  "categoryId": "admin-office-ops",
+  "subcategory": "Mail & Courier Logs",
+  "subcategoryId": "mail-courier",
+  "title": "Signature-Required Mail & Courier Log",
+  "description": "A signature-required mail & courier log — tracks incoming and outgoing mail and courier packages.",
+  "estimatedMinutes": 12,
+  "difficulty": "standard",
+  "tags": [
+    "mail",
+    "courier",
+    "signature-required",
+    "mail courier"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "handled_by",
+      "label": "Handled By",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "entries",
+      "label": "Mail / Package Entries",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "MAIL & COURIER LOG\nSignature-Required — tracks incoming and outgoing mail and courier packages.\nDate: {{date}}\nHandled By: {{handled_by}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

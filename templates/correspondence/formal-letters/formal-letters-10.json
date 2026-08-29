@@ -1,0 +1,51 @@
+{
+  "id": "formal-letters-10",
+  "category": "Correspondence & Communication",
+  "categoryId": "correspondence",
+  "subcategory": "Formal Business Letters",
+  "subcategoryId": "formal-letters",
+  "title": "Response Formal Business Letter",
+  "description": "A response formal business letter — communicates an official message to a client, partner, or outside official.",
+  "estimatedMinutes": 10,
+  "difficulty": "quick",
+  "tags": [
+    "formal",
+    "business",
+    "formal letters"
+  ],
+  "fields": [
+    {
+      "id": "sender_name",
+      "label": "Your Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "Your name"
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "recipient_name",
+      "label": "Recipient Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "details",
+      "label": "Message",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Write the body of the letter here."
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "{{date}}\n\n{{recipient_name}}\n\nDear {{recipient_name}},\n\n{{details}}\n\nSincerely,\n\n{{signature}}\n{{sender_name}}"
+}

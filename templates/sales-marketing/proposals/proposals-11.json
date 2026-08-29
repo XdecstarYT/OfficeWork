@@ -1,0 +1,57 @@
+{
+  "id": "proposals-11",
+  "category": "Sales & Marketing",
+  "categoryId": "sales-marketing",
+  "subcategory": "Sales Proposals",
+  "subcategoryId": "proposals",
+  "title": "Sales Proposal",
+  "description": "Presents a formal offer of products or services to a prospective client.",
+  "estimatedMinutes": 22,
+  "difficulty": "detailed",
+  "tags": [
+    "sales",
+    "proposal",
+    "general",
+    "proposals"
+  ],
+  "fields": [
+    {
+      "id": "author",
+      "label": "Prepared By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "period",
+      "label": "Reporting Period",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. Q2 2026"
+    },
+    {
+      "id": "client_name",
+      "label": "Client Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "proposed_value",
+      "label": "Proposed Deal Value",
+      "type": "currency",
+      "required": false
+    },
+    {
+      "id": "summary",
+      "label": "Summary",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "SALES PROPOSAL\n\nPrepared By: {{author}}                 Date: {{date}}\nReporting Period: {{period}}            Client Name: {{client_name}}\nProposed Deal Value: {{proposed_value}}\n\n--------------------------------------------------------------------\n\n{{summary}}"
+}

@@ -1,0 +1,52 @@
+{
+  "id": "thank-you-notes-01",
+  "category": "Correspondence & Communication",
+  "categoryId": "correspondence",
+  "subcategory": "Thank You & Appreciation Notes",
+  "subcategoryId": "thank-you-notes",
+  "title": "Post-Interview Thank-You Note",
+  "description": "A post-interview thank-you note — expresses professional thanks or appreciation.",
+  "estimatedMinutes": 8,
+  "difficulty": "quick",
+  "tags": [
+    "thank-you",
+    "note",
+    "post-interview",
+    "thank you notes"
+  ],
+  "fields": [
+    {
+      "id": "sender_name",
+      "label": "Your Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "Your name"
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "recipient_name",
+      "label": "Recipient Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "details",
+      "label": "Message",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Write the body of the letter here."
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "{{date}}\n\n{{recipient_name}}\n\nDear {{recipient_name}},\n\n{{details}}\n\nSincerely,\n\n{{signature}}\n{{sender_name}}"
+}

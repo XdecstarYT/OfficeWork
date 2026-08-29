@@ -1,0 +1,44 @@
+{
+  "id": "financial-statements-01",
+  "category": "Finance & Accounting",
+  "categoryId": "finance-accounting",
+  "subcategory": "Financial Statement Summaries",
+  "subcategoryId": "financial-statements",
+  "title": "Monthly Financial Statement Summary",
+  "description": "A monthly financial statement summary — summarizes the company or department's financial position for internal review.",
+  "estimatedMinutes": 18,
+  "difficulty": "detailed",
+  "tags": [
+    "financial",
+    "statement",
+    "monthly",
+    "financial statements"
+  ],
+  "fields": [
+    {
+      "id": "author",
+      "label": "Prepared By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "period_covered",
+      "label": "Period Covered",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "summary",
+      "label": "Summary",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "FINANCIAL STATEMENT SUMMARY\nMonthly — summarizes the company or department's financial position for internal review.\nPrepared By: {{author}}                 Date: {{date}}\nPeriod Covered: {{period_covered}}\n\n--------------------------------------------------------------------\n\n{{summary}}"
+}

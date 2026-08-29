@@ -1,0 +1,63 @@
+{
+  "id": "satisfaction-surveys-02",
+  "category": "Customer Service",
+  "categoryId": "customer-service",
+  "subcategory": "Satisfaction Surveys",
+  "subcategoryId": "satisfaction-surveys",
+  "title": "Post-Support Interaction Customer Satisfaction Survey",
+  "description": "A post-support interaction customer satisfaction survey — gathers structured feedback on a customer's experience.",
+  "estimatedMinutes": 14,
+  "difficulty": "standard",
+  "tags": [
+    "customer",
+    "satisfaction",
+    "post-support",
+    "satisfaction surveys"
+  ],
+  "fields": [
+    {
+      "id": "subject_name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "satisfaction_rating",
+      "label": "Overall Satisfaction",
+      "type": "select",
+      "required": true,
+      "options": [
+        "Very Satisfied",
+        "Satisfied",
+        "Neutral",
+        "Dissatisfied",
+        "Very Dissatisfied"
+      ]
+    },
+    {
+      "id": "details",
+      "label": "Comments",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "approver_name",
+      "label": "Reviewed By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "CUSTOMER SATISFACTION SURVEY\nPost-Support Interaction — gathers structured feedback on a customer's experience.\nCustomer Name: {{subject_name}}         Date: {{date}}\nOverall Satisfaction: {{satisfaction_rating}}\n\n--------------------------------------------------------------------\n\n{{details}}\n--------------------------------------------------------------------\n\nApprover: {{approver_name}}\n\nSignature: {{signature}}"
+}

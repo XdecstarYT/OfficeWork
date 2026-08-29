@@ -1,0 +1,44 @@
+{
+  "id": "office-policies-01",
+  "category": "Administrative & Office Operations",
+  "categoryId": "admin-office-ops",
+  "subcategory": "Office Policy Notices",
+  "subcategoryId": "office-policies",
+  "title": "Kitchen Etiquette Office Policy Notice",
+  "description": "A kitchen etiquette office policy notice — communicates a general office operations policy to staff.",
+  "estimatedMinutes": 7,
+  "difficulty": "quick",
+  "tags": [
+    "office",
+    "policy",
+    "kitchen",
+    "office policies"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "policy_owner",
+      "label": "Policy Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "body",
+      "label": "Details",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "issued_by",
+      "label": "Issued By",
+      "type": "text",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "NOTICE\n\nOFFICE POLICY NOTICE\nKitchen Etiquette — communicates a general office operations policy to staff.\nDate: {{date}}\nPolicy Owner: {{policy_owner}}\n\n--------------------------------------------------------------------\n\n{{body}}\n\n--------------------------------------------------------------------\n\nIssued by: {{issued_by}}"
+}

@@ -1,0 +1,52 @@
+{
+  "id": "rfqs-10",
+  "category": "Procurement & Vendor Management",
+  "categoryId": "procurement-vendor",
+  "subcategory": "Requests for Quotation (RFQ)",
+  "subcategoryId": "rfqs",
+  "title": "Annual Contract Request for Quotation",
+  "description": "An annual contract request for quotation — requests pricing from a vendor for specified goods or services.",
+  "estimatedMinutes": 12,
+  "difficulty": "standard",
+  "tags": [
+    "request",
+    "quotation",
+    "annual",
+    "rfqs"
+  ],
+  "fields": [
+    {
+      "id": "counterparty",
+      "label": "Vendor",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "response_deadline",
+      "label": "Response Deadline",
+      "type": "date",
+      "required": false
+    },
+    {
+      "id": "line_items",
+      "label": "Line Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Description | Amount, one per line"
+    },
+    {
+      "id": "total",
+      "label": "Estimated Value",
+      "type": "currency",
+      "required": true,
+      "placeholder": "0.00"
+    }
+  ],
+  "bodyTemplate": "REQUEST FOR QUOTATION\n\nVendor:\n{{counterparty}}\n\nDate: {{date}}                          Response Deadline: {{response_deadline}}\n\n--------------------------------------------------------------------\n{{line_items}}\n--------------------------------------------------------------------\n\nESTIMATED VALUE: {{total}}"
+}

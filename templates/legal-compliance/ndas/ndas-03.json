@@ -1,0 +1,62 @@
+{
+  "id": "ndas-03",
+  "category": "Legal & Compliance",
+  "categoryId": "legal-compliance",
+  "subcategory": "Non-Disclosure Agreements",
+  "subcategoryId": "ndas",
+  "title": "Employee Non-Disclosure Agreement",
+  "description": "An employee non-disclosure agreement — protects confidential information shared between two parties.",
+  "estimatedMinutes": 22,
+  "difficulty": "detailed",
+  "tags": [
+    "non-disclosure",
+    "agreement",
+    "employee",
+    "ndas"
+  ],
+  "fields": [
+    {
+      "id": "party_a",
+      "label": "Disclosing Party",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "party_b",
+      "label": "Receiving Party",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "effective_date",
+      "label": "Effective Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "purpose_of_disclosure",
+      "label": "Purpose of Disclosure",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "terms",
+      "label": "Terms",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "party_a_signature",
+      "label": "Party A Signature",
+      "type": "signature",
+      "required": false
+    },
+    {
+      "id": "party_b_signature",
+      "label": "Party B Signature",
+      "type": "signature",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "AGREEMENT\n\nBetween: {{party_a}}\nAnd: {{party_b}}\nEffective Date: {{effective_date}}\n\n--------------------------------------------------------------------\nTERMS\n--------------------------------------------------------------------\nPurpose of Disclosure:\n{{purpose_of_disclosure}}\n{{terms}}\n\n--------------------------------------------------------------------\n\n{{party_a_signature}}                    {{party_b_signature}}\nParty A                                  Party B"
+}

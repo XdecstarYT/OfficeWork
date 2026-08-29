@@ -1,0 +1,56 @@
+{
+  "id": "project-plans-05",
+  "category": "Project Management",
+  "categoryId": "project-management",
+  "subcategory": "Project Plans & Timelines",
+  "subcategoryId": "project-plans",
+  "title": "Product Launch Project Plan",
+  "description": "A product launch project plan — lays out the timeline, milestones, and resources for a project.",
+  "estimatedMinutes": 20,
+  "difficulty": "detailed",
+  "tags": [
+    "project",
+    "plan",
+    "product",
+    "project plans"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "start_date",
+      "label": "Start Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "end_date",
+      "label": "End Date",
+      "type": "date",
+      "required": false
+    },
+    {
+      "id": "objectives",
+      "label": "Objectives",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "timeline",
+      "label": "Timeline",
+      "type": "textarea",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "PROJECT PLAN\nProduct Launch — lays out the timeline, milestones, and resources for a project.\nOwner: {{owner}}                        Date: {{date}}\nStart Date: {{start_date}}              End Date: {{end_date}}\n\n--------------------------------------------------------------------\nOBJECTIVES\n--------------------------------------------------------------------\n{{objectives}}\n\nTimeline:\n{{timeline}}"
+}

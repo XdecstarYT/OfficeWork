@@ -1,0 +1,62 @@
+{
+  "id": "simple-contracts-05",
+  "category": "Legal & Compliance",
+  "categoryId": "legal-compliance",
+  "subcategory": "Simple Contracts & Agreements",
+  "subcategoryId": "simple-contracts",
+  "title": "Retainer Simple Service Agreement",
+  "description": "A retainer simple service agreement — outlines a basic agreement for work or services between two parties.",
+  "estimatedMinutes": 18,
+  "difficulty": "detailed",
+  "tags": [
+    "simple",
+    "service",
+    "retainer",
+    "simple contracts"
+  ],
+  "fields": [
+    {
+      "id": "party_a",
+      "label": "Party A",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "party_b",
+      "label": "Party B",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "effective_date",
+      "label": "Effective Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "scope_of_work",
+      "label": "Scope of Work",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "terms",
+      "label": "Terms",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "party_a_signature",
+      "label": "Party A Signature",
+      "type": "signature",
+      "required": false
+    },
+    {
+      "id": "party_b_signature",
+      "label": "Party B Signature",
+      "type": "signature",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "AGREEMENT\n\nBetween: {{party_a}}\nAnd: {{party_b}}\nEffective Date: {{effective_date}}\n\n--------------------------------------------------------------------\nTERMS\n--------------------------------------------------------------------\nScope of Work:\n{{scope_of_work}}\n{{terms}}\n\n--------------------------------------------------------------------\n\n{{party_a_signature}}                    {{party_b_signature}}\nParty A                                  Party B"
+}

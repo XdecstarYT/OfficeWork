@@ -1,0 +1,64 @@
+{
+  "id": "meeting-minutes-03",
+  "category": "Project Management",
+  "categoryId": "project-management",
+  "subcategory": "Meeting Minutes",
+  "subcategoryId": "meeting-minutes",
+  "title": "Client Meeting Minutes",
+  "description": "A client meeting minutes — records the discussion, decisions, and action items from a meeting.",
+  "estimatedMinutes": 10,
+  "difficulty": "quick",
+  "tags": [
+    "meeting",
+    "minutes",
+    "client",
+    "meeting minutes"
+  ],
+  "fields": [
+    {
+      "id": "to",
+      "label": "To",
+      "type": "text",
+      "required": true,
+      "placeholder": "Recipient(s)"
+    },
+    {
+      "id": "from",
+      "label": "From",
+      "type": "text",
+      "required": true,
+      "placeholder": "Your name"
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "subject",
+      "label": "Re / Subject",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "attendees",
+      "label": "Attendees",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "action_items",
+      "label": "Action Items",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "body",
+      "label": "Body",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "MEMORANDUM\n\nTo: {{to}}\nFrom: {{from}}\nDate: {{date}}\nRe: {{subject}}\n\n--------------------------------------------------------------------\n\nAttendees:\n{{attendees}}\n\nAction Items:\n{{action_items}}\n{{body}}"
+}

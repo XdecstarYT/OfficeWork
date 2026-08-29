@@ -1,0 +1,78 @@
+{
+  "id": "incident-liability-01",
+  "category": "Legal & Compliance",
+  "categoryId": "legal-compliance",
+  "subcategory": "Incident & Liability Forms",
+  "subcategoryId": "incident-liability",
+  "title": "Workplace Injury Incident & Liability Report",
+  "description": "A workplace injury incident & liability report — documents an incident with potential liability implications.",
+  "estimatedMinutes": 12,
+  "difficulty": "standard",
+  "tags": [
+    "incident",
+    "liability",
+    "workplace",
+    "incident liability"
+  ],
+  "fields": [
+    {
+      "id": "subject_name",
+      "label": "Reported By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "department",
+      "label": "Department",
+      "type": "select",
+      "required": false,
+      "options": [
+        "Sales",
+        "Marketing",
+        "Engineering",
+        "Finance",
+        "Human Resources",
+        "Operations",
+        "Customer Support",
+        "Executive"
+      ]
+    },
+    {
+      "id": "incident_date",
+      "label": "Incident Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "location",
+      "label": "Location",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "details",
+      "label": "Description of Incident",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "approver_name",
+      "label": "Risk Manager",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "INCIDENT & LIABILITY REPORT\nWorkplace Injury — documents an incident with potential liability implications.\nReported By: {{subject_name}}           Date: {{date}}\nDepartment: {{department}}              Incident Date: {{incident_date}}\nLocation: {{location}}\n\n--------------------------------------------------------------------\n\n{{details}}\n--------------------------------------------------------------------\n\nApprover: {{approver_name}}\n\nSignature: {{signature}}"
+}

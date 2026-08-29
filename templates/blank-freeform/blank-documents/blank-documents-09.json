@@ -1,0 +1,20 @@
+{
+  "id": "blank-documents-09",
+  "category": "Blank & Freeform",
+  "categoryId": "blank-freeform",
+  "subcategory": "Blank Documents",
+  "subcategoryId": "blank-documents",
+  "title": "Blank Certificate of Recognition",
+  "description": "A simple certificate you can fill out to recognize anything — an achievement, a milestone, or just for fun.",
+  "estimatedMinutes": 4,
+  "difficulty": "quick",
+  "tags": ["blank", "certificate", "freeform", "recognition"],
+  "fields": [
+    { "id": "recipient_name", "label": "Awarded To", "type": "text", "required": true, "placeholder": "Recipient's name" },
+    { "id": "reason", "label": "For", "type": "textarea", "required": true, "placeholder": "What is this recognizing?" },
+    { "id": "date", "label": "Date", "type": "date", "required": true },
+    { "id": "presented_by", "label": "Presented By", "type": "text", "required": false, "placeholder": "Optional" },
+    { "id": "signature", "label": "Signature", "type": "signature", "required": false }
+  ],
+  "bodyTemplate": "CERTIFICATE OF RECOGNITION\n\nThis certificate is proudly presented to\n\n{{recipient_name}}\n\nFor:\n{{reason}}\n\nDate: {{date}}\n\n{{signature}}\nPresented by: {{presented_by}}"
+}

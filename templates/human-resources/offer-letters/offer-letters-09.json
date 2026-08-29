@@ -1,0 +1,70 @@
+{
+  "id": "offer-letters-09",
+  "category": "Human Resources",
+  "categoryId": "human-resources",
+  "subcategory": "Offer Letters",
+  "subcategoryId": "offer-letters",
+  "title": "Sign-On Bonus Offer Letter",
+  "description": "A sign-on bonus offer letter — formally extends a job offer, confirming role, compensation, and start date.",
+  "estimatedMinutes": 8,
+  "difficulty": "quick",
+  "tags": [
+    "offer",
+    "letter",
+    "sign-on",
+    "offer letters"
+  ],
+  "fields": [
+    {
+      "id": "sender_name",
+      "label": "Your Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "Your name"
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "recipient_name",
+      "label": "Recipient Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "position",
+      "label": "Position Title",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "salary",
+      "label": "Annual Salary",
+      "type": "currency",
+      "required": true
+    },
+    {
+      "id": "start_date",
+      "label": "Start Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "details",
+      "label": "Message",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Write the body of the letter here."
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "{{date}}\n\n{{recipient_name}}\n\nDear {{recipient_name}},\n\nPosition Title: {{position}}            Annual Salary: {{salary}}\nStart Date: {{start_date}}\n\n{{details}}\n\nSincerely,\n\n{{signature}}\n{{sender_name}}"
+}

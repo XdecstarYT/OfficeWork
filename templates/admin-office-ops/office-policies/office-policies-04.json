@@ -1,0 +1,44 @@
+{
+  "id": "office-policies-04",
+  "category": "Administrative & Office Operations",
+  "categoryId": "admin-office-ops",
+  "subcategory": "Office Policy Notices",
+  "subcategoryId": "office-policies",
+  "title": "Guest Office Policy Notice",
+  "description": "A guest office policy notice — communicates a general office operations policy to staff.",
+  "estimatedMinutes": 13,
+  "difficulty": "quick",
+  "tags": [
+    "office",
+    "policy",
+    "guest",
+    "office policies"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "policy_owner",
+      "label": "Policy Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "body",
+      "label": "Details",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "issued_by",
+      "label": "Issued By",
+      "type": "text",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "NOTICE\n\nOFFICE POLICY NOTICE\nGuest Policy — communicates a general office operations policy to staff.\nDate: {{date}}\nPolicy Owner: {{policy_owner}}\n\n--------------------------------------------------------------------\n\n{{body}}\n\n--------------------------------------------------------------------\n\nIssued by: {{issued_by}}"
+}

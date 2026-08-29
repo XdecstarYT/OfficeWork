@@ -1,0 +1,39 @@
+{
+  "id": "client-onboarding-sales-03",
+  "category": "Sales & Marketing",
+  "categoryId": "sales-marketing",
+  "subcategory": "Client Onboarding (Sales)",
+  "subcategoryId": "client-onboarding-sales",
+  "title": "Self-Serve Client Onboarding Checklist",
+  "description": "A self-serve client onboarding checklist — walks a new client through getting started after signing.",
+  "estimatedMinutes": 11,
+  "difficulty": "quick",
+  "tags": [
+    "client",
+    "onboarding",
+    "self-serve",
+    "client onboarding sales"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "client_name",
+      "label": "Client Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "items",
+      "label": "Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "One item per line"
+    }
+  ],
+  "bodyTemplate": "CLIENT ONBOARDING CHECKLIST\nOwner: {{owner}}\nClient Name: {{client_name}}\nSelf-Serve — walks a new client through getting started after signing.\n\n--------------------------------------------------------------------\n\n{{items}}"
+}

@@ -1,0 +1,57 @@
+{
+  "id": "rfps-01",
+  "category": "Procurement & Vendor Management",
+  "categoryId": "procurement-vendor",
+  "subcategory": "Requests for Proposal (RFP)",
+  "subcategoryId": "rfps",
+  "title": "IT Services Request for Proposal",
+  "description": "An it services request for proposal — solicits detailed proposals from vendors for a project or contract.",
+  "estimatedMinutes": 18,
+  "difficulty": "detailed",
+  "tags": [
+    "request",
+    "proposal",
+    "it",
+    "rfps"
+  ],
+  "fields": [
+    {
+      "id": "author",
+      "label": "Prepared By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "period",
+      "label": "Reporting Period",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. Q2 2026"
+    },
+    {
+      "id": "project_scope",
+      "label": "Project Scope",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "submission_deadline",
+      "label": "Submission Deadline",
+      "type": "date",
+      "required": false
+    },
+    {
+      "id": "summary",
+      "label": "Summary",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "REQUEST FOR PROPOSAL\nIT Services — solicits detailed proposals from vendors for a project or contract.\nPrepared By: {{author}}                 Date: {{date}}\nReporting Period: {{period}}            Submission Deadline: {{submission_deadline}}\n\n--------------------------------------------------------------------\n\nProject Scope:\n{{project_scope}}\n{{summary}}"
+}

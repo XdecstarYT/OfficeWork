@@ -171,6 +171,14 @@ export const TAXONOMY: TaxonomyCategory[] = [
       { id: "emergency-procedures", name: "Emergency Procedures", description: "Documents outlining emergency response steps." },
     ],
   },
+  {
+    id: "blank-freeform",
+    name: "Blank & Freeform",
+    description: "Open-ended blank documents with minimal structure, for writing whatever you need.",
+    subcategories: [
+      { id: "blank-documents", name: "Blank Documents", description: "Blank letters, memos, reports, and forms with just enough structure to look right, and a free-write body." },
+    ],
+  },
 ];
 
 export function getCategory(categoryId: string) {

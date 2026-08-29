@@ -1,0 +1,78 @@
+{
+  "id": "software-requests-02",
+  "category": "IT & Technical",
+  "categoryId": "it-technical",
+  "subcategory": "Software Request Forms",
+  "subcategoryId": "software-requests",
+  "title": "License Renewal Software Request Form",
+  "description": "A license renewal software request form — requests approval to purchase or install new software.",
+  "estimatedMinutes": 14,
+  "difficulty": "standard",
+  "tags": [
+    "software",
+    "request",
+    "license",
+    "software requests"
+  ],
+  "fields": [
+    {
+      "id": "subject_name",
+      "label": "Requested By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "department",
+      "label": "Department",
+      "type": "select",
+      "required": false,
+      "options": [
+        "Sales",
+        "Marketing",
+        "Engineering",
+        "Finance",
+        "Human Resources",
+        "Operations",
+        "Customer Support",
+        "Executive"
+      ]
+    },
+    {
+      "id": "software_name",
+      "label": "Software Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "estimated_cost",
+      "label": "Estimated Cost",
+      "type": "currency",
+      "required": false
+    },
+    {
+      "id": "details",
+      "label": "Business Justification",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "approver_name",
+      "label": "IT Approver",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "SOFTWARE REQUEST FORM\nLicense Renewal — requests approval to purchase or install new software.\nRequested By: {{subject_name}}          Date: {{date}}\nDepartment: {{department}}              Software Name: {{software_name}}\nEstimated Cost: {{estimated_cost}}\n\n--------------------------------------------------------------------\n\n{{details}}\n--------------------------------------------------------------------\n\nApprover: {{approver_name}}\n\nSignature: {{signature}}"
+}

@@ -1,0 +1,58 @@
+{
+  "id": "apology-letters-02",
+  "category": "Customer Service",
+  "categoryId": "customer-service",
+  "subcategory": "Apology Letters",
+  "subcategoryId": "apology-letters",
+  "title": "Service Outage Apology Letter",
+  "description": "A service outage apology letter — formally apologizes to a customer for a service failure.",
+  "estimatedMinutes": 10,
+  "difficulty": "quick",
+  "tags": [
+    "apology",
+    "letter",
+    "service",
+    "apology letters"
+  ],
+  "fields": [
+    {
+      "id": "sender_name",
+      "label": "Your Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "Your name"
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "recipient_name",
+      "label": "Recipient Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "issue_summary",
+      "label": "What Went Wrong",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "details",
+      "label": "Message",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Write the body of the letter here."
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "{{date}}\n\n{{recipient_name}}\n\nDear {{recipient_name}},\n\nWhat Went Wrong:\n{{issue_summary}}\n{{details}}\n\nSincerely,\n\n{{signature}}\n{{sender_name}}"
+}

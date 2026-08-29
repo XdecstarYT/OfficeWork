@@ -1,0 +1,56 @@
+{
+  "id": "project-charters-02",
+  "category": "Project Management",
+  "categoryId": "project-management",
+  "subcategory": "Project Charters",
+  "subcategoryId": "project-charters",
+  "title": "Client-Facing Project Charter",
+  "description": "A client-facing project charter — formally authorizes a project and defines its scope and sponsor.",
+  "estimatedMinutes": 22,
+  "difficulty": "detailed",
+  "tags": [
+    "project",
+    "charter",
+    "client-facing",
+    "project charters"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "sponsor",
+      "label": "Project Sponsor",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "budget",
+      "label": "Estimated Budget",
+      "type": "currency",
+      "required": false
+    },
+    {
+      "id": "objectives",
+      "label": "Project Objectives",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "timeline",
+      "label": "Timeline",
+      "type": "textarea",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "PROJECT CHARTER\nClient-Facing — formally authorizes a project and defines its scope and sponsor.\nOwner: {{owner}}                        Date: {{date}}\nProject Sponsor: {{sponsor}}            Estimated Budget: {{budget}}\n\n--------------------------------------------------------------------\nOBJECTIVES\n--------------------------------------------------------------------\n{{objectives}}\n\nTimeline:\n{{timeline}}"
+}

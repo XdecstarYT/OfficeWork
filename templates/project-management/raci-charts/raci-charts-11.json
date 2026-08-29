@@ -1,0 +1,38 @@
+{
+  "id": "raci-charts-11",
+  "category": "Project Management",
+  "categoryId": "project-management",
+  "subcategory": "RACI Charts",
+  "subcategoryId": "raci-charts",
+  "title": "RACI Chart",
+  "description": "Assigns Responsible, Accountable, Consulted, and Informed roles across project tasks.",
+  "estimatedMinutes": 12,
+  "difficulty": "standard",
+  "tags": [
+    "raci",
+    "chart",
+    "general",
+    "raci charts"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "project_name",
+      "label": "Project Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "entries",
+      "label": "Task / Role Assignments",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "RACI CHART\n\nDate: {{date}}\nProject Name: {{project_name}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

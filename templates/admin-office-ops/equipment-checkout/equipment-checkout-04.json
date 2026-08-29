@@ -1,0 +1,78 @@
+{
+  "id": "equipment-checkout-04",
+  "category": "Administrative & Office Operations",
+  "categoryId": "admin-office-ops",
+  "subcategory": "Equipment Checkout Forms",
+  "subcategoryId": "equipment-checkout",
+  "title": "Camera Equipment Checkout Form",
+  "description": "A camera equipment checkout form — tracks company equipment checked out to an employee.",
+  "estimatedMinutes": 18,
+  "difficulty": "standard",
+  "tags": [
+    "equipment",
+    "checkout",
+    "camera",
+    "equipment checkout"
+  ],
+  "fields": [
+    {
+      "id": "subject_name",
+      "label": "Checked Out By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "department",
+      "label": "Department",
+      "type": "select",
+      "required": false,
+      "options": [
+        "Sales",
+        "Marketing",
+        "Engineering",
+        "Finance",
+        "Human Resources",
+        "Operations",
+        "Customer Support",
+        "Executive"
+      ]
+    },
+    {
+      "id": "equipment_item",
+      "label": "Equipment Item",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "expected_return_date",
+      "label": "Expected Return Date",
+      "type": "date",
+      "required": false
+    },
+    {
+      "id": "details",
+      "label": "Condition Notes",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "approver_name",
+      "label": "IT / Facilities",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "EQUIPMENT CHECKOUT FORM\nCamera Equipment — tracks company equipment checked out to an employee.\nChecked Out By: {{subject_name}}        Date: {{date}}\nDepartment: {{department}}              Equipment Item: {{equipment_item}}\nExpected Return Date: {{expected_return_date}}\n\n--------------------------------------------------------------------\n\n{{details}}\n--------------------------------------------------------------------\n\nApprover: {{approver_name}}\n\nSignature: {{signature}}"
+}

@@ -1,0 +1,70 @@
+{
+  "id": "escalation-notes-05",
+  "category": "Customer Service",
+  "categoryId": "customer-service",
+  "subcategory": "Escalation Notes",
+  "subcategoryId": "escalation-notes",
+  "title": "Social Media Escalation Note",
+  "description": "A social media escalation note — escalates a customer issue internally for higher-level handling.",
+  "estimatedMinutes": 6,
+  "difficulty": "quick",
+  "tags": [
+    "escalation",
+    "note",
+    "social",
+    "escalation notes"
+  ],
+  "fields": [
+    {
+      "id": "to",
+      "label": "To",
+      "type": "text",
+      "required": true,
+      "placeholder": "Recipient(s)"
+    },
+    {
+      "id": "from",
+      "label": "From",
+      "type": "text",
+      "required": true,
+      "placeholder": "Your name"
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "subject",
+      "label": "Re / Subject",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "customer_name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "urgency",
+      "label": "Urgency",
+      "type": "select",
+      "required": false,
+      "options": [
+        "Low",
+        "Medium",
+        "High",
+        "Critical"
+      ]
+    },
+    {
+      "id": "body",
+      "label": "Body",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "MEMORANDUM\n\nTo: {{to}}\nFrom: {{from}}\nDate: {{date}}\nRe: {{subject}}\nCustomer Name: {{customer_name}}        Urgency: {{urgency}}\n\n--------------------------------------------------------------------\n\n{{body}}"
+}

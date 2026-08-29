@@ -1,0 +1,38 @@
+{
+  "id": "raci-charts-06",
+  "category": "Project Management",
+  "categoryId": "project-management",
+  "subcategory": "RACI Charts",
+  "subcategoryId": "raci-charts",
+  "title": "Vendor Engagement RACI Chart",
+  "description": "A vendor engagement raci chart — assigns Responsible, Accountable, Consulted, and Informed roles across project tasks.",
+  "estimatedMinutes": 10,
+  "difficulty": "standard",
+  "tags": [
+    "raci",
+    "chart",
+    "vendor",
+    "raci charts"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "project_name",
+      "label": "Project Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "entries",
+      "label": "Task / Role Assignments",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "RACI CHART\nVendor Engagement — assigns Responsible, Accountable, Consulted, and Informed roles across project tasks.\nDate: {{date}}\nProject Name: {{project_name}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

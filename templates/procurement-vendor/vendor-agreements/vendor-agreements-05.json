@@ -1,0 +1,62 @@
+{
+  "id": "vendor-agreements-05",
+  "category": "Procurement & Vendor Management",
+  "categoryId": "procurement-vendor",
+  "subcategory": "Vendor Agreements",
+  "subcategoryId": "vendor-agreements",
+  "title": "Consulting Vendor Agreement",
+  "description": "A consulting vendor agreement — formalizes the terms of an ongoing relationship with a supplier.",
+  "estimatedMinutes": 18,
+  "difficulty": "detailed",
+  "tags": [
+    "vendor",
+    "agreement",
+    "consulting",
+    "vendor agreements"
+  ],
+  "fields": [
+    {
+      "id": "party_a",
+      "label": "Company",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "party_b",
+      "label": "Vendor",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "effective_date",
+      "label": "Effective Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "services_provided",
+      "label": "Services / Goods Provided",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "terms",
+      "label": "Terms",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "party_a_signature",
+      "label": "Party A Signature",
+      "type": "signature",
+      "required": false
+    },
+    {
+      "id": "party_b_signature",
+      "label": "Party B Signature",
+      "type": "signature",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "AGREEMENT\n\nBetween: {{party_a}}\nAnd: {{party_b}}\nEffective Date: {{effective_date}}\n\n--------------------------------------------------------------------\nTERMS\n--------------------------------------------------------------------\nServices / Goods Provided:\n{{services_provided}}\n{{terms}}\n\n--------------------------------------------------------------------\n\n{{party_a_signature}}                    {{party_b_signature}}\nParty A                                  Party B"
+}

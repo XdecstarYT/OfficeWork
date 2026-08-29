@@ -1,0 +1,39 @@
+{
+  "id": "compliance-checklists-09",
+  "category": "Legal & Compliance",
+  "categoryId": "legal-compliance",
+  "subcategory": "Compliance Checklists",
+  "subcategoryId": "compliance-checklists",
+  "title": "Accessibility Compliance Checklist",
+  "description": "An accessibility compliance checklist — verifies that regulatory or internal requirements have been met.",
+  "estimatedMinutes": 7,
+  "difficulty": "quick",
+  "tags": [
+    "compliance",
+    "checklist",
+    "accessibility",
+    "compliance checklists"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "regulation",
+      "label": "Regulation / Standard",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "items",
+      "label": "Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "One item per line"
+    }
+  ],
+  "bodyTemplate": "COMPLIANCE CHECKLIST\nOwner: {{owner}}\nRegulation / Standard: {{regulation}}\nAccessibility — verifies that regulatory or internal requirements have been met.\n\n--------------------------------------------------------------------\n\n{{items}}"
+}

@@ -1,0 +1,44 @@
+{
+  "id": "onboarding-01",
+  "category": "Human Resources",
+  "categoryId": "human-resources",
+  "subcategory": "Onboarding Checklists",
+  "subcategoryId": "onboarding",
+  "title": "Full-Time Onboarding Checklist",
+  "description": "A full-time onboarding checklist — walks a new hire and their manager through the first days on the job.",
+  "estimatedMinutes": 7,
+  "difficulty": "quick",
+  "tags": [
+    "onboarding",
+    "checklist",
+    "full-time"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "new_hire_name",
+      "label": "New Hire Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "start_date",
+      "label": "Start Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "items",
+      "label": "Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "One item per line"
+    }
+  ],
+  "bodyTemplate": "ONBOARDING CHECKLIST\nOwner: {{owner}}\nNew Hire Name: {{new_hire_name}}        Start Date: {{start_date}}\nFull-Time — walks a new hire and their manager through the first days on the job.\n\n--------------------------------------------------------------------\n\n{{items}}"
+}

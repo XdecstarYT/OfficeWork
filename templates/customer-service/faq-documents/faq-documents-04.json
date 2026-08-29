@@ -1,0 +1,43 @@
+{
+  "id": "faq-documents-04",
+  "category": "Customer Service",
+  "categoryId": "customer-service",
+  "subcategory": "FAQ Documents",
+  "subcategoryId": "faq-documents",
+  "title": "Account Setup FAQ Document",
+  "description": "An account setup faq document — answers frequently asked customer questions in one reference.",
+  "estimatedMinutes": 24,
+  "difficulty": "detailed",
+  "tags": [
+    "document",
+    "account",
+    "faq documents"
+  ],
+  "fields": [
+    {
+      "id": "author",
+      "label": "Prepared By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "topic_area",
+      "label": "Topic Area",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "summary",
+      "label": "Summary",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "FAQ DOCUMENT\nAccount Setup — answers frequently asked customer questions in one reference.\nPrepared By: {{author}}                 Date: {{date}}\nTopic Area: {{topic_area}}\n\n--------------------------------------------------------------------\n\n{{summary}}"
+}

@@ -1,0 +1,38 @@
+{
+  "id": "mail-courier-05",
+  "category": "Administrative & Office Operations",
+  "categoryId": "admin-office-ops",
+  "subcategory": "Mail & Courier Logs",
+  "subcategoryId": "mail-courier",
+  "title": "International Shipment Mail & Courier Log",
+  "description": "An international shipment mail & courier log — tracks incoming and outgoing mail and courier packages.",
+  "estimatedMinutes": 8,
+  "difficulty": "standard",
+  "tags": [
+    "mail",
+    "courier",
+    "international",
+    "mail courier"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "handled_by",
+      "label": "Handled By",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "entries",
+      "label": "Mail / Package Entries",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "MAIL & COURIER LOG\nInternational Shipment — tracks incoming and outgoing mail and courier packages.\nDate: {{date}}\nHandled By: {{handled_by}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

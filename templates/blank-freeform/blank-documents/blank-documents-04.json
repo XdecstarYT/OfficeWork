@@ -1,0 +1,20 @@
+{
+  "id": "blank-documents-04",
+  "category": "Blank & Freeform",
+  "categoryId": "blank-freeform",
+  "subcategory": "Blank Documents",
+  "subcategoryId": "blank-documents",
+  "title": "Blank Meeting Notes",
+  "description": "A simple meeting notes sheet: attendees, agenda, and open notes — no rigid minutes format.",
+  "estimatedMinutes": 8,
+  "difficulty": "quick",
+  "tags": ["blank", "meeting", "notes", "freeform"],
+  "fields": [
+    { "id": "meeting_title", "label": "Meeting Title", "type": "text", "required": true, "placeholder": "e.g. Weekly Sync" },
+    { "id": "date", "label": "Date", "type": "date", "required": true },
+    { "id": "attendees", "label": "Attendees", "type": "textarea", "required": false, "placeholder": "Who was there?" },
+    { "id": "notes", "label": "Notes", "type": "textarea", "required": true, "placeholder": "Write whatever notes you need." },
+    { "id": "action_items", "label": "Action Items", "type": "textarea", "required": false, "placeholder": "Optional follow-ups" }
+  ],
+  "bodyTemplate": "MEETING NOTES\n\n{{meeting_title}}\nDate: {{date}}\n\nAttendees:\n{{attendees}}\n\n--------------------------------------------------------------------\nNOTES\n--------------------------------------------------------------------\n{{notes}}\n\nAction Items:\n{{action_items}}"
+}

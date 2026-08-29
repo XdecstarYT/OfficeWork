@@ -1,0 +1,18 @@
+{
+  "id": "blank-documents-06",
+  "category": "Blank & Freeform",
+  "categoryId": "blank-freeform",
+  "subcategory": "Blank Documents",
+  "subcategoryId": "blank-documents",
+  "title": "Blank Checklist",
+  "description": "A titled checklist with an open item list — track anything you need to get through.",
+  "estimatedMinutes": 5,
+  "difficulty": "quick",
+  "tags": ["blank", "checklist", "freeform", "tasks"],
+  "fields": [
+    { "id": "checklist_title", "label": "Checklist Title", "type": "text", "required": true, "placeholder": "e.g. Office Move Checklist" },
+    { "id": "owner", "label": "Owner", "type": "text", "required": false, "placeholder": "Optional" },
+    { "id": "items", "label": "Items", "type": "textarea", "required": true, "placeholder": "One item per line" }
+  ],
+  "bodyTemplate": "{{checklist_title}}\nOwner: {{owner}}\n\n--------------------------------------------------------------------\n\n{{items}}"
+}

@@ -1,0 +1,57 @@
+{
+  "id": "system-documentation-11",
+  "category": "IT & Technical",
+  "categoryId": "it-technical",
+  "subcategory": "System Documentation",
+  "subcategoryId": "system-documentation",
+  "title": "System Documentation",
+  "description": "Provides reference documentation for an internal system or process.",
+  "estimatedMinutes": 22,
+  "difficulty": "detailed",
+  "tags": [
+    "system",
+    "documentation",
+    "general",
+    "system documentation"
+  ],
+  "fields": [
+    {
+      "id": "author",
+      "label": "Prepared By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "period",
+      "label": "Reporting Period",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. Q2 2026"
+    },
+    {
+      "id": "system_name",
+      "label": "System Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "owner_team",
+      "label": "Owner Team",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "summary",
+      "label": "Summary",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "SYSTEM DOCUMENTATION\n\nPrepared By: {{author}}                 Date: {{date}}\nReporting Period: {{period}}            System Name: {{system_name}}\nOwner Team: {{owner_team}}\n\n--------------------------------------------------------------------\n\n{{summary}}"
+}

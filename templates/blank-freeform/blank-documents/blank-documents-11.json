@@ -1,0 +1,17 @@
+{
+  "id": "blank-documents-11",
+  "category": "Blank & Freeform",
+  "categoryId": "blank-freeform",
+  "subcategory": "Blank Documents",
+  "subcategoryId": "blank-documents",
+  "title": "Blank To-Do / Task List",
+  "description": "A plain task list — no template logic, just a title and space to write down whatever you need to do.",
+  "estimatedMinutes": 3,
+  "difficulty": "quick",
+  "tags": ["blank", "to-do", "tasks", "freeform"],
+  "fields": [
+    { "id": "list_title", "label": "List Title", "type": "text", "required": true, "placeholder": "e.g. This Week" },
+    { "id": "tasks", "label": "Tasks", "type": "textarea", "required": true, "placeholder": "One task per line" }
+  ],
+  "bodyTemplate": "{{list_title}}\n\n--------------------------------------------------------------------\n\n{{tasks}}"
+}

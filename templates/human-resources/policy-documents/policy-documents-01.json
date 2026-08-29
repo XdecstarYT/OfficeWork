@@ -1,0 +1,44 @@
+{
+  "id": "policy-documents-01",
+  "category": "Human Resources",
+  "categoryId": "human-resources",
+  "subcategory": "Policy Documents",
+  "subcategoryId": "policy-documents",
+  "title": "Code of Conduct HR Policy Document",
+  "description": "A code of conduct hr policy document — communicates a company policy covering conduct, leave, or benefits.",
+  "estimatedMinutes": 7,
+  "difficulty": "quick",
+  "tags": [
+    "policy",
+    "document",
+    "code",
+    "policy documents"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "policy_owner",
+      "label": "Policy Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "body",
+      "label": "Details",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "issued_by",
+      "label": "Issued By",
+      "type": "text",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "NOTICE\n\nHR POLICY DOCUMENT\nCode of Conduct — communicates a company policy covering conduct, leave, or benefits.\nDate: {{date}}\nPolicy Owner: {{policy_owner}}\n\n--------------------------------------------------------------------\n\n{{body}}\n\n--------------------------------------------------------------------\n\nIssued by: {{issued_by}}"
+}

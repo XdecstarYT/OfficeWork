@@ -1,0 +1,50 @@
+{
+  "id": "resource-plans-03",
+  "category": "Project Management",
+  "categoryId": "project-management",
+  "subcategory": "Resource Allocation Plans",
+  "subcategoryId": "resource-plans",
+  "title": "Cross-Team Resource Allocation Plan",
+  "description": "A cross-team resource allocation plan — plans how people and resources are assigned across a project or period.",
+  "estimatedMinutes": 24,
+  "difficulty": "detailed",
+  "tags": [
+    "resource",
+    "allocation",
+    "cross-team",
+    "resource plans"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "headcount",
+      "label": "Team Size / Headcount",
+      "type": "number",
+      "required": false
+    },
+    {
+      "id": "objectives",
+      "label": "Allocation Plan",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "timeline",
+      "label": "Timeline",
+      "type": "textarea",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "RESOURCE ALLOCATION PLAN\nCross-Team — plans how people and resources are assigned across a project or period.\nOwner: {{owner}}                        Date: {{date}}\nTeam Size / Headcount: {{headcount}}\n\n--------------------------------------------------------------------\nOBJECTIVES\n--------------------------------------------------------------------\n{{objectives}}\n\nTimeline:\n{{timeline}}"
+}

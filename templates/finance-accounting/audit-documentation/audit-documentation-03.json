@@ -1,0 +1,51 @@
+{
+  "id": "audit-documentation-03",
+  "category": "Finance & Accounting",
+  "categoryId": "finance-accounting",
+  "subcategory": "Audit Documentation",
+  "subcategoryId": "audit-documentation",
+  "title": "Compliance Audit Documentation",
+  "description": "A compliance audit documentation — records findings and evidence prepared for an internal or external audit.",
+  "estimatedMinutes": 22,
+  "difficulty": "detailed",
+  "tags": [
+    "audit",
+    "documentation",
+    "compliance",
+    "audit documentation"
+  ],
+  "fields": [
+    {
+      "id": "author",
+      "label": "Prepared By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "period",
+      "label": "Reporting Period",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. Q2 2026"
+    },
+    {
+      "id": "audit_scope",
+      "label": "Audit Scope",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "summary",
+      "label": "Summary",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "AUDIT DOCUMENTATION\nCompliance — records findings and evidence prepared for an internal or external audit.\nPrepared By: {{author}}                 Date: {{date}}\nReporting Period: {{period}}            Audit Scope: {{audit_scope}}\n\n--------------------------------------------------------------------\n\n{{summary}}"
+}

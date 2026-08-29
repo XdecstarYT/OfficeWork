@@ -1,0 +1,38 @@
+{
+  "id": "raci-charts-09",
+  "category": "Project Management",
+  "categoryId": "project-management",
+  "subcategory": "RACI Charts",
+  "subcategoryId": "raci-charts",
+  "title": "Migration Project RACI Chart",
+  "description": "A migration project raci chart — assigns Responsible, Accountable, Consulted, and Informed roles across project tasks.",
+  "estimatedMinutes": 8,
+  "difficulty": "standard",
+  "tags": [
+    "raci",
+    "chart",
+    "migration",
+    "raci charts"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "project_name",
+      "label": "Project Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "entries",
+      "label": "Task / Role Assignments",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "RACI CHART\nMigration Project — assigns Responsible, Accountable, Consulted, and Informed roles across project tasks.\nDate: {{date}}\nProject Name: {{project_name}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

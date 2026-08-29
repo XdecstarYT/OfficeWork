@@ -1,0 +1,39 @@
+{
+  "id": "client-onboarding-sales-04",
+  "category": "Sales & Marketing",
+  "categoryId": "sales-marketing",
+  "subcategory": "Client Onboarding (Sales)",
+  "subcategoryId": "client-onboarding-sales",
+  "title": "Managed Service Client Onboarding Checklist",
+  "description": "A managed service client onboarding checklist — walks a new client through getting started after signing.",
+  "estimatedMinutes": 13,
+  "difficulty": "quick",
+  "tags": [
+    "client",
+    "onboarding",
+    "managed",
+    "client onboarding sales"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "client_name",
+      "label": "Client Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "items",
+      "label": "Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "One item per line"
+    }
+  ],
+  "bodyTemplate": "CLIENT ONBOARDING CHECKLIST\nOwner: {{owner}}\nClient Name: {{client_name}}\nManaged Service — walks a new client through getting started after signing.\n\n--------------------------------------------------------------------\n\n{{items}}"
+}

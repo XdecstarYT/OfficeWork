@@ -1,0 +1,38 @@
+{
+  "id": "mail-courier-11",
+  "category": "Administrative & Office Operations",
+  "categoryId": "admin-office-ops",
+  "subcategory": "Mail & Courier Logs",
+  "subcategoryId": "mail-courier",
+  "title": "Mail & Courier Log",
+  "description": "Tracks incoming and outgoing mail and courier packages.",
+  "estimatedMinutes": 12,
+  "difficulty": "standard",
+  "tags": [
+    "mail",
+    "courier",
+    "general",
+    "mail courier"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "handled_by",
+      "label": "Handled By",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "entries",
+      "label": "Mail / Package Entries",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "MAIL & COURIER LOG\n\nDate: {{date}}\nHandled By: {{handled_by}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

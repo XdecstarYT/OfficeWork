@@ -1,0 +1,37 @@
+{
+  "id": "issue-logs-04",
+  "category": "Project Management",
+  "categoryId": "project-management",
+  "subcategory": "Issue Logs",
+  "subcategoryId": "issue-logs",
+  "title": "Vendor Issue Log",
+  "description": "A vendor issue log — tracks project issues and their resolution status.",
+  "estimatedMinutes": 14,
+  "difficulty": "standard",
+  "tags": [
+    "issue",
+    "vendor",
+    "issue logs"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "project_name",
+      "label": "Project Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "entries",
+      "label": "Issue Entries",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "ISSUE LOG\nVendor — tracks project issues and their resolution status.\nDate: {{date}}\nProject Name: {{project_name}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

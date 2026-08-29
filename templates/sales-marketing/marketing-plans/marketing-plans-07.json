@@ -1,0 +1,56 @@
+{
+  "id": "marketing-plans-07",
+  "category": "Sales & Marketing",
+  "categoryId": "sales-marketing",
+  "subcategory": "Marketing Plans",
+  "subcategoryId": "marketing-plans",
+  "title": "Brand Strategy Marketing Plan",
+  "description": "A brand strategy marketing plan — sets strategy, channels, and goals for a marketing period.",
+  "estimatedMinutes": 24,
+  "difficulty": "detailed",
+  "tags": [
+    "marketing",
+    "plan",
+    "brand",
+    "marketing plans"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "target_market",
+      "label": "Target Market",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "budget",
+      "label": "Budget",
+      "type": "currency",
+      "required": false
+    },
+    {
+      "id": "objectives",
+      "label": "Goals",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "timeline",
+      "label": "Timeline",
+      "type": "textarea",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "MARKETING PLAN\nBrand Strategy — sets strategy, channels, and goals for a marketing period.\nOwner: {{owner}}                        Date: {{date}}\nBudget: {{budget}}\nTarget Market:\n{{target_market}}\n\n--------------------------------------------------------------------\nOBJECTIVES\n--------------------------------------------------------------------\n{{objectives}}\n\nTimeline:\n{{timeline}}"
+}

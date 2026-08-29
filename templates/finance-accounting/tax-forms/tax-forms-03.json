@@ -1,0 +1,63 @@
+{
+  "id": "tax-forms-03",
+  "category": "Finance & Accounting",
+  "categoryId": "finance-accounting",
+  "subcategory": "Internal Tax Documentation",
+  "subcategoryId": "tax-forms",
+  "title": "Withholding Update Internal Tax Documentation",
+  "description": "A withholding update internal tax documentation — records information needed for internal tax reporting or compliance.",
+  "estimatedMinutes": 16,
+  "difficulty": "standard",
+  "tags": [
+    "internal",
+    "documentation",
+    "withholding",
+    "tax forms"
+  ],
+  "fields": [
+    {
+      "id": "subject_name",
+      "label": "Prepared For",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "tax_year",
+      "label": "Tax Year",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "form_type",
+      "label": "Related Form",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. W-9, 1099"
+    },
+    {
+      "id": "details",
+      "label": "Notes",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "approver_name",
+      "label": "Finance Reviewer",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "INTERNAL TAX DOCUMENTATION\nWithholding Update — records information needed for internal tax reporting or compliance.\nPrepared For: {{subject_name}}          Date: {{date}}\nTax Year: {{tax_year}}                  Related Form: {{form_type}}\n\n--------------------------------------------------------------------\n\n{{details}}\n--------------------------------------------------------------------\n\nApprover: {{approver_name}}\n\nSignature: {{signature}}"
+}

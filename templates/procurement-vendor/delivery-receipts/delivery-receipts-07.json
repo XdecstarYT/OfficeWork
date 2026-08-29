@@ -1,0 +1,44 @@
+{
+  "id": "delivery-receipts-07",
+  "category": "Procurement & Vendor Management",
+  "categoryId": "procurement-vendor",
+  "subcategory": "Delivery & Receiving Records",
+  "subcategoryId": "delivery-receipts",
+  "title": "Return-to-Vendor Delivery & Receiving Record",
+  "description": "A return-to-vendor delivery & receiving record — confirms receipt of goods delivered from a vendor.",
+  "estimatedMinutes": 12,
+  "difficulty": "standard",
+  "tags": [
+    "delivery",
+    "receiving",
+    "return-to-vendor",
+    "delivery receipts"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "vendor_name",
+      "label": "Vendor Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "po_number",
+      "label": "Related PO #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "entries",
+      "label": "Items Received",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "DELIVERY & RECEIVING RECORD\nReturn-to-Vendor — confirms receipt of goods delivered from a vendor.\nDate: {{date}}\nVendor Name: {{vendor_name}}            Related PO #: {{po_number}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

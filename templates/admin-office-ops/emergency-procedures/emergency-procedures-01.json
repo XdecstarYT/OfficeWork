@@ -1,0 +1,58 @@
+{
+  "id": "emergency-procedures-01",
+  "category": "Administrative & Office Operations",
+  "categoryId": "admin-office-ops",
+  "subcategory": "Emergency Procedures",
+  "subcategoryId": "emergency-procedures",
+  "title": "Fire Evacuation Emergency Procedure",
+  "description": "A fire evacuation emergency procedure — outlines the steps staff should take in an emergency.",
+  "estimatedMinutes": 20,
+  "difficulty": "detailed",
+  "tags": [
+    "emergency",
+    "procedure",
+    "fire",
+    "emergency procedures"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "emergency_type",
+      "label": "Emergency Type",
+      "type": "select",
+      "required": false,
+      "options": [
+        "Fire",
+        "Severe Weather",
+        "Medical",
+        "Security Threat",
+        "Power Outage",
+        "Other"
+      ]
+    },
+    {
+      "id": "objectives",
+      "label": "Procedure Steps",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "timeline",
+      "label": "Timeline",
+      "type": "textarea",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "EMERGENCY PROCEDURE\nFire Evacuation — outlines the steps staff should take in an emergency.\nOwner: {{owner}}                        Date: {{date}}\nEmergency Type: {{emergency_type}}\n\n--------------------------------------------------------------------\nOBJECTIVES\n--------------------------------------------------------------------\n{{objectives}}\n\nTimeline:\n{{timeline}}"
+}

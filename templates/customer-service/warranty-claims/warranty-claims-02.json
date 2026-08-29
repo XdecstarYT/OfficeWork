@@ -1,0 +1,62 @@
+{
+  "id": "warranty-claims-02",
+  "category": "Customer Service",
+  "categoryId": "customer-service",
+  "subcategory": "Warranty Claim Forms",
+  "subcategoryId": "warranty-claims",
+  "title": "Malfunction Warranty Claim Form",
+  "description": "A malfunction warranty claim form — processes a customer's warranty claim for a defective product.",
+  "estimatedMinutes": 14,
+  "difficulty": "standard",
+  "tags": [
+    "warranty",
+    "claim",
+    "malfunction",
+    "warranty claims"
+  ],
+  "fields": [
+    {
+      "id": "subject_name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "product_name",
+      "label": "Product Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "purchase_date",
+      "label": "Purchase Date",
+      "type": "date",
+      "required": false
+    },
+    {
+      "id": "details",
+      "label": "Description of Issue",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "approver_name",
+      "label": "Support Rep",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "WARRANTY CLAIM FORM\nMalfunction — processes a customer's warranty claim for a defective product.\nCustomer Name: {{subject_name}}         Date: {{date}}\nProduct Name: {{product_name}}          Purchase Date: {{purchase_date}}\n\n--------------------------------------------------------------------\n\n{{details}}\n--------------------------------------------------------------------\n\nApprover: {{approver_name}}\n\nSignature: {{signature}}"
+}

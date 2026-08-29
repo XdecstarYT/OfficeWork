@@ -1,0 +1,57 @@
+{
+  "id": "post-mortems-03",
+  "category": "Project Management",
+  "categoryId": "project-management",
+  "subcategory": "Post-Mortems & Retrospectives",
+  "subcategoryId": "post-mortems",
+  "title": "Over Budget Project Post-Mortem",
+  "description": "An over budget project post-mortem — reviews what went well and what to improve after a project concludes.",
+  "estimatedMinutes": 22,
+  "difficulty": "detailed",
+  "tags": [
+    "project",
+    "post-mortem",
+    "over",
+    "post mortems"
+  ],
+  "fields": [
+    {
+      "id": "author",
+      "label": "Prepared By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "period",
+      "label": "Reporting Period",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. Q2 2026"
+    },
+    {
+      "id": "what_went_well",
+      "label": "What Went Well",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "what_to_improve",
+      "label": "What To Improve",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "summary",
+      "label": "Summary",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "PROJECT POST-MORTEM\nOver Budget — reviews what went well and what to improve after a project concludes.\nPrepared By: {{author}}                 Date: {{date}}\nReporting Period: {{period}}\n\n--------------------------------------------------------------------\n\nWhat Went Well:\n{{what_went_well}}\n\nWhat To Improve:\n{{what_to_improve}}\n{{summary}}"
+}

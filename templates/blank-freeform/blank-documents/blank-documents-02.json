@@ -1,0 +1,20 @@
+{
+  "id": "blank-documents-02",
+  "category": "Blank & Freeform",
+  "categoryId": "blank-freeform",
+  "subcategory": "Blank Documents",
+  "subcategoryId": "blank-documents",
+  "title": "Blank Internal Memo",
+  "description": "A standard TO/FROM/RE memo header with an open body, for any internal note.",
+  "estimatedMinutes": 6,
+  "difficulty": "quick",
+  "tags": ["blank", "memo", "freeform", "internal"],
+  "fields": [
+    { "id": "to", "label": "To", "type": "text", "required": true, "placeholder": "Recipient(s)" },
+    { "id": "from", "label": "From", "type": "text", "required": true, "placeholder": "Your name" },
+    { "id": "date", "label": "Date", "type": "date", "required": true },
+    { "id": "subject", "label": "Re / Subject", "type": "text", "required": true, "placeholder": "What is this about?" },
+    { "id": "body", "label": "Memo Body", "type": "textarea", "required": true, "placeholder": "Write your memo here." }
+  ],
+  "bodyTemplate": "MEMORANDUM\n\nTo: {{to}}\nFrom: {{from}}\nDate: {{date}}\nRe: {{subject}}\n\n--------------------------------------------------------------------\n\n{{body}}"
+}

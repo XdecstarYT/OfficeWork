@@ -1,0 +1,56 @@
+{
+  "id": "waivers-06",
+  "category": "Legal & Compliance",
+  "categoryId": "legal-compliance",
+  "subcategory": "Waivers & Releases",
+  "subcategoryId": "waivers",
+  "title": "Equipment Use Waiver & Release Form",
+  "description": "An equipment use waiver & release form — releases the company from liability for a specific activity or event.",
+  "estimatedMinutes": 14,
+  "difficulty": "standard",
+  "tags": [
+    "waiver",
+    "release",
+    "equipment",
+    "waivers"
+  ],
+  "fields": [
+    {
+      "id": "subject_name",
+      "label": "Participant Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "activity",
+      "label": "Activity / Event",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "details",
+      "label": "Terms of Release",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "approver_name",
+      "label": "Company Representative",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "WAIVER & RELEASE FORM\nEquipment Use — releases the company from liability for a specific activity or event.\nParticipant Name: {{subject_name}}      Date: {{date}}\nActivity / Event: {{activity}}\n\n--------------------------------------------------------------------\n\n{{details}}\n--------------------------------------------------------------------\n\nApprover: {{approver_name}}\n\nSignature: {{signature}}"
+}

@@ -1,0 +1,21 @@
+{
+  "id": "blank-documents-08",
+  "category": "Blank & Freeform",
+  "categoryId": "blank-freeform",
+  "subcategory": "Blank Documents",
+  "subcategoryId": "blank-documents",
+  "title": "Blank Invoice",
+  "description": "A minimal invoice with billing fields and an open line-items area — for one-off billing that doesn't need a full invoice template.",
+  "estimatedMinutes": 8,
+  "difficulty": "quick",
+  "tags": ["blank", "invoice", "freeform", "billing"],
+  "fields": [
+    { "id": "invoice_number", "label": "Invoice #", "type": "text", "required": false, "placeholder": "Optional" },
+    { "id": "bill_to", "label": "Bill To", "type": "textarea", "required": true, "placeholder": "Client name and address" },
+    { "id": "date", "label": "Date", "type": "date", "required": true },
+    { "id": "due_date", "label": "Due Date", "type": "date", "required": false },
+    { "id": "line_items", "label": "Line Items", "type": "textarea", "required": true, "placeholder": "Description | Amount, one per line" },
+    { "id": "total", "label": "Total Due", "type": "currency", "required": true, "placeholder": "0.00" }
+  ],
+  "bodyTemplate": "INVOICE  #{{invoice_number}}\n\nBill To:\n{{bill_to}}\n\nDate: {{date}}                          Due: {{due_date}}\n\n--------------------------------------------------------------------\n{{line_items}}\n--------------------------------------------------------------------\n\nTOTAL DUE: {{total}}"
+}

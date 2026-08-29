@@ -1,0 +1,37 @@
+{
+  "id": "risk-logs-09",
+  "category": "Project Management",
+  "categoryId": "project-management",
+  "subcategory": "Risk Logs & Registers",
+  "subcategoryId": "risk-logs",
+  "title": "External Risk Log",
+  "description": "An external risk log — tracks identified project risks and mitigation plans.",
+  "estimatedMinutes": 8,
+  "difficulty": "standard",
+  "tags": [
+    "risk",
+    "external",
+    "risk logs"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "risk_owner",
+      "label": "Risk Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "entries",
+      "label": "Risk Entries",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "RISK LOG\nExternal — tracks identified project risks and mitigation plans.\nDate: {{date}}\nRisk Owner: {{risk_owner}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

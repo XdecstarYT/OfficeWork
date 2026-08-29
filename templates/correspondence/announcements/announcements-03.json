@@ -1,0 +1,38 @@
+{
+  "id": "announcements-03",
+  "category": "Correspondence & Communication",
+  "categoryId": "correspondence",
+  "subcategory": "Internal Announcements",
+  "subcategoryId": "announcements",
+  "title": "Reorg Internal Announcement",
+  "description": "A reorg internal announcement — announces company or team news to employees.",
+  "estimatedMinutes": 11,
+  "difficulty": "quick",
+  "tags": [
+    "internal",
+    "announcement",
+    "reorg",
+    "announcements"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "body",
+      "label": "Details",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "issued_by",
+      "label": "Issued By",
+      "type": "text",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "NOTICE\n\nINTERNAL ANNOUNCEMENT\nReorg — announces company or team news to employees.\nDate: {{date}}\n\n--------------------------------------------------------------------\n\n{{body}}\n\n--------------------------------------------------------------------\n\nIssued by: {{issued_by}}"
+}

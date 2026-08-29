@@ -1,0 +1,37 @@
+{
+  "id": "visitor-logs-02",
+  "category": "Administrative & Office Operations",
+  "categoryId": "admin-office-ops",
+  "subcategory": "Visitor Logs",
+  "subcategoryId": "visitor-logs",
+  "title": "Contractor Access Visitor Log",
+  "description": "A contractor access visitor log — records visitors entering and leaving the office.",
+  "estimatedMinutes": 10,
+  "difficulty": "standard",
+  "tags": [
+    "visitor",
+    "contractor",
+    "visitor logs"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "location",
+      "label": "Front Desk / Location",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "entries",
+      "label": "Visitor Entries",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "VISITOR LOG\nContractor Access — records visitors entering and leaving the office.\nDate: {{date}}\nFront Desk / Location: {{location}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

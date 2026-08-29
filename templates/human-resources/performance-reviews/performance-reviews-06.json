@@ -1,0 +1,69 @@
+{
+  "id": "performance-reviews-06",
+  "category": "Human Resources",
+  "categoryId": "human-resources",
+  "subcategory": "Performance Reviews",
+  "subcategoryId": "performance-reviews",
+  "title": "Manager Performance Review",
+  "description": "A manager performance review — evaluates an employee's performance over a review period.",
+  "estimatedMinutes": 20,
+  "difficulty": "detailed",
+  "tags": [
+    "performance",
+    "review",
+    "manager",
+    "performance reviews"
+  ],
+  "fields": [
+    {
+      "id": "author",
+      "label": "Prepared By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "period",
+      "label": "Reporting Period",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. Q2 2026"
+    },
+    {
+      "id": "employee_name",
+      "label": "Employee Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "role",
+      "label": "Role / Title",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "rating",
+      "label": "Overall Rating",
+      "type": "select",
+      "required": true,
+      "options": [
+        "Exceeds Expectations",
+        "Meets Expectations",
+        "Needs Improvement",
+        "Unsatisfactory"
+      ]
+    },
+    {
+      "id": "summary",
+      "label": "Summary",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "PERFORMANCE REVIEW\nManager — evaluates an employee's performance over a review period.\nPrepared By: {{author}}                 Date: {{date}}\nReporting Period: {{period}}            Employee Name: {{employee_name}}\nRole / Title: {{role}}                  Overall Rating: {{rating}}\n\n--------------------------------------------------------------------\n\n{{summary}}"
+}

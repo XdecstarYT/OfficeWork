@@ -1,0 +1,39 @@
+{
+  "id": "sops-04",
+  "category": "IT & Technical",
+  "categoryId": "it-technical",
+  "subcategory": "Standard Operating Procedures",
+  "subcategoryId": "sops",
+  "title": "Onboarding a New System Standard Operating Procedure",
+  "description": "An onboarding a new system standard operating procedure — documents the step-by-step process for a recurring technical task.",
+  "estimatedMinutes": 13,
+  "difficulty": "quick",
+  "tags": [
+    "standard",
+    "operating",
+    "onboarding",
+    "sops"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "system_or_tool",
+      "label": "System / Tool",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "items",
+      "label": "Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "One item per line"
+    }
+  ],
+  "bodyTemplate": "STANDARD OPERATING PROCEDURE\nOwner: {{owner}}\nSystem / Tool: {{system_or_tool}}\nOnboarding a New System — documents the step-by-step process for a recurring technical task.\n\n--------------------------------------------------------------------\n\n{{items}}"
+}

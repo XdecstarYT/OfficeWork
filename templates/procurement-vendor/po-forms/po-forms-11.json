@@ -1,0 +1,58 @@
+{
+  "id": "po-forms-11",
+  "category": "Procurement & Vendor Management",
+  "categoryId": "procurement-vendor",
+  "subcategory": "Purchase Order Forms",
+  "subcategoryId": "po-forms",
+  "title": "Purchase Order Form",
+  "description": "Provides a standardized form for ordering from an approved vendor.",
+  "estimatedMinutes": 14,
+  "difficulty": "standard",
+  "tags": [
+    "purchase",
+    "order",
+    "general",
+    "po forms"
+  ],
+  "fields": [
+    {
+      "id": "counterparty",
+      "label": "Vendor",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "due_date",
+      "label": "Due Date",
+      "type": "date",
+      "required": false
+    },
+    {
+      "id": "po_number",
+      "label": "PO Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "line_items",
+      "label": "Line Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Description | Amount, one per line"
+    },
+    {
+      "id": "total",
+      "label": "Order Total",
+      "type": "currency",
+      "required": true,
+      "placeholder": "0.00"
+    }
+  ],
+  "bodyTemplate": "PURCHASE ORDER FORM\n\nVendor:\n{{counterparty}}\n\nDate: {{date}}                          Due Date: {{due_date}}\nPO Number: {{po_number}}\n\n--------------------------------------------------------------------\n{{line_items}}\n--------------------------------------------------------------------\n\nORDER TOTAL: {{total}}"
+}

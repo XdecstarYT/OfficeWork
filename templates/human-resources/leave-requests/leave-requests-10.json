@@ -1,0 +1,93 @@
+{
+  "id": "leave-requests-10",
+  "category": "Human Resources",
+  "categoryId": "human-resources",
+  "subcategory": "Leave & Time-Off Requests",
+  "subcategoryId": "leave-requests",
+  "title": "Military Leave Request",
+  "description": "A military leave request — requests approval for time off from work.",
+  "estimatedMinutes": 14,
+  "difficulty": "standard",
+  "tags": [
+    "leave",
+    "request",
+    "military",
+    "leave requests"
+  ],
+  "fields": [
+    {
+      "id": "subject_name",
+      "label": "Employee Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "department",
+      "label": "Department",
+      "type": "select",
+      "required": false,
+      "options": [
+        "Sales",
+        "Marketing",
+        "Engineering",
+        "Finance",
+        "Human Resources",
+        "Operations",
+        "Customer Support",
+        "Executive"
+      ]
+    },
+    {
+      "id": "start_date",
+      "label": "Start Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "end_date",
+      "label": "End Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "leave_type",
+      "label": "Leave Type",
+      "type": "select",
+      "required": true,
+      "options": [
+        "Vacation",
+        "Sick",
+        "Personal",
+        "Bereavement",
+        "Jury Duty",
+        "Unpaid",
+        "Other"
+      ]
+    },
+    {
+      "id": "details",
+      "label": "Reason for Leave",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "approver_name",
+      "label": "Manager",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "LEAVE REQUEST\nMilitary Leave — requests approval for time off from work.\nEmployee Name: {{subject_name}}         Date: {{date}}\nDepartment: {{department}}              Start Date: {{start_date}}\nEnd Date: {{end_date}}                  Leave Type: {{leave_type}}\n\n--------------------------------------------------------------------\n\n{{details}}\n--------------------------------------------------------------------\n\nApprover: {{approver_name}}\n\nSignature: {{signature}}"
+}

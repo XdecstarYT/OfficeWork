@@ -1,0 +1,64 @@
+{
+  "id": "cover-letters-01",
+  "category": "Correspondence & Communication",
+  "categoryId": "correspondence",
+  "subcategory": "Cover Letters",
+  "subcategoryId": "cover-letters",
+  "title": "Entry-Level Cover Letter",
+  "description": "An entry-level cover letter — introduces a candidate alongside a job application.",
+  "estimatedMinutes": 8,
+  "difficulty": "quick",
+  "tags": [
+    "cover",
+    "letter",
+    "entry-level",
+    "cover letters"
+  ],
+  "fields": [
+    {
+      "id": "sender_name",
+      "label": "Your Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "Your name"
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "recipient_name",
+      "label": "Recipient Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "position",
+      "label": "Position Applying For",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "key_qualification",
+      "label": "Key Qualification to Highlight",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "details",
+      "label": "Message",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Write the body of the letter here."
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "{{date}}\n\n{{recipient_name}}\n\nDear {{recipient_name}},\n\nPosition Applying For: {{position}}\nKey Qualification to Highlight:\n{{key_qualification}}\n{{details}}\n\nSincerely,\n\n{{signature}}\n{{sender_name}}"
+}

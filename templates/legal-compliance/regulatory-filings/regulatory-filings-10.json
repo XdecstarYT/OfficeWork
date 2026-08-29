@@ -1,0 +1,57 @@
+{
+  "id": "regulatory-filings-10",
+  "category": "Legal & Compliance",
+  "categoryId": "legal-compliance",
+  "subcategory": "Regulatory Filing Summaries",
+  "subcategoryId": "regulatory-filings",
+  "title": "New Registration Regulatory Filing Summary",
+  "description": "A new registration regulatory filing summary — summarizes information prepared for a regulatory filing.",
+  "estimatedMinutes": 20,
+  "difficulty": "detailed",
+  "tags": [
+    "regulatory",
+    "filing",
+    "new",
+    "regulatory filings"
+  ],
+  "fields": [
+    {
+      "id": "author",
+      "label": "Prepared By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "period",
+      "label": "Reporting Period",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. Q2 2026"
+    },
+    {
+      "id": "regulator",
+      "label": "Regulatory Body",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "filing_deadline",
+      "label": "Filing Deadline",
+      "type": "date",
+      "required": false
+    },
+    {
+      "id": "summary",
+      "label": "Summary",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "REGULATORY FILING SUMMARY\nNew Registration — summarizes information prepared for a regulatory filing.\nPrepared By: {{author}}                 Date: {{date}}\nReporting Period: {{period}}            Regulatory Body: {{regulator}}\nFiling Deadline: {{filing_deadline}}\n\n--------------------------------------------------------------------\n\n{{summary}}"
+}

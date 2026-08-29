@@ -1,0 +1,57 @@
+{
+  "id": "proposals-03",
+  "category": "Sales & Marketing",
+  "categoryId": "sales-marketing",
+  "subcategory": "Sales Proposals",
+  "subcategoryId": "proposals",
+  "title": "Upsell Sales Proposal",
+  "description": "An upsell sales proposal — presents a formal offer of products or services to a prospective client.",
+  "estimatedMinutes": 22,
+  "difficulty": "detailed",
+  "tags": [
+    "sales",
+    "proposal",
+    "upsell",
+    "proposals"
+  ],
+  "fields": [
+    {
+      "id": "author",
+      "label": "Prepared By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "period",
+      "label": "Reporting Period",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. Q2 2026"
+    },
+    {
+      "id": "client_name",
+      "label": "Client Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "proposed_value",
+      "label": "Proposed Deal Value",
+      "type": "currency",
+      "required": false
+    },
+    {
+      "id": "summary",
+      "label": "Summary",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "SALES PROPOSAL\nUpsell — presents a formal offer of products or services to a prospective client.\nPrepared By: {{author}}                 Date: {{date}}\nReporting Period: {{period}}            Client Name: {{client_name}}\nProposed Deal Value: {{proposed_value}}\n\n--------------------------------------------------------------------\n\n{{summary}}"
+}

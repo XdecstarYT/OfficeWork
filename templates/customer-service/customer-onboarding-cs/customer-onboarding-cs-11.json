@@ -1,0 +1,39 @@
+{
+  "id": "customer-onboarding-cs-11",
+  "category": "Customer Service",
+  "categoryId": "customer-service",
+  "subcategory": "Customer Onboarding Guides",
+  "subcategoryId": "customer-onboarding-cs",
+  "title": "Customer Onboarding Guide",
+  "description": "Helps a new customer get started with the product or service.",
+  "estimatedMinutes": 11,
+  "difficulty": "quick",
+  "tags": [
+    "customer",
+    "onboarding",
+    "general",
+    "customer onboarding cs"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "customer_name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "items",
+      "label": "Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "One item per line"
+    }
+  ],
+  "bodyTemplate": "CUSTOMER ONBOARDING GUIDE\nOwner: {{owner}}\nCustomer Name: {{customer_name}}\n\n--------------------------------------------------------------------\n\n{{items}}"
+}

@@ -1,0 +1,38 @@
+{
+  "id": "raci-charts-03",
+  "category": "Project Management",
+  "categoryId": "project-management",
+  "subcategory": "RACI Charts",
+  "subcategoryId": "raci-charts",
+  "title": "Product Launch RACI Chart",
+  "description": "A product launch raci chart — assigns Responsible, Accountable, Consulted, and Informed roles across project tasks.",
+  "estimatedMinutes": 12,
+  "difficulty": "standard",
+  "tags": [
+    "raci",
+    "chart",
+    "product",
+    "raci charts"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "project_name",
+      "label": "Project Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "entries",
+      "label": "Task / Role Assignments",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "RACI CHART\nProduct Launch — assigns Responsible, Accountable, Consulted, and Informed roles across project tasks.\nDate: {{date}}\nProject Name: {{project_name}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

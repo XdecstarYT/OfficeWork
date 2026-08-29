@@ -1,0 +1,38 @@
+{
+  "id": "notices-05",
+  "category": "Correspondence & Communication",
+  "categoryId": "correspondence",
+  "subcategory": "Notices",
+  "subcategoryId": "notices",
+  "title": "Policy Reminder General Notice",
+  "description": "A policy reminder general notice — formally notifies staff or the public of a change, closure, or reminder.",
+  "estimatedMinutes": 7,
+  "difficulty": "quick",
+  "tags": [
+    "general",
+    "notice",
+    "policy",
+    "notices"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "body",
+      "label": "Details",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "issued_by",
+      "label": "Issued By",
+      "type": "text",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "NOTICE\n\nGENERAL NOTICE\nPolicy Reminder — formally notifies staff or the public of a change, closure, or reminder.\nDate: {{date}}\n\n--------------------------------------------------------------------\n\n{{body}}\n\n--------------------------------------------------------------------\n\nIssued by: {{issued_by}}"
+}

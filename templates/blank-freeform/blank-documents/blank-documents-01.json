@@ -1,0 +1,24 @@
+{
+  "id": "blank-documents-01",
+  "category": "Blank & Freeform",
+  "categoryId": "blank-freeform",
+  "subcategory": "Blank Documents",
+  "subcategoryId": "blank-documents",
+  "title": "Blank Business Letter",
+  "description": "A plain business letter with letterhead-style formatting and an open body — write whatever you need to say.",
+  "estimatedMinutes": 10,
+  "difficulty": "quick",
+  "tags": ["blank", "letter", "freeform", "correspondence"],
+  "fields": [
+    { "id": "sender_name", "label": "Your Name", "type": "text", "required": true, "placeholder": "Your name" },
+    { "id": "sender_title", "label": "Your Title / Company", "type": "text", "required": false, "placeholder": "Optional" },
+    { "id": "date", "label": "Date", "type": "date", "required": true },
+    { "id": "recipient_name", "label": "Recipient Name", "type": "text", "required": false, "placeholder": "Optional" },
+    { "id": "recipient_address", "label": "Recipient Address", "type": "textarea", "required": false, "placeholder": "Optional" },
+    { "id": "salutation", "label": "Salutation", "type": "text", "required": false, "placeholder": "Dear ___," },
+    { "id": "body", "label": "Letter Body", "type": "textarea", "required": true, "placeholder": "Write your letter here." },
+    { "id": "closing", "label": "Closing", "type": "text", "required": false, "placeholder": "Sincerely," },
+    { "id": "signature", "label": "Signature", "type": "signature", "required": false }
+  ],
+  "bodyTemplate": "{{date}}\n\n{{recipient_name}}\n{{recipient_address}}\n\n{{salutation}}\n\n{{body}}\n\n{{closing}}\n\n{{signature}}\n{{sender_name}}\n{{sender_title}}"
+}

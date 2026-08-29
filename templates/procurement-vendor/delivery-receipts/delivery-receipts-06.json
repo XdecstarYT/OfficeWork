@@ -1,0 +1,44 @@
+{
+  "id": "delivery-receipts-06",
+  "category": "Procurement & Vendor Management",
+  "categoryId": "procurement-vendor",
+  "subcategory": "Delivery & Receiving Records",
+  "subcategoryId": "delivery-receipts",
+  "title": "Bulk Delivery & Receiving Record",
+  "description": "A bulk delivery & receiving record — confirms receipt of goods delivered from a vendor.",
+  "estimatedMinutes": 10,
+  "difficulty": "standard",
+  "tags": [
+    "delivery",
+    "receiving",
+    "bulk",
+    "delivery receipts"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "vendor_name",
+      "label": "Vendor Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "po_number",
+      "label": "Related PO #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "entries",
+      "label": "Items Received",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "DELIVERY & RECEIVING RECORD\nBulk Delivery — confirms receipt of goods delivered from a vendor.\nDate: {{date}}\nVendor Name: {{vendor_name}}            Related PO #: {{po_number}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

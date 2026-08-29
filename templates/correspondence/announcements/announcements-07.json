@@ -1,0 +1,38 @@
+{
+  "id": "announcements-07",
+  "category": "Correspondence & Communication",
+  "categoryId": "correspondence",
+  "subcategory": "Internal Announcements",
+  "subcategoryId": "announcements",
+  "title": "Milestone Internal Announcement",
+  "description": "A milestone internal announcement — announces company or team news to employees.",
+  "estimatedMinutes": 11,
+  "difficulty": "quick",
+  "tags": [
+    "internal",
+    "announcement",
+    "milestone",
+    "announcements"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "body",
+      "label": "Details",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "issued_by",
+      "label": "Issued By",
+      "type": "text",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "NOTICE\n\nINTERNAL ANNOUNCEMENT\nMilestone — announces company or team news to employees.\nDate: {{date}}\n\n--------------------------------------------------------------------\n\n{{body}}\n\n--------------------------------------------------------------------\n\nIssued by: {{issued_by}}"
+}

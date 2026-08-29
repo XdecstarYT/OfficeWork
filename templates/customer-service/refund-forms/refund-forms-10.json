@@ -1,0 +1,62 @@
+{
+  "id": "refund-forms-10",
+  "category": "Customer Service",
+  "categoryId": "customer-service",
+  "subcategory": "Refund & Return Forms",
+  "subcategoryId": "refund-forms",
+  "title": "Subscription Cancellation Refund & Return Form",
+  "description": "A subscription cancellation refund & return form — processes a customer refund or return request.",
+  "estimatedMinutes": 14,
+  "difficulty": "standard",
+  "tags": [
+    "refund",
+    "return",
+    "subscription",
+    "refund forms"
+  ],
+  "fields": [
+    {
+      "id": "subject_name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "order_number",
+      "label": "Order Number",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "refund_amount",
+      "label": "Refund Amount",
+      "type": "currency",
+      "required": true
+    },
+    {
+      "id": "details",
+      "label": "Reason for Refund",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "approver_name",
+      "label": "Support Rep",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "REFUND & RETURN FORM\nSubscription Cancellation — processes a customer refund or return request.\nCustomer Name: {{subject_name}}         Date: {{date}}\nOrder Number: {{order_number}}          Refund Amount: {{refund_amount}}\n\n--------------------------------------------------------------------\n\n{{details}}\n--------------------------------------------------------------------\n\nApprover: {{approver_name}}\n\nSignature: {{signature}}"
+}

@@ -1,0 +1,39 @@
+{
+  "id": "compliance-checklists-10",
+  "category": "Legal & Compliance",
+  "categoryId": "legal-compliance",
+  "subcategory": "Compliance Checklists",
+  "subcategoryId": "compliance-checklists",
+  "title": "Recordkeeping Compliance Checklist",
+  "description": "A recordkeeping compliance checklist — verifies that regulatory or internal requirements have been met.",
+  "estimatedMinutes": 9,
+  "difficulty": "quick",
+  "tags": [
+    "compliance",
+    "checklist",
+    "recordkeeping",
+    "compliance checklists"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "regulation",
+      "label": "Regulation / Standard",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "items",
+      "label": "Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "One item per line"
+    }
+  ],
+  "bodyTemplate": "COMPLIANCE CHECKLIST\nOwner: {{owner}}\nRegulation / Standard: {{regulation}}\nRecordkeeping — verifies that regulatory or internal requirements have been met.\n\n--------------------------------------------------------------------\n\n{{items}}"
+}

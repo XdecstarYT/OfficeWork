@@ -1,0 +1,44 @@
+{
+  "id": "office-policies-02",
+  "category": "Administrative & Office Operations",
+  "categoryId": "admin-office-ops",
+  "subcategory": "Office Policy Notices",
+  "subcategoryId": "office-policies",
+  "title": "Desk Booking Office Policy Notice",
+  "description": "A desk booking office policy notice — communicates a general office operations policy to staff.",
+  "estimatedMinutes": 9,
+  "difficulty": "quick",
+  "tags": [
+    "office",
+    "policy",
+    "desk",
+    "office policies"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "policy_owner",
+      "label": "Policy Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "body",
+      "label": "Details",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "issued_by",
+      "label": "Issued By",
+      "type": "text",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "NOTICE\n\nOFFICE POLICY NOTICE\nDesk Booking — communicates a general office operations policy to staff.\nDate: {{date}}\nPolicy Owner: {{policy_owner}}\n\n--------------------------------------------------------------------\n\n{{body}}\n\n--------------------------------------------------------------------\n\nIssued by: {{issued_by}}"
+}

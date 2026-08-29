@@ -1,0 +1,39 @@
+{
+  "id": "sops-05",
+  "category": "IT & Technical",
+  "categoryId": "it-technical",
+  "subcategory": "Standard Operating Procedures",
+  "subcategoryId": "sops",
+  "title": "Access Provisioning Standard Operating Procedure",
+  "description": "An access provisioning standard operating procedure — documents the step-by-step process for a recurring technical task.",
+  "estimatedMinutes": 7,
+  "difficulty": "quick",
+  "tags": [
+    "standard",
+    "operating",
+    "access",
+    "sops"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "system_or_tool",
+      "label": "System / Tool",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "items",
+      "label": "Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "One item per line"
+    }
+  ],
+  "bodyTemplate": "STANDARD OPERATING PROCEDURE\nOwner: {{owner}}\nSystem / Tool: {{system_or_tool}}\nAccess Provisioning — documents the step-by-step process for a recurring technical task.\n\n--------------------------------------------------------------------\n\n{{items}}"
+}

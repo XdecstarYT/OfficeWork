@@ -1,0 +1,44 @@
+{
+  "id": "service-tickets-09",
+  "category": "Customer Service",
+  "categoryId": "customer-service",
+  "subcategory": "Service Ticket Summaries",
+  "subcategoryId": "service-tickets",
+  "title": "Cancellation Request Service Ticket Summary",
+  "description": "A cancellation request service ticket summary — summarizes a customer support ticket and its resolution.",
+  "estimatedMinutes": 8,
+  "difficulty": "standard",
+  "tags": [
+    "service",
+    "ticket",
+    "cancellation",
+    "service tickets"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "ticket_number",
+      "label": "Ticket Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "customer_name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "entries",
+      "label": "Resolution Notes",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "SERVICE TICKET SUMMARY\nCancellation Request — summarizes a customer support ticket and its resolution.\nDate: {{date}}\nTicket Number: {{ticket_number}}        Customer Name: {{customer_name}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

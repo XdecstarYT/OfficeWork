@@ -1,0 +1,50 @@
+{
+  "id": "case-studies-01",
+  "category": "Sales & Marketing",
+  "categoryId": "sales-marketing",
+  "subcategory": "Case Studies & Testimonials",
+  "subcategoryId": "case-studies",
+  "title": "Enterprise Customer Case Study",
+  "description": "An enterprise customer case study — showcases a customer's success story for marketing use.",
+  "estimatedMinutes": 18,
+  "difficulty": "detailed",
+  "tags": [
+    "case",
+    "study",
+    "enterprise",
+    "case studies"
+  ],
+  "fields": [
+    {
+      "id": "author",
+      "label": "Prepared By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "client_name",
+      "label": "Client Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "results",
+      "label": "Key Results",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "summary",
+      "label": "Summary",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "CASE STUDY\nEnterprise Customer — showcases a customer's success story for marketing use.\nPrepared By: {{author}}                 Date: {{date}}\nClient Name: {{client_name}}\n\n--------------------------------------------------------------------\n\nKey Results:\n{{results}}\n{{summary}}"
+}

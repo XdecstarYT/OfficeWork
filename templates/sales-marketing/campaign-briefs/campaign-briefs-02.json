@@ -1,0 +1,56 @@
+{
+  "id": "campaign-briefs-02",
+  "category": "Sales & Marketing",
+  "categoryId": "sales-marketing",
+  "subcategory": "Campaign Briefs",
+  "subcategoryId": "campaign-briefs",
+  "title": "Seasonal Campaign Brief",
+  "description": "A seasonal campaign brief — outlines the goals, audience, and plan for a marketing campaign.",
+  "estimatedMinutes": 22,
+  "difficulty": "detailed",
+  "tags": [
+    "campaign",
+    "brief",
+    "seasonal",
+    "campaign briefs"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "target_audience",
+      "label": "Target Audience",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "budget",
+      "label": "Budget",
+      "type": "currency",
+      "required": false
+    },
+    {
+      "id": "objectives",
+      "label": "Campaign Objectives",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "timeline",
+      "label": "Timeline",
+      "type": "textarea",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "CAMPAIGN BRIEF\nSeasonal — outlines the goals, audience, and plan for a marketing campaign.\nOwner: {{owner}}                        Date: {{date}}\nBudget: {{budget}}\nTarget Audience:\n{{target_audience}}\n\n--------------------------------------------------------------------\nOBJECTIVES\n--------------------------------------------------------------------\n{{objectives}}\n\nTimeline:\n{{timeline}}"
+}

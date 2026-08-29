@@ -1,0 +1,58 @@
+{
+  "id": "employee-recognition-07",
+  "category": "Human Resources",
+  "categoryId": "human-resources",
+  "subcategory": "Employee Recognition",
+  "subcategoryId": "employee-recognition",
+  "title": "Sales Milestone Employee Recognition Note",
+  "description": "A sales milestone employee recognition note — formally recognizes an employee's achievement or contribution.",
+  "estimatedMinutes": 12,
+  "difficulty": "quick",
+  "tags": [
+    "employee",
+    "recognition",
+    "sales",
+    "employee recognition"
+  ],
+  "fields": [
+    {
+      "id": "sender_name",
+      "label": "Your Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "Your name"
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "recipient_name",
+      "label": "Recipient Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "achievement",
+      "label": "Achievement",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "details",
+      "label": "Message",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Write the body of the letter here."
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "{{date}}\n\n{{recipient_name}}\n\nDear {{recipient_name}},\n\nAchievement:\n{{achievement}}\n{{details}}\n\nSincerely,\n\n{{signature}}\n{{sender_name}}"
+}

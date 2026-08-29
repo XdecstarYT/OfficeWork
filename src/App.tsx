@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { FilingCabinet } from "./pages/FilingCabinet";
+import { usePlayerState } from "./hooks/usePlayerState";
 import type { DocumentTemplate } from "./types/template";
 
 function App() {
   const [startedTemplate, setStartedTemplate] = useState<DocumentTemplate | null>(null);
+  const { money } = usePlayerState();
 
   return (
     <div className="flex h-screen flex-col bg-white">
@@ -12,7 +14,12 @@ function App() {
           <span className="text-lg">🏢</span>
           <h1 className="text-base font-semibold text-stone-900">Office Quest</h1>
         </div>
-        <span className="text-xs text-stone-400">Junior Clerk · Level 1</span>
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1 text-sm font-medium text-emerald-700 tabular-nums">
+            💵 ${money.toFixed(2)}
+          </span>
+          <span className="text-xs text-stone-400">Junior Clerk · Level 1</span>
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1">

@@ -1,0 +1,72 @@
+{
+  "id": "facility-requests-08",
+  "category": "Administrative & Office Operations",
+  "categoryId": "admin-office-ops",
+  "subcategory": "Facility Requests",
+  "subcategoryId": "facility-requests",
+  "title": "Accessibility Accommodation Facility Request",
+  "description": "An accessibility accommodation facility request — requests office space setup, repairs, or facility changes.",
+  "estimatedMinutes": 18,
+  "difficulty": "standard",
+  "tags": [
+    "facility",
+    "request",
+    "accessibility",
+    "facility requests"
+  ],
+  "fields": [
+    {
+      "id": "subject_name",
+      "label": "Requested By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "department",
+      "label": "Department",
+      "type": "select",
+      "required": false,
+      "options": [
+        "Sales",
+        "Marketing",
+        "Engineering",
+        "Finance",
+        "Human Resources",
+        "Operations",
+        "Customer Support",
+        "Executive"
+      ]
+    },
+    {
+      "id": "location",
+      "label": "Location / Room",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "details",
+      "label": "Description",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "approver_name",
+      "label": "Facilities Manager",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "FACILITY REQUEST\nAccessibility Accommodation — requests office space setup, repairs, or facility changes.\nRequested By: {{subject_name}}          Date: {{date}}\nDepartment: {{department}}              Location / Room: {{location}}\n\n--------------------------------------------------------------------\n\n{{details}}\n--------------------------------------------------------------------\n\nApprover: {{approver_name}}\n\nSignature: {{signature}}"
+}

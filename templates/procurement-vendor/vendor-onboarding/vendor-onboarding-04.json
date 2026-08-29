@@ -1,0 +1,39 @@
+{
+  "id": "vendor-onboarding-04",
+  "category": "Procurement & Vendor Management",
+  "categoryId": "procurement-vendor",
+  "subcategory": "Vendor Onboarding",
+  "subcategoryId": "vendor-onboarding",
+  "title": "Large Enterprise Vendor Onboarding Checklist",
+  "description": "A large enterprise vendor onboarding checklist — walks a new vendor through setup and compliance requirements.",
+  "estimatedMinutes": 13,
+  "difficulty": "quick",
+  "tags": [
+    "vendor",
+    "onboarding",
+    "large",
+    "vendor onboarding"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "vendor_name",
+      "label": "Vendor Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "items",
+      "label": "Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "One item per line"
+    }
+  ],
+  "bodyTemplate": "VENDOR ONBOARDING CHECKLIST\nOwner: {{owner}}\nVendor Name: {{vendor_name}}\nLarge Enterprise — walks a new vendor through setup and compliance requirements.\n\n--------------------------------------------------------------------\n\n{{items}}"
+}

@@ -1,0 +1,19 @@
+{
+  "id": "blank-documents-05",
+  "category": "Blank & Freeform",
+  "categoryId": "blank-freeform",
+  "subcategory": "Blank Documents",
+  "subcategoryId": "blank-documents",
+  "title": "Blank Report",
+  "description": "A titled report with a single open body section — write it however you want, numbered sections or plain prose.",
+  "estimatedMinutes": 12,
+  "difficulty": "standard",
+  "tags": ["blank", "report", "freeform"],
+  "fields": [
+    { "id": "report_title", "label": "Report Title", "type": "text", "required": true, "placeholder": "e.g. Q2 Team Update" },
+    { "id": "author", "label": "Prepared By", "type": "text", "required": true, "placeholder": "Your name" },
+    { "id": "date", "label": "Date", "type": "date", "required": true },
+    { "id": "body", "label": "Report Body", "type": "textarea", "required": true, "placeholder": "Write your report here." }
+  ],
+  "bodyTemplate": "{{report_title}}\n\nPrepared by: {{author}}\nDate: {{date}}\n\n--------------------------------------------------------------------\n\n{{body}}"
+}

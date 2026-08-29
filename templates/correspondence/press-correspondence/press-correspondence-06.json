@@ -1,0 +1,64 @@
+{
+  "id": "press-correspondence-06",
+  "category": "Correspondence & Communication",
+  "categoryId": "correspondence",
+  "subcategory": "Media & Press Correspondence",
+  "subcategoryId": "press-correspondence",
+  "title": "Follow-Up Press Correspondence",
+  "description": "A follow-up press correspondence — communicates with a media contact on behalf of the company.",
+  "estimatedMinutes": 10,
+  "difficulty": "quick",
+  "tags": [
+    "press",
+    "correspondence",
+    "follow-up",
+    "press correspondence"
+  ],
+  "fields": [
+    {
+      "id": "sender_name",
+      "label": "Your Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "Your name"
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "recipient_name",
+      "label": "Recipient Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "outlet",
+      "label": "Media Outlet",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "topic",
+      "label": "Topic",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "details",
+      "label": "Message",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Write the body of the letter here."
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "{{date}}\n\n{{recipient_name}}\n\nDear {{recipient_name}},\n\nMedia Outlet: {{outlet}}                Topic: {{topic}}\n\n{{details}}\n\nSincerely,\n\n{{signature}}\n{{sender_name}}"
+}

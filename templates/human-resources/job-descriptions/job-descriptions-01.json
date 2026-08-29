@@ -1,0 +1,62 @@
+{
+  "id": "job-descriptions-01",
+  "category": "Human Resources",
+  "categoryId": "human-resources",
+  "subcategory": "Job Descriptions & Postings",
+  "subcategoryId": "job-descriptions",
+  "title": "Entry-Level Job Description",
+  "description": "An entry-level job description — defines a role's responsibilities, requirements, and reporting line.",
+  "estimatedMinutes": 18,
+  "difficulty": "detailed",
+  "tags": [
+    "description",
+    "entry-level",
+    "job descriptions"
+  ],
+  "fields": [
+    {
+      "id": "author",
+      "label": "Prepared By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "period",
+      "label": "Reporting Period",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. Q2 2026"
+    },
+    {
+      "id": "job_title",
+      "label": "Job Title",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "reports_to",
+      "label": "Reports To",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "requirements",
+      "label": "Requirements",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "summary",
+      "label": "Summary",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "JOB DESCRIPTION\nEntry-Level — defines a role's responsibilities, requirements, and reporting line.\nPrepared By: {{author}}                 Date: {{date}}\nReporting Period: {{period}}            Job Title: {{job_title}}\nReports To: {{reports_to}}\n\n--------------------------------------------------------------------\n\nRequirements:\n{{requirements}}\n{{summary}}"
+}

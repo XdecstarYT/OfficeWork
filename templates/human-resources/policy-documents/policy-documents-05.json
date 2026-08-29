@@ -1,0 +1,44 @@
+{
+  "id": "policy-documents-05",
+  "category": "Human Resources",
+  "categoryId": "human-resources",
+  "subcategory": "Policy Documents",
+  "subcategoryId": "policy-documents",
+  "title": "Anti-Harassment HR Policy Document",
+  "description": "An anti-harassment hr policy document — communicates a company policy covering conduct, leave, or benefits.",
+  "estimatedMinutes": 7,
+  "difficulty": "quick",
+  "tags": [
+    "policy",
+    "document",
+    "anti-harassment",
+    "policy documents"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "policy_owner",
+      "label": "Policy Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "body",
+      "label": "Details",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "issued_by",
+      "label": "Issued By",
+      "type": "text",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "NOTICE\n\nHR POLICY DOCUMENT\nAnti-Harassment — communicates a company policy covering conduct, leave, or benefits.\nDate: {{date}}\nPolicy Owner: {{policy_owner}}\n\n--------------------------------------------------------------------\n\n{{body}}\n\n--------------------------------------------------------------------\n\nIssued by: {{issued_by}}"
+}

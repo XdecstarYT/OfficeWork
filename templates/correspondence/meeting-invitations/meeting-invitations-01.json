@@ -1,0 +1,70 @@
+{
+  "id": "meeting-invitations-01",
+  "category": "Correspondence & Communication",
+  "categoryId": "correspondence",
+  "subcategory": "Meeting Invitations",
+  "subcategoryId": "meeting-invitations",
+  "title": "Team Sync Meeting Invitation",
+  "description": "A team sync meeting invitation — invites recipients to a meeting with agenda and logistics.",
+  "estimatedMinutes": 6,
+  "difficulty": "quick",
+  "tags": [
+    "meeting",
+    "invitation",
+    "team",
+    "meeting invitations"
+  ],
+  "fields": [
+    {
+      "id": "to",
+      "label": "To",
+      "type": "text",
+      "required": true,
+      "placeholder": "Recipient(s)"
+    },
+    {
+      "id": "from",
+      "label": "From",
+      "type": "text",
+      "required": true,
+      "placeholder": "Your name"
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "subject",
+      "label": "Re / Subject",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "meeting_time",
+      "label": "Date & Time",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "location",
+      "label": "Location / Link",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "agenda",
+      "label": "Agenda",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "body",
+      "label": "Body",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "MEMORANDUM\n\nTo: {{to}}\nFrom: {{from}}\nDate: {{date}}\nRe: {{subject}}\nDate & Time: {{meeting_time}}           Location / Link: {{location}}\n\n--------------------------------------------------------------------\n\nAgenda:\n{{agenda}}\n{{body}}"
+}

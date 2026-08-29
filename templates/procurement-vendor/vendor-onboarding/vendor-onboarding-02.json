@@ -1,0 +1,39 @@
+{
+  "id": "vendor-onboarding-02",
+  "category": "Procurement & Vendor Management",
+  "categoryId": "procurement-vendor",
+  "subcategory": "Vendor Onboarding",
+  "subcategoryId": "vendor-onboarding",
+  "title": "International Vendor Onboarding Checklist",
+  "description": "An international vendor onboarding checklist — walks a new vendor through setup and compliance requirements.",
+  "estimatedMinutes": 9,
+  "difficulty": "quick",
+  "tags": [
+    "vendor",
+    "onboarding",
+    "international",
+    "vendor onboarding"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "vendor_name",
+      "label": "Vendor Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "items",
+      "label": "Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "One item per line"
+    }
+  ],
+  "bodyTemplate": "VENDOR ONBOARDING CHECKLIST\nOwner: {{owner}}\nVendor Name: {{vendor_name}}\nInternational — walks a new vendor through setup and compliance requirements.\n\n--------------------------------------------------------------------\n\n{{items}}"
+}

@@ -1,0 +1,79 @@
+{
+  "id": "budget-requests-09",
+  "category": "Finance & Accounting",
+  "categoryId": "finance-accounting",
+  "subcategory": "Budget Requests",
+  "subcategoryId": "budget-requests",
+  "title": "Emergency Budget Request",
+  "description": "An emergency budget request — requests approval for a new or expanded budget allocation.",
+  "estimatedMinutes": 12,
+  "difficulty": "standard",
+  "tags": [
+    "budget",
+    "request",
+    "emergency",
+    "budget requests"
+  ],
+  "fields": [
+    {
+      "id": "subject_name",
+      "label": "Requested By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "department",
+      "label": "Department",
+      "type": "select",
+      "required": false,
+      "options": [
+        "Sales",
+        "Marketing",
+        "Engineering",
+        "Finance",
+        "Human Resources",
+        "Operations",
+        "Customer Support",
+        "Executive"
+      ]
+    },
+    {
+      "id": "amount_requested",
+      "label": "Amount Requested",
+      "type": "currency",
+      "required": true
+    },
+    {
+      "id": "budget_period",
+      "label": "Budget Period",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. FY2026"
+    },
+    {
+      "id": "details",
+      "label": "Justification",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "approver_name",
+      "label": "Finance Approver",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "BUDGET REQUEST\nEmergency — requests approval for a new or expanded budget allocation.\nRequested By: {{subject_name}}          Date: {{date}}\nDepartment: {{department}}              Amount Requested: {{amount_requested}}\nBudget Period: {{budget_period}}\n\n--------------------------------------------------------------------\n\n{{details}}\n--------------------------------------------------------------------\n\nApprover: {{approver_name}}\n\nSignature: {{signature}}"
+}

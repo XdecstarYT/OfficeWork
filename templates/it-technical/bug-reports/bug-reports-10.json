@@ -1,0 +1,83 @@
+{
+  "id": "bug-reports-10",
+  "category": "IT & Technical",
+  "categoryId": "it-technical",
+  "subcategory": "Bug & Defect Reports",
+  "subcategoryId": "bug-reports",
+  "title": "Third-Party Integration Bug Report",
+  "description": "A third-party integration bug report — documents a software defect for the engineering team to triage.",
+  "estimatedMinutes": 14,
+  "difficulty": "standard",
+  "tags": [
+    "report",
+    "third-party",
+    "bug reports"
+  ],
+  "fields": [
+    {
+      "id": "subject_name",
+      "label": "Reported By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "department",
+      "label": "Department",
+      "type": "select",
+      "required": false,
+      "options": [
+        "Sales",
+        "Marketing",
+        "Engineering",
+        "Finance",
+        "Human Resources",
+        "Operations",
+        "Customer Support",
+        "Executive"
+      ]
+    },
+    {
+      "id": "severity",
+      "label": "Severity",
+      "type": "select",
+      "required": true,
+      "options": [
+        "Critical",
+        "High",
+        "Medium",
+        "Low"
+      ]
+    },
+    {
+      "id": "steps_to_reproduce",
+      "label": "Steps to Reproduce",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "details",
+      "label": "Description",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "approver_name",
+      "label": "Engineering Lead",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "BUG REPORT\nThird-Party Integration — documents a software defect for the engineering team to triage.\nReported By: {{subject_name}}           Date: {{date}}\nDepartment: {{department}}              Severity: {{severity}}\n\n--------------------------------------------------------------------\nSteps to Reproduce:\n{{steps_to_reproduce}}\n{{details}}\n--------------------------------------------------------------------\n\nApprover: {{approver_name}}\n\nSignature: {{signature}}"
+}

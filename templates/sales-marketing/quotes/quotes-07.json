@@ -1,0 +1,58 @@
+{
+  "id": "quotes-07",
+  "category": "Sales & Marketing",
+  "categoryId": "sales-marketing",
+  "subcategory": "Price Quotes",
+  "subcategoryId": "quotes",
+  "title": "Bundle Price Quote",
+  "description": "A bundle price quote — provides a formal price quotation for goods or services.",
+  "estimatedMinutes": 14,
+  "difficulty": "standard",
+  "tags": [
+    "price",
+    "quote",
+    "bundle",
+    "quotes"
+  ],
+  "fields": [
+    {
+      "id": "counterparty",
+      "label": "Prepared For",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "due_date",
+      "label": "Due Date",
+      "type": "date",
+      "required": false
+    },
+    {
+      "id": "valid_until",
+      "label": "Valid Until",
+      "type": "date",
+      "required": false
+    },
+    {
+      "id": "line_items",
+      "label": "Line Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Description | Amount, one per line"
+    },
+    {
+      "id": "total",
+      "label": "Quoted Price",
+      "type": "currency",
+      "required": true,
+      "placeholder": "0.00"
+    }
+  ],
+  "bodyTemplate": "PRICE QUOTE\n\nPrepared For:\n{{counterparty}}\n\nDate: {{date}}                          Due Date: {{due_date}}\nValid Until: {{valid_until}}\n\n--------------------------------------------------------------------\n{{line_items}}\n--------------------------------------------------------------------\n\nQUOTED PRICE: {{total}}"
+}

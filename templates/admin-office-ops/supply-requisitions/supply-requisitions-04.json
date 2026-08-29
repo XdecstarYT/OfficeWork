@@ -1,0 +1,72 @@
+{
+  "id": "supply-requisitions-04",
+  "category": "Administrative & Office Operations",
+  "categoryId": "admin-office-ops",
+  "subcategory": "Supply Requisitions",
+  "subcategoryId": "supply-requisitions",
+  "title": "IT Peripherals Supply Requisition",
+  "description": "An it peripherals supply requisition — requests office supplies or small equipment.",
+  "estimatedMinutes": 18,
+  "difficulty": "standard",
+  "tags": [
+    "supply",
+    "requisition",
+    "it",
+    "supply requisitions"
+  ],
+  "fields": [
+    {
+      "id": "subject_name",
+      "label": "Requested By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "department",
+      "label": "Department",
+      "type": "select",
+      "required": false,
+      "options": [
+        "Sales",
+        "Marketing",
+        "Engineering",
+        "Finance",
+        "Human Resources",
+        "Operations",
+        "Customer Support",
+        "Executive"
+      ]
+    },
+    {
+      "id": "items_needed",
+      "label": "Items Needed",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "id": "details",
+      "label": "Notes",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "approver_name",
+      "label": "Office Manager",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "SUPPLY REQUISITION\nIT Peripherals — requests office supplies or small equipment.\nRequested By: {{subject_name}}          Date: {{date}}\nDepartment: {{department}}\n\n--------------------------------------------------------------------\nItems Needed:\n{{items_needed}}\n{{details}}\n--------------------------------------------------------------------\n\nApprover: {{approver_name}}\n\nSignature: {{signature}}"
+}

@@ -1,0 +1,50 @@
+{
+  "id": "backup-recovery-05",
+  "category": "IT & Technical",
+  "categoryId": "it-technical",
+  "subcategory": "Backup & Recovery Plans",
+  "subcategoryId": "backup-recovery",
+  "title": "Cloud Environment Backup & Recovery Plan",
+  "description": "A cloud environment backup & recovery plan — defines how data and systems are backed up and restored in a disaster.",
+  "estimatedMinutes": 20,
+  "difficulty": "detailed",
+  "tags": [
+    "backup",
+    "recovery",
+    "cloud",
+    "backup recovery"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "system_covered",
+      "label": "System(s) Covered",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "objectives",
+      "label": "Backup & Recovery Strategy",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "timeline",
+      "label": "Timeline",
+      "type": "textarea",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "BACKUP & RECOVERY PLAN\nCloud Environment — defines how data and systems are backed up and restored in a disaster.\nOwner: {{owner}}                        Date: {{date}}\nSystem(s) Covered: {{system_covered}}\n\n--------------------------------------------------------------------\nOBJECTIVES\n--------------------------------------------------------------------\n{{objectives}}\n\nTimeline:\n{{timeline}}"
+}

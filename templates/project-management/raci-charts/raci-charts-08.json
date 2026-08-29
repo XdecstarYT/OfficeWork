@@ -1,0 +1,38 @@
+{
+  "id": "raci-charts-08",
+  "category": "Project Management",
+  "categoryId": "project-management",
+  "subcategory": "RACI Charts",
+  "subcategoryId": "raci-charts",
+  "title": "Event Planning RACI Chart",
+  "description": "An event planning raci chart — assigns Responsible, Accountable, Consulted, and Informed roles across project tasks.",
+  "estimatedMinutes": 14,
+  "difficulty": "standard",
+  "tags": [
+    "raci",
+    "chart",
+    "event",
+    "raci charts"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "project_name",
+      "label": "Project Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "entries",
+      "label": "Task / Role Assignments",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "RACI CHART\nEvent Planning — assigns Responsible, Accountable, Consulted, and Informed roles across project tasks.\nDate: {{date}}\nProject Name: {{project_name}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

@@ -1,0 +1,57 @@
+{
+  "id": "status-reports-03",
+  "category": "Project Management",
+  "categoryId": "project-management",
+  "subcategory": "Status Reports",
+  "subcategoryId": "status-reports",
+  "title": "Monthly Project Status Report",
+  "description": "A monthly project status report — reports progress, risks, and next steps for an ongoing project.",
+  "estimatedMinutes": 22,
+  "difficulty": "detailed",
+  "tags": [
+    "project",
+    "status",
+    "monthly",
+    "status reports"
+  ],
+  "fields": [
+    {
+      "id": "author",
+      "label": "Prepared By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "period",
+      "label": "Reporting Period",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. Q2 2026"
+    },
+    {
+      "id": "overall_status",
+      "label": "Overall Status",
+      "type": "select",
+      "required": true,
+      "options": [
+        "On Track",
+        "At Risk",
+        "Delayed",
+        "Completed"
+      ]
+    },
+    {
+      "id": "summary",
+      "label": "Summary",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "PROJECT STATUS REPORT\nMonthly — reports progress, risks, and next steps for an ongoing project.\nPrepared By: {{author}}                 Date: {{date}}\nReporting Period: {{period}}            Overall Status: {{overall_status}}\n\n--------------------------------------------------------------------\n\n{{summary}}"
+}

@@ -1,0 +1,62 @@
+{
+  "id": "licensing-agreements-10",
+  "category": "Legal & Compliance",
+  "categoryId": "legal-compliance",
+  "subcategory": "Licensing Agreements",
+  "subcategoryId": "licensing-agreements",
+  "title": "Territory-Limited Licensing Agreement",
+  "description": "A territory-limited licensing agreement — grants rights to use intellectual property or software under agreed terms.",
+  "estimatedMinutes": 20,
+  "difficulty": "detailed",
+  "tags": [
+    "licensing",
+    "agreement",
+    "territory-limited",
+    "licensing agreements"
+  ],
+  "fields": [
+    {
+      "id": "party_a",
+      "label": "Licensor",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "party_b",
+      "label": "Licensee",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "effective_date",
+      "label": "Effective Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "licensed_property",
+      "label": "Licensed Property / Software",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "terms",
+      "label": "Terms",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "party_a_signature",
+      "label": "Party A Signature",
+      "type": "signature",
+      "required": false
+    },
+    {
+      "id": "party_b_signature",
+      "label": "Party B Signature",
+      "type": "signature",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "AGREEMENT\n\nBetween: {{party_a}}\nAnd: {{party_b}}\nEffective Date: {{effective_date}}\nLicensed Property / Software: {{licensed_property}}\n\n--------------------------------------------------------------------\nTERMS\n--------------------------------------------------------------------\n\n{{terms}}\n\n--------------------------------------------------------------------\n\n{{party_a_signature}}                    {{party_b_signature}}\nParty A                                  Party B"
+}

@@ -1,0 +1,64 @@
+{
+  "id": "reference-letters-07",
+  "category": "Correspondence & Communication",
+  "categoryId": "correspondence",
+  "subcategory": "Reference & Recommendation Letters",
+  "subcategoryId": "reference-letters",
+  "title": "Volunteer Reference Letter",
+  "description": "A volunteer reference letter — recommends a person for a role, program, or opportunity.",
+  "estimatedMinutes": 12,
+  "difficulty": "quick",
+  "tags": [
+    "reference",
+    "letter",
+    "volunteer",
+    "reference letters"
+  ],
+  "fields": [
+    {
+      "id": "sender_name",
+      "label": "Your Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "Your name"
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "recipient_name",
+      "label": "Recipient Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "relationship",
+      "label": "Relationship to Candidate",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "duration_known",
+      "label": "How Long You've Known Them",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "details",
+      "label": "Message",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Write the body of the letter here."
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "{{date}}\n\n{{recipient_name}}\n\nDear {{recipient_name}},\n\nRelationship to Candidate: {{relationship}}How Long You've Known Them: {{duration_known}}\n\n{{details}}\n\nSincerely,\n\n{{signature}}\n{{sender_name}}"
+}

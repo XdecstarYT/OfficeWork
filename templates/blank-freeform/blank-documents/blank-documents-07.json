@@ -1,0 +1,21 @@
+{
+  "id": "blank-documents-07",
+  "category": "Blank & Freeform",
+  "categoryId": "blank-freeform",
+  "subcategory": "Blank Documents",
+  "subcategoryId": "blank-documents",
+  "title": "Blank Fax Cover Sheet",
+  "description": "A classic fax cover sheet with sender/recipient fields and an open message area.",
+  "estimatedMinutes": 4,
+  "difficulty": "quick",
+  "tags": ["blank", "fax", "freeform", "cover sheet"],
+  "fields": [
+    { "id": "to", "label": "To", "type": "text", "required": true, "placeholder": "Recipient name" },
+    { "id": "to_fax", "label": "Fax Number", "type": "text", "required": false, "placeholder": "Optional" },
+    { "id": "from", "label": "From", "type": "text", "required": true, "placeholder": "Your name" },
+    { "id": "date", "label": "Date", "type": "date", "required": true },
+    { "id": "pages", "label": "Number of Pages (including cover)", "type": "number", "required": false, "placeholder": "1" },
+    { "id": "message", "label": "Message", "type": "textarea", "required": false, "placeholder": "Optional message" }
+  ],
+  "bodyTemplate": "FAX COVER SHEET\n\nTo: {{to}}                          Fax: {{to_fax}}\nFrom: {{from}}                        Date: {{date}}\nPages: {{pages}}\n\n--------------------------------------------------------------------\nMESSAGE\n--------------------------------------------------------------------\n{{message}}"
+}

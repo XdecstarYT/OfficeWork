@@ -1,0 +1,44 @@
+{
+  "id": "service-tickets-10",
+  "category": "Customer Service",
+  "categoryId": "customer-service",
+  "subcategory": "Service Ticket Summaries",
+  "subcategoryId": "service-tickets",
+  "title": "General Inquiry Service Ticket Summary",
+  "description": "A general inquiry service ticket summary — summarizes a customer support ticket and its resolution.",
+  "estimatedMinutes": 10,
+  "difficulty": "standard",
+  "tags": [
+    "service",
+    "ticket",
+    "general",
+    "service tickets"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "ticket_number",
+      "label": "Ticket Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "customer_name",
+      "label": "Customer Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "entries",
+      "label": "Resolution Notes",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "SERVICE TICKET SUMMARY\nGeneral Inquiry — summarizes a customer support ticket and its resolution.\nDate: {{date}}\nTicket Number: {{ticket_number}}        Customer Name: {{customer_name}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

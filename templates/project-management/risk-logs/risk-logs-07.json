@@ -1,0 +1,37 @@
+{
+  "id": "risk-logs-07",
+  "category": "Project Management",
+  "categoryId": "project-management",
+  "subcategory": "Risk Logs & Registers",
+  "subcategoryId": "risk-logs",
+  "title": "Compliance Risk Log",
+  "description": "A compliance risk log — tracks identified project risks and mitigation plans.",
+  "estimatedMinutes": 12,
+  "difficulty": "standard",
+  "tags": [
+    "risk",
+    "compliance",
+    "risk logs"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "risk_owner",
+      "label": "Risk Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "entries",
+      "label": "Risk Entries",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "RISK LOG\nCompliance — tracks identified project risks and mitigation plans.\nDate: {{date}}\nRisk Owner: {{risk_owner}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

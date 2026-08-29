@@ -1,0 +1,86 @@
+{
+  "id": "vendor-complaints-07",
+  "category": "Procurement & Vendor Management",
+  "categoryId": "procurement-vendor",
+  "subcategory": "Vendor Performance Complaints",
+  "subcategoryId": "vendor-complaints",
+  "title": "Repeated Issue Vendor Performance Complaint",
+  "description": "A repeated issue vendor performance complaint — formally documents a complaint about a vendor's performance.",
+  "estimatedMinutes": 16,
+  "difficulty": "standard",
+  "tags": [
+    "vendor",
+    "performance",
+    "repeated",
+    "vendor complaints"
+  ],
+  "fields": [
+    {
+      "id": "subject_name",
+      "label": "Reported By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "department",
+      "label": "Department",
+      "type": "select",
+      "required": false,
+      "options": [
+        "Sales",
+        "Marketing",
+        "Engineering",
+        "Finance",
+        "Human Resources",
+        "Operations",
+        "Customer Support",
+        "Executive"
+      ]
+    },
+    {
+      "id": "vendor_name",
+      "label": "Vendor Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "issue_type",
+      "label": "Issue Type",
+      "type": "select",
+      "required": false,
+      "options": [
+        "Late Delivery",
+        "Quality Issue",
+        "Billing Error",
+        "Poor Communication",
+        "Contract Breach",
+        "Other"
+      ]
+    },
+    {
+      "id": "details",
+      "label": "Description of Issue",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "approver_name",
+      "label": "Procurement Manager",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "VENDOR PERFORMANCE COMPLAINT\nRepeated Issue — formally documents a complaint about a vendor's performance.\nReported By: {{subject_name}}           Date: {{date}}\nDepartment: {{department}}              Vendor Name: {{vendor_name}}\nIssue Type: {{issue_type}}\n\n--------------------------------------------------------------------\n\n{{details}}\n--------------------------------------------------------------------\n\nApprover: {{approver_name}}\n\nSignature: {{signature}}"
+}

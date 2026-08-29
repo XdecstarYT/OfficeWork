@@ -1,0 +1,19 @@
+{
+  "id": "blank-documents-03",
+  "category": "Blank & Freeform",
+  "categoryId": "blank-freeform",
+  "subcategory": "Blank Documents",
+  "subcategoryId": "blank-documents",
+  "title": "Blank Formal Notice",
+  "description": "A short formal notice with a headline and open body, for announcements, policy changes, or any official notice.",
+  "estimatedMinutes": 5,
+  "difficulty": "quick",
+  "tags": ["blank", "notice", "freeform", "announcement"],
+  "fields": [
+    { "id": "notice_title", "label": "Notice Title", "type": "text", "required": true, "placeholder": "e.g. NOTICE OF OFFICE CLOSURE" },
+    { "id": "date", "label": "Date", "type": "date", "required": true },
+    { "id": "body", "label": "Notice Body", "type": "textarea", "required": true, "placeholder": "Write the notice here." },
+    { "id": "issued_by", "label": "Issued By", "type": "text", "required": false, "placeholder": "Optional" }
+  ],
+  "bodyTemplate": "NOTICE\n\n{{notice_title}}\nDate: {{date}}\n\n--------------------------------------------------------------------\n\n{{body}}\n\n--------------------------------------------------------------------\n\nIssued by: {{issued_by}}"
+}

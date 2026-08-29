@@ -1,0 +1,37 @@
+{
+  "id": "visitor-logs-04",
+  "category": "Administrative & Office Operations",
+  "categoryId": "admin-office-ops",
+  "subcategory": "Visitor Logs",
+  "subcategoryId": "visitor-logs",
+  "title": "Vendor Visits Visitor Log",
+  "description": "A vendor visits visitor log — records visitors entering and leaving the office.",
+  "estimatedMinutes": 14,
+  "difficulty": "standard",
+  "tags": [
+    "visitor",
+    "vendor",
+    "visitor logs"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "location",
+      "label": "Front Desk / Location",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "entries",
+      "label": "Visitor Entries",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "VISITOR LOG\nVendor Visits — records visitors entering and leaving the office.\nDate: {{date}}\nFront Desk / Location: {{location}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

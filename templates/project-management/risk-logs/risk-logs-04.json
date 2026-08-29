@@ -1,0 +1,37 @@
+{
+  "id": "risk-logs-04",
+  "category": "Project Management",
+  "categoryId": "project-management",
+  "subcategory": "Risk Logs & Registers",
+  "subcategoryId": "risk-logs",
+  "title": "Technical Risk Log",
+  "description": "A technical risk log — tracks identified project risks and mitigation plans.",
+  "estimatedMinutes": 14,
+  "difficulty": "standard",
+  "tags": [
+    "risk",
+    "technical",
+    "risk logs"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "risk_owner",
+      "label": "Risk Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "entries",
+      "label": "Risk Entries",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "RISK LOG\nTechnical — tracks identified project risks and mitigation plans.\nDate: {{date}}\nRisk Owner: {{risk_owner}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

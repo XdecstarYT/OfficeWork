@@ -1,0 +1,52 @@
+{
+  "id": "email-templates-05",
+  "category": "Correspondence & Communication",
+  "categoryId": "correspondence",
+  "subcategory": "Email Templates",
+  "subcategoryId": "email-templates",
+  "title": "Apology Email Template",
+  "description": "An apology email template — gives a ready-made structure for a common business email.",
+  "estimatedMinutes": 6,
+  "difficulty": "quick",
+  "tags": [
+    "email",
+    "template",
+    "apology",
+    "email templates"
+  ],
+  "fields": [
+    {
+      "id": "to",
+      "label": "To",
+      "type": "text",
+      "required": true,
+      "placeholder": "Recipient(s)"
+    },
+    {
+      "id": "from",
+      "label": "From",
+      "type": "text",
+      "required": true,
+      "placeholder": "Your name"
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "subject",
+      "label": "Re / Subject",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "body",
+      "label": "Body",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "MEMORANDUM\n\nTo: {{to}}\nFrom: {{from}}\nDate: {{date}}\nRe: {{subject}}\n\n--------------------------------------------------------------------\n\n{{body}}"
+}

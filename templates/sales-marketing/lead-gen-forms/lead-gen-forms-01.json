@@ -1,0 +1,76 @@
+{
+  "id": "lead-gen-forms-01",
+  "category": "Sales & Marketing",
+  "categoryId": "sales-marketing",
+  "subcategory": "Lead Generation Forms",
+  "subcategoryId": "lead-gen-forms",
+  "title": "Website Inquiry Lead Generation Form",
+  "description": "A website inquiry lead generation form — captures and qualifies a new sales lead.",
+  "estimatedMinutes": 12,
+  "difficulty": "standard",
+  "tags": [
+    "lead",
+    "generation",
+    "website",
+    "lead gen forms"
+  ],
+  "fields": [
+    {
+      "id": "subject_name",
+      "label": "Lead Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "lead_source",
+      "label": "Lead Source",
+      "type": "select",
+      "required": true,
+      "options": [
+        "Website",
+        "Referral",
+        "Event",
+        "Cold Outreach",
+        "Paid Ad",
+        "Partner",
+        "Other"
+      ]
+    },
+    {
+      "id": "interest_level",
+      "label": "Interest Level",
+      "type": "select",
+      "required": false,
+      "options": [
+        "Hot",
+        "Warm",
+        "Cold"
+      ]
+    },
+    {
+      "id": "details",
+      "label": "Notes",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "approver_name",
+      "label": "Assigned Rep",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "LEAD GENERATION FORM\nWebsite Inquiry — captures and qualifies a new sales lead.\nLead Name: {{subject_name}}             Date: {{date}}\nLead Source: {{lead_source}}            Interest Level: {{interest_level}}\n\n--------------------------------------------------------------------\n\n{{details}}\n--------------------------------------------------------------------\n\nApprover: {{approver_name}}\n\nSignature: {{signature}}"
+}

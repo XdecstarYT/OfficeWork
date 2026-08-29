@@ -1,0 +1,85 @@
+{
+  "id": "disciplinary-07",
+  "category": "Human Resources",
+  "categoryId": "human-resources",
+  "subcategory": "Disciplinary Write-Ups",
+  "subcategoryId": "disciplinary",
+  "title": "Performance Disciplinary Write-Up",
+  "description": "A performance disciplinary write-up — documents a policy violation and the corrective action taken.",
+  "estimatedMinutes": 16,
+  "difficulty": "standard",
+  "tags": [
+    "disciplinary",
+    "write-up",
+    "performance"
+  ],
+  "fields": [
+    {
+      "id": "subject_name",
+      "label": "Employee Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "department",
+      "label": "Department",
+      "type": "select",
+      "required": false,
+      "options": [
+        "Sales",
+        "Marketing",
+        "Engineering",
+        "Finance",
+        "Human Resources",
+        "Operations",
+        "Customer Support",
+        "Executive"
+      ]
+    },
+    {
+      "id": "incident_date",
+      "label": "Incident Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "violation_type",
+      "label": "Type of Violation",
+      "type": "select",
+      "required": true,
+      "options": [
+        "Attendance",
+        "Conduct",
+        "Performance",
+        "Policy Violation",
+        "Safety",
+        "Other"
+      ]
+    },
+    {
+      "id": "details",
+      "label": "Description of Incident",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "approver_name",
+      "label": "Manager",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "signature",
+      "label": "Signature",
+      "type": "signature",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "DISCIPLINARY WRITE-UP\nPerformance — documents a policy violation and the corrective action taken.\nEmployee Name: {{subject_name}}         Date: {{date}}\nDepartment: {{department}}              Incident Date: {{incident_date}}\nType of Violation: {{violation_type}}\n\n--------------------------------------------------------------------\n\n{{details}}\n--------------------------------------------------------------------\n\nApprover: {{approver_name}}\n\nSignature: {{signature}}"
+}

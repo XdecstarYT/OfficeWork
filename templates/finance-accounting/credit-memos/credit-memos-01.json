@@ -1,0 +1,58 @@
+{
+  "id": "credit-memos-01",
+  "category": "Finance & Accounting",
+  "categoryId": "finance-accounting",
+  "subcategory": "Credit Memos & Adjustments",
+  "subcategoryId": "credit-memos",
+  "title": "Overbilling Correction Credit Memo",
+  "description": "An overbilling correction credit memo — issues a billing credit or adjustment to a customer's account.",
+  "estimatedMinutes": 10,
+  "difficulty": "standard",
+  "tags": [
+    "credit",
+    "memo",
+    "overbilling",
+    "credit memos"
+  ],
+  "fields": [
+    {
+      "id": "counterparty",
+      "label": "Customer",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "original_invoice",
+      "label": "Original Invoice #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "reason",
+      "label": "Reason for Credit",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "line_items",
+      "label": "Line Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Description | Amount, one per line"
+    },
+    {
+      "id": "total",
+      "label": "Credit Amount",
+      "type": "currency",
+      "required": true,
+      "placeholder": "0.00"
+    }
+  ],
+  "bodyTemplate": "CREDIT MEMO\n\nCustomer:\n{{counterparty}}\n\nDate: {{date}}                          Original Invoice #: {{original_invoice}}\nReason for Credit: {{reason}}\n\n--------------------------------------------------------------------\n{{line_items}}\n--------------------------------------------------------------------\n\nCREDIT AMOUNT: {{total}}"
+}

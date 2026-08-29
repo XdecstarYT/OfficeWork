@@ -1,0 +1,37 @@
+{
+  "id": "visitor-logs-06",
+  "category": "Administrative & Office Operations",
+  "categoryId": "admin-office-ops",
+  "subcategory": "Visitor Logs",
+  "subcategoryId": "visitor-logs",
+  "title": "Delivery Personnel Visitor Log",
+  "description": "A delivery personnel visitor log — records visitors entering and leaving the office.",
+  "estimatedMinutes": 10,
+  "difficulty": "standard",
+  "tags": [
+    "visitor",
+    "delivery",
+    "visitor logs"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "location",
+      "label": "Front Desk / Location",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "entries",
+      "label": "Visitor Entries",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "VISITOR LOG\nDelivery Personnel — records visitors entering and leaving the office.\nDate: {{date}}\nFront Desk / Location: {{location}}\n\n--------------------------------------------------------------------\n{{entries}}\n--------------------------------------------------------------------"
+}

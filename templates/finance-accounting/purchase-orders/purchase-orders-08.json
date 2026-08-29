@@ -1,0 +1,58 @@
+{
+  "id": "purchase-orders-08",
+  "category": "Finance & Accounting",
+  "categoryId": "finance-accounting",
+  "subcategory": "Purchase Orders",
+  "subcategoryId": "purchase-orders",
+  "title": "Drop-Ship Purchase Order",
+  "description": "A drop-ship purchase order — authorizes a purchase of goods or services from a vendor.",
+  "estimatedMinutes": 16,
+  "difficulty": "standard",
+  "tags": [
+    "purchase",
+    "order",
+    "drop-ship",
+    "purchase orders"
+  ],
+  "fields": [
+    {
+      "id": "counterparty",
+      "label": "Vendor",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "due_date",
+      "label": "Due Date",
+      "type": "date",
+      "required": false
+    },
+    {
+      "id": "po_number",
+      "label": "PO Number",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "line_items",
+      "label": "Line Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Description | Amount, one per line"
+    },
+    {
+      "id": "total",
+      "label": "Total Order Amount",
+      "type": "currency",
+      "required": true,
+      "placeholder": "0.00"
+    }
+  ],
+  "bodyTemplate": "PURCHASE ORDER\n\nVendor:\n{{counterparty}}\n\nDate: {{date}}                          Due Date: {{due_date}}\nPO Number: {{po_number}}\n\n--------------------------------------------------------------------\n{{line_items}}\n--------------------------------------------------------------------\n\nTOTAL ORDER AMOUNT: {{total}}"
+}

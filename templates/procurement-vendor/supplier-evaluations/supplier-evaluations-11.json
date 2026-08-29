@@ -1,0 +1,63 @@
+{
+  "id": "supplier-evaluations-11",
+  "category": "Procurement & Vendor Management",
+  "categoryId": "procurement-vendor",
+  "subcategory": "Supplier Evaluations",
+  "subcategoryId": "supplier-evaluations",
+  "title": "Supplier Evaluation",
+  "description": "Evaluates a supplier's performance against agreed criteria.",
+  "estimatedMinutes": 22,
+  "difficulty": "detailed",
+  "tags": [
+    "supplier",
+    "evaluation",
+    "general",
+    "supplier evaluations"
+  ],
+  "fields": [
+    {
+      "id": "author",
+      "label": "Prepared By",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "period",
+      "label": "Reporting Period",
+      "type": "text",
+      "required": false,
+      "placeholder": "e.g. Q2 2026"
+    },
+    {
+      "id": "supplier_name",
+      "label": "Supplier Name",
+      "type": "text",
+      "required": true
+    },
+    {
+      "id": "overall_score",
+      "label": "Overall Score",
+      "type": "select",
+      "required": false,
+      "options": [
+        "Excellent",
+        "Good",
+        "Fair",
+        "Poor"
+      ]
+    },
+    {
+      "id": "summary",
+      "label": "Summary",
+      "type": "textarea",
+      "required": true
+    }
+  ],
+  "bodyTemplate": "SUPPLIER EVALUATION\n\nPrepared By: {{author}}                 Date: {{date}}\nReporting Period: {{period}}            Supplier Name: {{supplier_name}}\nOverall Score: {{overall_score}}\n\n--------------------------------------------------------------------\n\n{{summary}}"
+}

@@ -1,0 +1,21 @@
+{
+  "id": "blank-documents-10",
+  "category": "Blank & Freeform",
+  "categoryId": "blank-freeform",
+  "subcategory": "Blank Documents",
+  "subcategoryId": "blank-documents",
+  "title": "Blank Contract Outline",
+  "description": "A loose contract skeleton with parties and an open terms section — for sketching an agreement, not a binding legal document.",
+  "estimatedMinutes": 12,
+  "difficulty": "standard",
+  "tags": ["blank", "contract", "freeform", "agreement"],
+  "fields": [
+    { "id": "party_a", "label": "Party A", "type": "text", "required": true, "placeholder": "First party" },
+    { "id": "party_b", "label": "Party B", "type": "text", "required": true, "placeholder": "Second party" },
+    { "id": "effective_date", "label": "Effective Date", "type": "date", "required": true },
+    { "id": "terms", "label": "Terms", "type": "textarea", "required": true, "placeholder": "Write the terms of the agreement here." },
+    { "id": "party_a_signature", "label": "Party A Signature", "type": "signature", "required": false },
+    { "id": "party_b_signature", "label": "Party B Signature", "type": "signature", "required": false }
+  ],
+  "bodyTemplate": "AGREEMENT\n\nBetween: {{party_a}}\nAnd: {{party_b}}\nEffective Date: {{effective_date}}\n\n--------------------------------------------------------------------\nTERMS\n--------------------------------------------------------------------\n{{terms}}\n\n--------------------------------------------------------------------\n\n{{party_a_signature}}                    {{party_b_signature}}\nParty A                                  Party B"
+}

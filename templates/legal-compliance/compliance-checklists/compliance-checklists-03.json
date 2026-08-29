@@ -1,0 +1,39 @@
+{
+  "id": "compliance-checklists-03",
+  "category": "Legal & Compliance",
+  "categoryId": "legal-compliance",
+  "subcategory": "Compliance Checklists",
+  "subcategoryId": "compliance-checklists",
+  "title": "Financial Reporting Compliance Checklist",
+  "description": "A financial reporting compliance checklist — verifies that regulatory or internal requirements have been met.",
+  "estimatedMinutes": 11,
+  "difficulty": "quick",
+  "tags": [
+    "compliance",
+    "checklist",
+    "financial",
+    "compliance checklists"
+  ],
+  "fields": [
+    {
+      "id": "owner",
+      "label": "Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "regulation",
+      "label": "Regulation / Standard",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "items",
+      "label": "Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "One item per line"
+    }
+  ],
+  "bodyTemplate": "COMPLIANCE CHECKLIST\nOwner: {{owner}}\nRegulation / Standard: {{regulation}}\nFinancial Reporting — verifies that regulatory or internal requirements have been met.\n\n--------------------------------------------------------------------\n\n{{items}}"
+}

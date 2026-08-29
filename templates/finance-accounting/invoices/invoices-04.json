@@ -1,0 +1,57 @@
+{
+  "id": "invoices-04",
+  "category": "Finance & Accounting",
+  "categoryId": "finance-accounting",
+  "subcategory": "Invoices",
+  "subcategoryId": "invoices",
+  "title": "Retainer Invoice",
+  "description": "A retainer invoice — bills a client for goods or services rendered.",
+  "estimatedMinutes": 16,
+  "difficulty": "standard",
+  "tags": [
+    "invoice",
+    "retainer",
+    "invoices"
+  ],
+  "fields": [
+    {
+      "id": "counterparty",
+      "label": "Bill To",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "due_date",
+      "label": "Due Date",
+      "type": "date",
+      "required": false
+    },
+    {
+      "id": "invoice_number",
+      "label": "Invoice #",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "line_items",
+      "label": "Line Items",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "Description | Amount, one per line"
+    },
+    {
+      "id": "total",
+      "label": "Total",
+      "type": "currency",
+      "required": true,
+      "placeholder": "0.00"
+    }
+  ],
+  "bodyTemplate": "INVOICE\n\nBill To:\n{{counterparty}}\n\nDate: {{date}}                          Due Date: {{due_date}}\nInvoice #: {{invoice_number}}\n\n--------------------------------------------------------------------\n{{line_items}}\n--------------------------------------------------------------------\n\nTOTAL: {{total}}"
+}

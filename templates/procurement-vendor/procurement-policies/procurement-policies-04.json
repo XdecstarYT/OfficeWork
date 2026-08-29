@@ -1,0 +1,44 @@
+{
+  "id": "procurement-policies-04",
+  "category": "Procurement & Vendor Management",
+  "categoryId": "procurement-vendor",
+  "subcategory": "Procurement Policies",
+  "subcategoryId": "procurement-policies",
+  "title": "Spend Approval Thresholds Procurement Policy",
+  "description": "A spend approval thresholds procurement policy — documents internal rules for purchasing and vendor selection.",
+  "estimatedMinutes": 13,
+  "difficulty": "quick",
+  "tags": [
+    "procurement",
+    "policy",
+    "spend",
+    "procurement policies"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "policy_owner",
+      "label": "Policy Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "body",
+      "label": "Details",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "issued_by",
+      "label": "Issued By",
+      "type": "text",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "NOTICE\n\nPROCUREMENT POLICY\nSpend Approval Thresholds — documents internal rules for purchasing and vendor selection.\nDate: {{date}}\nPolicy Owner: {{policy_owner}}\n\n--------------------------------------------------------------------\n\n{{body}}\n\n--------------------------------------------------------------------\n\nIssued by: {{issued_by}}"
+}

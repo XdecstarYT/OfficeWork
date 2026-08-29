@@ -1,0 +1,44 @@
+{
+  "id": "office-policies-08",
+  "category": "Administrative & Office Operations",
+  "categoryId": "admin-office-ops",
+  "subcategory": "Office Policy Notices",
+  "subcategoryId": "office-policies",
+  "title": "Building Access Hours Office Policy Notice",
+  "description": "A building access hours office policy notice — communicates a general office operations policy to staff.",
+  "estimatedMinutes": 13,
+  "difficulty": "quick",
+  "tags": [
+    "office",
+    "policy",
+    "building",
+    "office policies"
+  ],
+  "fields": [
+    {
+      "id": "date",
+      "label": "Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "policy_owner",
+      "label": "Policy Owner",
+      "type": "text",
+      "required": false
+    },
+    {
+      "id": "body",
+      "label": "Details",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "id": "issued_by",
+      "label": "Issued By",
+      "type": "text",
+      "required": false
+    }
+  ],
+  "bodyTemplate": "NOTICE\n\nOFFICE POLICY NOTICE\nBuilding Access Hours — communicates a general office operations policy to staff.\nDate: {{date}}\nPolicy Owner: {{policy_owner}}\n\n--------------------------------------------------------------------\n\n{{body}}\n\n--------------------------------------------------------------------\n\nIssued by: {{issued_by}}"
+}
