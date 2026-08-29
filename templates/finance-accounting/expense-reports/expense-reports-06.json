@@ -1,0 +1,26 @@
+{
+  "id": "expense-reports-06",
+  "category": "Finance & Accounting",
+  "categoryId": "finance-accounting",
+  "subcategory": "Expense Reports",
+  "subcategoryId": "expense-reports",
+  "title": "Per Diem Expense Report",
+  "description": "Report for claiming daily per diem allowances for meals and incidentals during business travel, in lieu of itemized receipts.",
+  "estimatedMinutes": 8,
+  "difficulty": "quick",
+  "tags": ["per diem", "travel", "allowance", "expenses"],
+  "fields": [
+    { "id": "employee_name", "label": "Employee Name", "type": "text", "required": true, "placeholder": "Devon Marsh" },
+    { "id": "employee_id", "label": "Employee ID", "type": "text", "required": true, "placeholder": "E-10310" },
+    { "id": "destination", "label": "Travel Destination", "type": "text", "required": true, "placeholder": "Chicago, IL" },
+    { "id": "departure_date", "label": "Departure Date", "type": "date", "required": true },
+    { "id": "return_date", "label": "Return Date", "type": "date", "required": true },
+    { "id": "num_days", "label": "Number of Days", "type": "number", "required": true, "placeholder": "3" },
+    { "id": "daily_rate", "label": "Approved Daily Rate", "type": "currency", "required": true, "placeholder": "75.00" },
+    { "id": "total_amount", "label": "Total Per Diem Amount", "type": "currency", "required": true, "placeholder": "0.00" },
+    { "id": "meals_provided", "label": "Any Meals Provided by Host/Employer", "type": "textarea", "required": false, "placeholder": "Lunch provided on Day 2 - deducted per policy" },
+    { "id": "manager_name", "label": "Approving Manager", "type": "text", "required": true, "placeholder": "Priya Natarajan" },
+    { "id": "employee_signature", "label": "Employee Signature", "type": "signature", "required": true }
+  ],
+  "bodyTemplate": "PER DIEM EXPENSE REPORT\n\nEmployee Name: {{employee_name}}                    Employee ID: {{employee_id}}\nDestination: {{destination}}\nTravel Dates: {{departure_date}} to {{return_date}}  ({{num_days}} days)\n\n--------------------------------------------------------------------\nApproved Daily Rate: {{daily_rate}}\nTotal Per Diem Amount: {{total_amount}}\n--------------------------------------------------------------------\n\nMeals Provided by Host/Employer:\n{{meals_provided}}\n\nApproving Manager: {{manager_name}}\n\nI acknowledge this per diem is claimed in lieu of itemized meal receipts per company travel policy.\n\nEmployee Signature: {{employee_signature}}"
+}

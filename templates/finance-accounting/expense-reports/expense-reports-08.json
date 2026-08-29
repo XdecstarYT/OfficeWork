@@ -1,0 +1,24 @@
+{
+  "id": "expense-reports-08",
+  "category": "Finance & Accounting",
+  "categoryId": "finance-accounting",
+  "subcategory": "Expense Reports",
+  "subcategoryId": "expense-reports",
+  "title": "Home Office Equipment Expense Report",
+  "description": "Report for reimbursing approved equipment or setup costs for employees working remotely.",
+  "estimatedMinutes": 10,
+  "difficulty": "quick",
+  "tags": ["remote work", "home office", "equipment", "expenses"],
+  "fields": [
+    { "id": "employee_name", "label": "Employee Name", "type": "text", "required": true, "placeholder": "Lena Ford" },
+    { "id": "employee_id", "label": "Employee ID", "type": "text", "required": true, "placeholder": "E-10740" },
+    { "id": "purchase_date", "label": "Purchase Date", "type": "date", "required": true },
+    { "id": "items_purchased", "label": "Items Purchased", "type": "textarea", "required": true, "placeholder": "Ergonomic office chair - $189.00\nUSB-C dock - $65.00" },
+    { "id": "vendor", "label": "Vendor / Retailer", "type": "text", "required": true, "placeholder": "Office Depot" },
+    { "id": "total_amount", "label": "Total Amount", "type": "currency", "required": true, "placeholder": "0.00" },
+    { "id": "pre_approved", "label": "Pre-Approved by Manager", "type": "checkbox", "required": true },
+    { "id": "manager_name", "label": "Approving Manager", "type": "text", "required": true, "placeholder": "Priya Natarajan" },
+    { "id": "employee_signature", "label": "Employee Signature", "type": "signature", "required": true }
+  ],
+  "bodyTemplate": "HOME OFFICE EQUIPMENT EXPENSE REPORT\n\nEmployee Name: {{employee_name}}                    Employee ID: {{employee_id}}\nPurchase Date: {{purchase_date}}                    Vendor: {{vendor}}\n\n--------------------------------------------------------------------\nITEMS PURCHASED\n--------------------------------------------------------------------\n{{items_purchased}}\n--------------------------------------------------------------------\n\nTOTAL AMOUNT: {{total_amount}}\nPre-Approved by Manager: {{pre_approved}}\n\nApproving Manager: {{manager_name}}\n\nEmployee Signature: {{employee_signature}}"
+}

@@ -1,0 +1,26 @@
+{
+  "id": "expense-reports-10",
+  "category": "Finance & Accounting",
+  "categoryId": "finance-accounting",
+  "subcategory": "Expense Reports",
+  "subcategoryId": "expense-reports",
+  "title": "Petty Cash Reconciliation Report",
+  "description": "Report reconciling a petty cash fund against receipts and disbursements for a given period, used by office administrators.",
+  "estimatedMinutes": 15,
+  "difficulty": "standard",
+  "tags": ["petty cash", "reconciliation", "office admin", "finance"],
+  "fields": [
+    { "id": "custodian_name", "label": "Fund Custodian", "type": "text", "required": true, "placeholder": "Nadia Cho" },
+    { "id": "fund_location", "label": "Fund Location / Office", "type": "text", "required": true, "placeholder": "Downtown HQ - Front Desk" },
+    { "id": "period_start", "label": "Period Start", "type": "date", "required": true },
+    { "id": "period_end", "label": "Period End", "type": "date", "required": true },
+    { "id": "opening_balance", "label": "Opening Balance", "type": "currency", "required": true, "placeholder": "0.00" },
+    { "id": "disbursements", "label": "Disbursements", "type": "textarea", "required": true, "placeholder": "03/03/2026 | Postage stamps | $12.00\n03/07/2026 | Coffee supplies | $18.50" },
+    { "id": "total_disbursed", "label": "Total Disbursed", "type": "currency", "required": true, "placeholder": "0.00" },
+    { "id": "closing_balance", "label": "Closing Balance (counted)", "type": "currency", "required": true, "placeholder": "0.00" },
+    { "id": "discrepancy_notes", "label": "Discrepancy Notes", "type": "textarea", "required": false, "placeholder": "Explain any variance between expected and counted balance" },
+    { "id": "approver_name", "label": "Reviewed By", "type": "text", "required": true, "placeholder": "Priya Natarajan" },
+    { "id": "custodian_signature", "label": "Custodian Signature", "type": "signature", "required": true }
+  ],
+  "bodyTemplate": "PETTY CASH RECONCILIATION REPORT\n\nFund Custodian: {{custodian_name}}\nFund Location: {{fund_location}}\nPeriod: {{period_start}} to {{period_end}}\n\n--------------------------------------------------------------------\nOpening Balance: {{opening_balance}}\n\nDISBURSEMENTS\n{{disbursements}}\n--------------------------------------------------------------------\n\nTotal Disbursed: {{total_disbursed}}\nClosing Balance (Counted): {{closing_balance}}\n\nDiscrepancy Notes:\n{{discrepancy_notes}}\n\nReviewed By: {{approver_name}}\n\nCustodian Signature: {{custodian_signature}}"
+}

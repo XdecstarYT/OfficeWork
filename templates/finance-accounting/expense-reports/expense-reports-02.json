@@ -1,0 +1,29 @@
+{
+  "id": "expense-reports-02",
+  "category": "Finance & Accounting",
+  "categoryId": "finance-accounting",
+  "subcategory": "Expense Reports",
+  "subcategoryId": "expense-reports",
+  "title": "Business Travel Expense Report",
+  "description": "Detailed report covering airfare, lodging, meals, and ground transportation for a single business trip.",
+  "estimatedMinutes": 20,
+  "difficulty": "detailed",
+  "tags": ["travel", "expenses", "reimbursement", "trip"],
+  "fields": [
+    { "id": "employee_name", "label": "Employee Name", "type": "text", "required": true, "placeholder": "Marcus Webb" },
+    { "id": "employee_id", "label": "Employee ID", "type": "text", "required": true, "placeholder": "E-10233" },
+    { "id": "trip_purpose", "label": "Purpose of Trip", "type": "text", "required": true, "placeholder": "Client kickoff meeting - Denver office" },
+    { "id": "destination", "label": "Destination", "type": "text", "required": true, "placeholder": "Denver, CO" },
+    { "id": "departure_date", "label": "Departure Date", "type": "date", "required": true },
+    { "id": "return_date", "label": "Return Date", "type": "date", "required": true },
+    { "id": "airfare_amount", "label": "Airfare / Rail", "type": "currency", "required": false, "placeholder": "0.00" },
+    { "id": "lodging_amount", "label": "Lodging", "type": "currency", "required": false, "placeholder": "0.00" },
+    { "id": "meals_amount", "label": "Meals", "type": "currency", "required": false, "placeholder": "0.00" },
+    { "id": "ground_transport_amount", "label": "Ground Transportation (taxi, rideshare, parking)", "type": "currency", "required": false, "placeholder": "0.00" },
+    { "id": "other_expenses", "label": "Other Expenses (itemize)", "type": "textarea", "required": false, "placeholder": "03/12/2026 | Wi-Fi day pass | $12.00" },
+    { "id": "total_amount", "label": "Total Amount Requested", "type": "currency", "required": true, "placeholder": "0.00" },
+    { "id": "manager_name", "label": "Approving Manager", "type": "text", "required": true, "placeholder": "Priya Natarajan" },
+    { "id": "employee_signature", "label": "Employee Signature", "type": "signature", "required": true }
+  ],
+  "bodyTemplate": "BUSINESS TRAVEL EXPENSE REPORT\n\nEmployee Name: {{employee_name}}                    Employee ID: {{employee_id}}\nPurpose of Trip: {{trip_purpose}}\nDestination: {{destination}}\nTravel Dates: {{departure_date}} to {{return_date}}\n\n--------------------------------------------------------------------\nEXPENSE BREAKDOWN\n--------------------------------------------------------------------\nAirfare / Rail:                {{airfare_amount}}\nLodging:                       {{lodging_amount}}\nMeals:                         {{meals_amount}}\nGround Transportation:         {{ground_transport_amount}}\n\nOther Expenses:\n{{other_expenses}}\n--------------------------------------------------------------------\n\nTOTAL AMOUNT REQUESTED: {{total_amount}}\n\nApproving Manager: {{manager_name}}\n\nI certify that this trip was for legitimate business purposes and that all amounts listed are accurate and supported by receipts on file.\n\nEmployee Signature: {{employee_signature}}"
+}

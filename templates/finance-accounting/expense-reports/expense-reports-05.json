@@ -1,0 +1,26 @@
+{
+  "id": "expense-reports-05",
+  "category": "Finance & Accounting",
+  "categoryId": "finance-accounting",
+  "subcategory": "Expense Reports",
+  "subcategoryId": "expense-reports",
+  "title": "Conference & Training Expense Report",
+  "description": "Report for registration fees, materials, and travel costs associated with attending a conference or training course.",
+  "estimatedMinutes": 15,
+  "difficulty": "standard",
+  "tags": ["conference", "training", "professional development", "expenses"],
+  "fields": [
+    { "id": "employee_name", "label": "Employee Name", "type": "text", "required": true, "placeholder": "Anika Petrova" },
+    { "id": "employee_id", "label": "Employee ID", "type": "text", "required": true, "placeholder": "E-10908" },
+    { "id": "event_name", "label": "Conference / Training Name", "type": "text", "required": true, "placeholder": "SaaS Growth Summit 2026" },
+    { "id": "event_dates", "label": "Event Dates", "type": "text", "required": true, "placeholder": "April 14-16, 2026" },
+    { "id": "registration_fee", "label": "Registration Fee", "type": "currency", "required": false, "placeholder": "0.00" },
+    { "id": "travel_lodging", "label": "Travel & Lodging", "type": "currency", "required": false, "placeholder": "0.00" },
+    { "id": "materials_cost", "label": "Materials / Certification Fees", "type": "currency", "required": false, "placeholder": "0.00" },
+    { "id": "total_amount", "label": "Total Amount Requested", "type": "currency", "required": true, "placeholder": "0.00" },
+    { "id": "learning_summary", "label": "Key Takeaways", "type": "textarea", "required": false, "placeholder": "Briefly summarize what you learned and how it applies to your role" },
+    { "id": "manager_name", "label": "Approving Manager", "type": "text", "required": true, "placeholder": "Priya Natarajan" },
+    { "id": "employee_signature", "label": "Employee Signature", "type": "signature", "required": true }
+  ],
+  "bodyTemplate": "CONFERENCE & TRAINING EXPENSE REPORT\n\nEmployee Name: {{employee_name}}                    Employee ID: {{employee_id}}\nEvent: {{event_name}}\nEvent Dates: {{event_dates}}\n\n--------------------------------------------------------------------\nEXPENSE BREAKDOWN\n--------------------------------------------------------------------\nRegistration Fee:              {{registration_fee}}\nTravel & Lodging:              {{travel_lodging}}\nMaterials / Certification:     {{materials_cost}}\n--------------------------------------------------------------------\n\nTOTAL AMOUNT REQUESTED: {{total_amount}}\n\nKey Takeaways:\n{{learning_summary}}\n\nApproving Manager: {{manager_name}}\n\nEmployee Signature: {{employee_signature}}"
+}

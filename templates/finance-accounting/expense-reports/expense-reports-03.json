@@ -1,0 +1,25 @@
+{
+  "id": "expense-reports-03",
+  "category": "Finance & Accounting",
+  "categoryId": "finance-accounting",
+  "subcategory": "Expense Reports",
+  "subcategoryId": "expense-reports",
+  "title": "Client Entertainment Expense Report",
+  "description": "Report for meals, events, or activities hosted for clients or prospects, with required business justification.",
+  "estimatedMinutes": 15,
+  "difficulty": "standard",
+  "tags": ["client", "entertainment", "expenses", "sales"],
+  "fields": [
+    { "id": "employee_name", "label": "Employee Name", "type": "text", "required": true, "placeholder": "Sofia Reyes" },
+    { "id": "employee_id", "label": "Employee ID", "type": "text", "required": true, "placeholder": "E-10871" },
+    { "id": "event_date", "label": "Date of Event", "type": "date", "required": true },
+    { "id": "venue", "label": "Venue / Location", "type": "text", "required": true, "placeholder": "The Harbor Grill" },
+    { "id": "clients_attending", "label": "Client(s) / Company Attending", "type": "textarea", "required": true, "placeholder": "Dana Kim, VP Operations - Northwind Logistics" },
+    { "id": "business_purpose", "label": "Business Purpose", "type": "textarea", "required": true, "placeholder": "Contract renewal discussion ahead of Q2 negotiations" },
+    { "id": "amount", "label": "Total Amount", "type": "currency", "required": true, "placeholder": "0.00" },
+    { "id": "gratuity_included", "label": "Gratuity Included in Total", "type": "checkbox", "required": false },
+    { "id": "manager_name", "label": "Approving Manager", "type": "text", "required": true, "placeholder": "Priya Natarajan" },
+    { "id": "employee_signature", "label": "Employee Signature", "type": "signature", "required": true }
+  ],
+  "bodyTemplate": "CLIENT ENTERTAINMENT EXPENSE REPORT\n\nEmployee Name: {{employee_name}}                    Employee ID: {{employee_id}}\nDate of Event: {{event_date}}\nVenue: {{venue}}\n\nClient(s) Attending:\n{{clients_attending}}\n\nBusiness Purpose:\n{{business_purpose}}\n\n--------------------------------------------------------------------\nTotal Amount: {{amount}}\nGratuity Included: {{gratuity_included}}\n--------------------------------------------------------------------\n\nApproving Manager: {{manager_name}}\n\nI certify that this expense was incurred for a legitimate business purpose in accordance with company entertainment policy.\n\nEmployee Signature: {{employee_signature}}"
+}

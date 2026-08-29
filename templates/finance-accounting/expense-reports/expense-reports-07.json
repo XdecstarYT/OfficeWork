@@ -1,0 +1,25 @@
+{
+  "id": "expense-reports-07",
+  "category": "Finance & Accounting",
+  "categoryId": "finance-accounting",
+  "subcategory": "Expense Reports",
+  "subcategoryId": "expense-reports",
+  "title": "Team Off-Site Expense Report",
+  "description": "Report for consolidating shared costs from a team event, off-site, or department outing paid for by one organizer.",
+  "estimatedMinutes": 15,
+  "difficulty": "standard",
+  "tags": ["team event", "off-site", "expenses", "morale"],
+  "fields": [
+    { "id": "organizer_name", "label": "Organizer Name", "type": "text", "required": true, "placeholder": "Rachel Osei" },
+    { "id": "employee_id", "label": "Employee ID", "type": "text", "required": true, "placeholder": "E-10122" },
+    { "id": "event_name", "label": "Event Name", "type": "text", "required": true, "placeholder": "Q1 Engineering Off-Site" },
+    { "id": "event_date", "label": "Event Date", "type": "date", "required": true },
+    { "id": "attendee_count", "label": "Number of Attendees", "type": "number", "required": true, "placeholder": "14" },
+    { "id": "cost_breakdown", "label": "Cost Breakdown", "type": "textarea", "required": true, "placeholder": "Venue rental: $600.00\nCatering (14 people): $420.00\nActivity fees: $280.00" },
+    { "id": "total_amount", "label": "Total Amount", "type": "currency", "required": true, "placeholder": "0.00" },
+    { "id": "cost_center", "label": "Cost Center / Budget Code", "type": "text", "required": false, "placeholder": "ENG-MORALE-2026" },
+    { "id": "manager_name", "label": "Approving Manager", "type": "text", "required": true, "placeholder": "Priya Natarajan" },
+    { "id": "organizer_signature", "label": "Organizer Signature", "type": "signature", "required": true }
+  ],
+  "bodyTemplate": "TEAM OFF-SITE EXPENSE REPORT\n\nOrganizer Name: {{organizer_name}}                  Employee ID: {{employee_id}}\nEvent Name: {{event_name}}\nEvent Date: {{event_date}}                          Attendees: {{attendee_count}}\n\n--------------------------------------------------------------------\nCOST BREAKDOWN\n--------------------------------------------------------------------\n{{cost_breakdown}}\n--------------------------------------------------------------------\n\nTOTAL AMOUNT: {{total_amount}}\nCost Center / Budget Code: {{cost_center}}\n\nApproving Manager: {{manager_name}}\n\nOrganizer Signature: {{organizer_signature}}"
+}

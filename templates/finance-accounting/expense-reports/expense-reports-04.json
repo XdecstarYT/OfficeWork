@@ -1,0 +1,24 @@
+{
+  "id": "expense-reports-04",
+  "category": "Finance & Accounting",
+  "categoryId": "finance-accounting",
+  "subcategory": "Expense Reports",
+  "subcategoryId": "expense-reports",
+  "title": "Mileage Reimbursement Report",
+  "description": "Report for reimbursing personal vehicle use for business travel, calculated at the standard mileage rate.",
+  "estimatedMinutes": 8,
+  "difficulty": "quick",
+  "tags": ["mileage", "vehicle", "expenses", "travel"],
+  "fields": [
+    { "id": "employee_name", "label": "Employee Name", "type": "text", "required": true, "placeholder": "Kevin Tran" },
+    { "id": "employee_id", "label": "Employee ID", "type": "text", "required": true, "placeholder": "E-10554" },
+    { "id": "trip_dates", "label": "Trip Date(s)", "type": "text", "required": true, "placeholder": "March 4-6, 2026" },
+    { "id": "trip_log", "label": "Trip Log", "type": "textarea", "required": true, "placeholder": "03/04/2026 | Office to Client Site A | 42 miles\n03/05/2026 | Client Site A to Office | 42 miles" },
+    { "id": "total_miles", "label": "Total Miles Driven", "type": "number", "required": true, "placeholder": "84" },
+    { "id": "rate_per_mile", "label": "Reimbursement Rate (per mile)", "type": "currency", "required": true, "placeholder": "0.67" },
+    { "id": "total_amount", "label": "Total Reimbursement Amount", "type": "currency", "required": true, "placeholder": "0.00" },
+    { "id": "manager_name", "label": "Approving Manager", "type": "text", "required": true, "placeholder": "Priya Natarajan" },
+    { "id": "employee_signature", "label": "Employee Signature", "type": "signature", "required": true }
+  ],
+  "bodyTemplate": "MILEAGE REIMBURSEMENT REPORT\n\nEmployee Name: {{employee_name}}                    Employee ID: {{employee_id}}\nTrip Date(s): {{trip_dates}}\n\n--------------------------------------------------------------------\nTRIP LOG\n--------------------------------------------------------------------\n{{trip_log}}\n--------------------------------------------------------------------\n\nTotal Miles Driven: {{total_miles}}\nReimbursement Rate: {{rate_per_mile}} / mile\n\nTOTAL REIMBURSEMENT AMOUNT: {{total_amount}}\n\nApproving Manager: {{manager_name}}\n\nEmployee Signature: {{employee_signature}}"
+}

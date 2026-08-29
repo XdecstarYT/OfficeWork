@@ -1,0 +1,29 @@
+{
+  "id": "expense-reports-09",
+  "category": "Finance & Accounting",
+  "categoryId": "finance-accounting",
+  "subcategory": "Expense Reports",
+  "subcategoryId": "expense-reports",
+  "title": "Relocation Expense Report",
+  "description": "Report for claiming reimbursement of moving and relocation costs under an employee's relocation package.",
+  "estimatedMinutes": 25,
+  "difficulty": "detailed",
+  "tags": ["relocation", "moving", "expenses", "hr"],
+  "fields": [
+    { "id": "employee_name", "label": "Employee Name", "type": "text", "required": true, "placeholder": "Tomas Novak" },
+    { "id": "employee_id", "label": "Employee ID", "type": "text", "required": true, "placeholder": "E-11020" },
+    { "id": "relocation_agreement_id", "label": "Relocation Agreement Reference #", "type": "text", "required": true, "placeholder": "RLA-2026-0043" },
+    { "id": "origin_city", "label": "Moving From", "type": "text", "required": true, "placeholder": "Austin, TX" },
+    { "id": "destination_city", "label": "Moving To", "type": "text", "required": true, "placeholder": "Seattle, WA" },
+    { "id": "move_date", "label": "Move Date", "type": "date", "required": true },
+    { "id": "moving_company_cost", "label": "Moving Company / Freight Cost", "type": "currency", "required": false, "placeholder": "0.00" },
+    { "id": "temporary_housing_cost", "label": "Temporary Housing Cost", "type": "currency", "required": false, "placeholder": "0.00" },
+    { "id": "travel_cost", "label": "Household Travel Cost", "type": "currency", "required": false, "placeholder": "0.00" },
+    { "id": "misc_cost", "label": "Miscellaneous Costs (itemize)", "type": "textarea", "required": false, "placeholder": "Utility connection fees: $85.00" },
+    { "id": "total_amount", "label": "Total Amount Requested", "type": "currency", "required": true, "placeholder": "0.00" },
+    { "id": "package_cap_amount", "label": "Relocation Package Cap", "type": "currency", "required": true, "placeholder": "0.00" },
+    { "id": "hr_approver", "label": "HR Approver", "type": "text", "required": true, "placeholder": "Grace Whitfield" },
+    { "id": "employee_signature", "label": "Employee Signature", "type": "signature", "required": true }
+  ],
+  "bodyTemplate": "RELOCATION EXPENSE REPORT\n\nEmployee Name: {{employee_name}}                    Employee ID: {{employee_id}}\nRelocation Agreement Ref #: {{relocation_agreement_id}}\nMove: {{origin_city}} -> {{destination_city}}         Move Date: {{move_date}}\n\n--------------------------------------------------------------------\nCOST BREAKDOWN\n--------------------------------------------------------------------\nMoving Company / Freight:      {{moving_company_cost}}\nTemporary Housing:             {{temporary_housing_cost}}\nHousehold Travel:              {{travel_cost}}\n\nMiscellaneous Costs:\n{{misc_cost}}\n--------------------------------------------------------------------\n\nTOTAL AMOUNT REQUESTED: {{total_amount}}\nRelocation Package Cap: {{package_cap_amount}}\n\nHR Approver: {{hr_approver}}\n\nI certify that these costs were incurred as part of my approved relocation and fall within the terms of my relocation agreement.\n\nEmployee Signature: {{employee_signature}}"
+}

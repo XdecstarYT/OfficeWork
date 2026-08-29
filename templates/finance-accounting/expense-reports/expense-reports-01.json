@@ -1,0 +1,25 @@
+{
+  "id": "expense-reports-01",
+  "category": "Finance & Accounting",
+  "categoryId": "finance-accounting",
+  "subcategory": "Expense Reports",
+  "subcategoryId": "expense-reports",
+  "title": "Standard Monthly Expense Report",
+  "description": "General-purpose report for reimbursing routine business expenses incurred over a monthly period.",
+  "estimatedMinutes": 12,
+  "difficulty": "standard",
+  "tags": ["expenses", "reimbursement", "monthly", "finance"],
+  "fields": [
+    { "id": "employee_name", "label": "Employee Name", "type": "text", "required": true, "placeholder": "Jordan Alvarez" },
+    { "id": "employee_id", "label": "Employee ID", "type": "text", "required": true, "placeholder": "E-10492" },
+    { "id": "department", "label": "Department", "type": "select", "required": true, "options": ["Sales", "Marketing", "Engineering", "Finance", "Human Resources", "Operations", "Customer Support", "Executive"] },
+    { "id": "manager_name", "label": "Approving Manager", "type": "text", "required": true, "placeholder": "Priya Natarajan" },
+    { "id": "report_period", "label": "Reporting Period", "type": "text", "required": true, "placeholder": "March 2026" },
+    { "id": "submission_date", "label": "Date Submitted", "type": "date", "required": true },
+    { "id": "itemized_expenses", "label": "Itemized Expenses", "type": "textarea", "required": true, "placeholder": "03/02/2026 | Office Supplies | Printer toner | $34.99\n03/09/2026 | Travel | Taxi to client site | $24.50", "helpText": "One line per expense: Date | Category | Description | Amount" },
+    { "id": "total_amount", "label": "Total Amount Requested", "type": "currency", "required": true, "placeholder": "0.00" },
+    { "id": "notes", "label": "Additional Notes", "type": "textarea", "required": false, "placeholder": "Any context the approver should know" },
+    { "id": "employee_signature", "label": "Employee Signature", "type": "signature", "required": true }
+  ],
+  "bodyTemplate": "EXPENSE REPORT\n\nEmployee Name: {{employee_name}}                    Employee ID: {{employee_id}}\nDepartment: {{department}}                        Approving Manager: {{manager_name}}\nReporting Period: {{report_period}}               Date Submitted: {{submission_date}}\n\n--------------------------------------------------------------------\nITEMIZED EXPENSES\n--------------------------------------------------------------------\n{{itemized_expenses}}\n--------------------------------------------------------------------\n\nTOTAL AMOUNT REQUESTED: {{total_amount}}\n\nAdditional Notes:\n{{notes}}\n\nI certify that the expenses listed above were incurred in the course of company business and are accurately reported to the best of my knowledge.\n\nEmployee Signature: {{employee_signature}}                    Date: {{submission_date}}\n\nFor Accounting Use Only:  [ ] Approved   [ ] Denied   [ ] Needs Revision"
+}
