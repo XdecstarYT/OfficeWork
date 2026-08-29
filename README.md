@@ -12,16 +12,24 @@ with real coworkers.
   for how the library was built.
 - **Filing-cabinet browsing UI**: category tree with live counts, search,
   favorites, recently used, template detail modal.
-- **Multiplayer companies** (Supabase-backed): sign up, create a company
-  (you become Owner) or join one with an invite code. Every member has a
-  custom job title and a numeric level — anyone can assign or manage
-  someone with a strictly lower level than their own.
+- **No email/password** — sign up with just a display name and an email
+  handle; you get a one-time join code (no real email involved) that logs
+  you back into the same account on any device.
+- **Multiplayer companies** (Supabase-backed): create a company (you become
+  Owner) or join one with an invite code. Every member has a custom job
+  title and a numeric level — anyone can assign or manage someone with a
+  strictly lower level than their own.
 - **Work assignment**: a manager can assign any template to someone they
   outrank; anyone can request a template be sent to themselves. Templates
   with a signature field require sign-off from someone who outranks the
   assignee before they're marked complete (self-requested work is exempt,
   so a solo owner never gets stuck with nobody able to approve it).
 - **Send to person**: reassign an open document to any coworker.
+- **In-game email/Inbox**: email coworkers or any of the 8 AI Clients.
+  Emailing a client gets you a reply — AI-written via Groq if you've
+  connected a key, otherwise a short canned reply so it still works.
+- **Board Meetings**: schedule one, everyone RSVPs, and "Generate Minutes"
+  drops a pre-filled Board Meeting Minutes document into your Work queue.
 - **Money**: a wallet on your account (`profiles.money`), credited on
   completion — correctly even when a different person (your manager)
   is the one who approves the work.
@@ -42,12 +50,14 @@ npm install
 npm run dev
 ```
 
-Sign up, then either create a company (you're the Owner) or join one with a
-coworker's invite code (shown on their Company tab). To use AI Clients' live
-mode (dynamic requests + negotiation chat), open Settings (⚙️ in the header)
-and paste a free Groq API key from [console.groq.com/keys](https://console.groq.com/keys)
-— no payment required. It's stored only in your browser's local storage and
-used only for direct browser→Groq calls.
+Pick a display name and an email handle (no real email needed) — you'll get
+a one-time code, then either create a company (you're the Owner) or join one
+with a coworker's invite code (shown on their Company tab). To use AI
+Clients' live mode and AI-written email replies, open Settings (⚙️ in the
+header) and paste a free Groq API key from
+[console.groq.com/keys](https://console.groq.com/keys) — no payment
+required. It's stored only in your browser's local storage and used only
+for direct browser→Groq calls.
 
 ## Generating the template library
 
@@ -88,13 +98,25 @@ both scripts since they're already at their target count.
 ## Tech stack
 
 React + Vite + TypeScript + Tailwind CSS v4. Templates are static JSON
-loaded client-side via `import.meta.glob`. Accounts, companies, ranks, and
-work items live in Supabase (Postgres + Auth + Realtime) under Row Level
-Security — see `supabase` migrations applied to the `office-quest` project
-for the full schema. Per-browser conveniences (favorites, recently used, the
-Groq key) stay in `localStorage`; anything another person's actions need to
-affect (Money, rank, document status) lives server-side. AI Clients calls
-Groq's free-tier API directly from the browser with a user-supplied key.
+loaded client-side via `import.meta.glob`. Accounts, companies, ranks, work
+items, emails, and board meetings live in Supabase (Postgres + Auth +
+Realtime) under Row Level Security. Per-browser conveniences (favorites,
+recently used, the Groq key) stay in `localStorage`; anything another
+person's actions need to affect (Money, rank, document status, emails)
+lives server-side. AI Clients calls Groq's free-tier API directly from the
+browser with a user-supplied key.
+
+## Session-code login (no email/password)
+
+Signup calls a Supabase Edge Function (`provision-account`) that creates a
+pre-confirmed account under the hood using a synthetic address
+(`oq-<code>@officequest.local`) and the join code itself as the password —
+none of that is ever shown to the player. The player only ever sees their
+display name, their chosen email *handle* (`handle@officequest.mail`, the
+in-game identity used for the Inbox feature — a separate, purely cosmetic
+concept from the technical synthetic address), and their join code. Logging
+back in re-derives the same synthetic email from the code and signs in
+normally — no Edge Function needed for that half.
 
 ## Multiplayer model
 
@@ -111,15 +133,24 @@ Groq's free-tier API directly from the browser with a user-supplied key.
   moves it to `pending_approval` until someone who outranks the assignee
   approves (→ paid + completed) or rejects (→ back to `assigned` with a
   note) it.
-- **Realtime**: your profile and your company's documents update live via
-  Supabase Realtime subscriptions, so an assignment or approval from a
-  coworker shows up without a refresh.
+- **Emails** (`emails` table): sender/recipient can each be either a company
+  member or an AI Client (by static id) — a client "reply" is just a second
+  row your own client inserts on the client's behalf right after you send.
+- **Board Meetings** (`board_meetings` + `board_meeting_rsvps`): anyone can
+  schedule one; every current member gets an `invited` RSVP row seeded at
+  creation time. "Generate Minutes" creates a self-requested document from
+  the `meeting-minutes-08` ("Board Meeting Minutes") template, pre-filled
+  with the attendee list.
+- **Realtime**: your profile, your company's documents, emails, and board
+  meetings all update live via Supabase Realtime subscriptions, so anything
+  a coworker does shows up without a refresh.
 
 ## Build order
 
 1. Template data + browser — done
 2. Money stat + AI Clients (dynamic requests, negotiation chat) — done
 3. Multiplayer: accounts, companies, ranks, work assignment, approvals — done
-4. Fill-out live document preview + archive
-5. Avatar & office world
-6. Progression & polish (XP/levels, cosmetics, streaks, dashboard)
+4. Session-code login, in-game email, board meetings — done
+5. Fill-out live document preview + archive
+6. Avatar & office world
+7. Progression & polish (XP/levels, cosmetics, streaks, dashboard)

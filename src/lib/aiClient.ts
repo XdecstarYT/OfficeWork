@@ -201,3 +201,42 @@ Otherwise, just reply in plain text.`;
     offer,
   };
 }
+
+export interface EmailReply {
+  subject: string;
+  body: string;
+}
+
+/** Canned, no-API-key fallback so emailing a client still feels like something happened. */
+export function staticClientEmailReply(clientPersona: ClientPersona, subject: string): EmailReply {
+  return {
+    subject: subject.toLowerCase().startsWith("re:") ? subject : `Re: ${subject}`,
+    body: `Thanks for the note - got it. I'll follow up soon.\n\n${clientPersona.name}\n${clientPersona.company}\n\n(Connect a Groq API key in Settings for real AI-written replies.)`,
+  };
+}
+
+export async function generateClientEmailReply(
+  clientPersona: ClientPersona,
+  subject: string,
+  body: string,
+  apiKey: string,
+): Promise<EmailReply> {
+  const system = `You are ${clientPersona.name} from ${clientPersona.company}, a client in a cozy office-life simulation game. \
+Personality: ${clientPersona.personality}
+You just received an email from the player, who does office paperwork for you. Write a short, natural,
+office-appropriate email reply (2-5 sentences). Stay in character. Do not use markdown formatting - plain email prose only.`;
+
+  const result = await groqChatCompletion({
+    apiKey,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: `Subject: ${subject}\n\n${body}` },
+    ],
+    maxTokens: 400,
+  });
+
+  return {
+    subject: subject.toLowerCase().startsWith("re:") ? subject : `Re: ${subject}`,
+    body: result.content ?? staticClientEmailReply(clientPersona, subject).body,
+  };
+}

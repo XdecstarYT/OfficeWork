@@ -33,8 +33,9 @@ export async function assignWork(params: {
   createdBy: string;
   assignedTo: string;
   isSelfRequest: boolean;
+  initialFieldValues?: Record<string, string>;
 }): Promise<DocumentRow> {
-  const { companyId, template, createdBy, assignedTo, isSelfRequest } = params;
+  const { companyId, template, createdBy, assignedTo, isSelfRequest, initialFieldValues } = params;
   const status: DocumentStatus = isSelfRequest ? "requested" : "assigned";
   // Self-requested work has no natural approver (nobody necessarily outranks
   // you), so only boss-assigned work carries the sign-off requirement -
@@ -53,6 +54,7 @@ export async function assignWork(params: {
       requires_approval: requiresApproval,
       created_by: createdBy,
       assigned_to: assignedTo,
+      ...(initialFieldValues ? { field_values: initialFieldValues } : {}),
     })
     .select()
     .single();

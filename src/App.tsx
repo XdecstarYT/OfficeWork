@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { FilingCabinet } from "./pages/FilingCabinet";
 import { AiClients } from "./pages/AiClients";
-import { AuthScreen } from "./pages/AuthScreen";
+import { SessionScreen } from "./pages/SessionScreen";
 import { CompanyGate } from "./pages/CompanyGate";
 import { CompanyPage } from "./pages/CompanyPage";
 import { WorkPage } from "./pages/WorkPage";
+import { InboxPage } from "./pages/InboxPage";
+import { BoardMeetingsPage } from "./pages/BoardMeetingsPage";
 import { SettingsModal } from "./components/SettingsModal";
 import { awardMoney } from "./lib/company";
 import { useApiKey } from "./hooks/useApiKey";
@@ -13,7 +15,7 @@ import { useProfile } from "./hooks/useProfile";
 import { signOut } from "./lib/auth";
 import type { DocumentTemplate, ClientRequest } from "./types/template";
 
-type Tab = "cabinet" | "clients" | "company" | "work";
+type Tab = "cabinet" | "clients" | "company" | "work" | "inbox" | "meetings";
 
 function App() {
   const { session, user, loading: sessionLoading } = useSession();
@@ -34,7 +36,7 @@ function App() {
   }
 
   if (!session || !user) {
-    return <AuthScreen />;
+    return <SessionScreen />;
   }
 
   if (profileLoading || !profile) {
@@ -60,8 +62,14 @@ function App() {
             <TabButton active={tab === "work"} onClick={() => setTab("work")}>
               📥 My Work
             </TabButton>
+            <TabButton active={tab === "inbox"} onClick={() => setTab("inbox")}>
+              ✉️ Inbox
+            </TabButton>
             <TabButton active={tab === "company"} onClick={() => setTab("company")}>
               🏛 Company
+            </TabButton>
+            <TabButton active={tab === "meetings"} onClick={() => setTab("meetings")}>
+              📅 Board Meetings
             </TabButton>
             <TabButton active={tab === "clients"} onClick={() => setTab("clients")}>
               🤝 AI Clients
@@ -96,7 +104,9 @@ function App() {
       <div className="flex min-h-0 flex-1">
         {tab === "cabinet" && <FilingCabinet onStart={setStartedTemplate} />}
         {tab === "work" && <WorkPage profile={profile} onProfileChanged={refreshProfile} />}
+        {tab === "inbox" && <InboxPage profile={profile} apiKey={apiKey} hasApiKey={hasApiKey} />}
         {tab === "company" && <CompanyPage profile={profile} onProfileChanged={refreshProfile} />}
+        {tab === "meetings" && <BoardMeetingsPage profile={profile} />}
         {tab === "clients" && (
           <AiClients
             apiKey={apiKey}

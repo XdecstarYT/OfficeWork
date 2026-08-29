@@ -42,6 +42,8 @@ export interface Database {
           job_title: string;
           level: number;
           money: number;
+          join_code: string | null;
+          email_handle: string | null;
           created_at: string;
         };
         Insert: {
@@ -51,6 +53,8 @@ export interface Database {
           job_title?: string;
           level?: number;
           money?: number;
+          join_code?: string | null;
+          email_handle?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
@@ -114,6 +118,74 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["document_events"]["Insert"]>;
+        Relationships: [];
+      };
+      emails: {
+        Row: {
+          id: string;
+          company_id: string;
+          sender_id: string | null;
+          sender_client_id: string | null;
+          recipient_id: string | null;
+          recipient_client_id: string | null;
+          subject: string;
+          body: string;
+          read_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          sender_id?: string | null;
+          sender_client_id?: string | null;
+          recipient_id?: string | null;
+          recipient_client_id?: string | null;
+          subject: string;
+          body: string;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["emails"]["Insert"]>;
+        Relationships: [];
+      };
+      board_meetings: {
+        Row: {
+          id: string;
+          company_id: string;
+          title: string;
+          agenda: string | null;
+          scheduled_at: string;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          title: string;
+          agenda?: string | null;
+          scheduled_at: string;
+          created_by: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["board_meetings"]["Insert"]>;
+        Relationships: [];
+      };
+      board_meeting_rsvps: {
+        Row: {
+          id: string;
+          meeting_id: string;
+          user_id: string;
+          status: "invited" | "attending" | "declined";
+          responded_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          meeting_id: string;
+          user_id: string;
+          status?: "invited" | "attending" | "declined";
+          responded_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["board_meeting_rsvps"]["Insert"]>;
         Relationships: [];
       };
     };
