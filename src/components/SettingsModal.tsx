@@ -20,26 +20,35 @@ export function SettingsModal({ currentKey, onSave, onClose }: SettingsModalProp
       >
         <h2 className="text-lg font-semibold text-stone-900">Settings</h2>
         <p className="mt-1 text-sm text-stone-500">
-          Add your own Anthropic API key to unlock AI Clients: dynamic client requests and
-          live negotiation chat.
+          Add a free Groq API key to unlock AI Clients: dynamic client requests and live
+          negotiation chat. Get one at{" "}
+          <a
+            href="https://console.groq.com/keys"
+            target="_blank"
+            rel="noreferrer"
+            className="text-emerald-700 underline"
+          >
+            console.groq.com/keys
+          </a>{" "}
+          — no payment required.
         </p>
 
         <label className="mt-4 block text-xs font-medium uppercase tracking-wide text-stone-400">
-          Anthropic API Key
+          Groq API Key
         </label>
         <input
           type="password"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="sk-ant-..."
+          placeholder="gsk_..."
           className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
         />
 
         <div className="mt-3 rounded-md bg-amber-50 p-3 text-xs leading-relaxed text-amber-800">
           Your key is stored only in this browser's local storage and used only for direct
-          calls from your browser to Anthropic's API. This is fine for a local single-player
-          game, but never do this in a real multi-user product — a client-side key can be
-          read by anyone with access to this browser.
+          calls from your browser to Groq's API. This is fine for a local single-player game,
+          but never do this in a real multi-user product — a client-side key can be read by
+          anyone with access to this browser.
         </div>
 
         <div className="mt-6 flex justify-end gap-2">

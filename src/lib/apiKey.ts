@@ -1,4 +1,4 @@
-const API_KEY_STORAGE_KEY = "officequest.anthropicApiKey";
+const API_KEY_STORAGE_KEY = "officequest.groqApiKey";
 
 export function loadApiKey(): string {
   try {

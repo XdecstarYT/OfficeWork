@@ -1,22 +1,48 @@
 import { useState } from "react";
 import { FilingCabinet } from "./pages/FilingCabinet";
 import { AiClients } from "./pages/AiClients";
+import { AuthScreen } from "./pages/AuthScreen";
+import { CompanyGate } from "./pages/CompanyGate";
+import { CompanyPage } from "./pages/CompanyPage";
+import { WorkPage } from "./pages/WorkPage";
 import { SettingsModal } from "./components/SettingsModal";
-import { usePlayerState } from "./hooks/usePlayerState";
+import { awardMoney } from "./lib/company";
 import { useApiKey } from "./hooks/useApiKey";
+import { useSession } from "./hooks/useSession";
+import { useProfile } from "./hooks/useProfile";
+import { signOut } from "./lib/auth";
 import type { DocumentTemplate, ClientRequest } from "./types/template";
 
-type Tab = "cabinet" | "clients";
+type Tab = "cabinet" | "clients" | "company" | "work";
 
 function App() {
+  const { session, user, loading: sessionLoading } = useSession();
+  const { profile, loading: profileLoading, refresh: refreshProfile } = useProfile(user?.id ?? null);
   const [tab, setTab] = useState<Tab>("cabinet");
   const [startedTemplate, setStartedTemplate] = useState<DocumentTemplate | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const { money, addMoney } = usePlayerState();
   const { apiKey, hasApiKey, setApiKey } = useApiKey();
 
-  function handleCompleteRequest(request: ClientRequest) {
-    addMoney(request.payout);
+  async function handleCompleteRequest(request: ClientRequest) {
+    if (!user) return;
+    await awardMoney(user.id, request.payout);
+    refreshProfile();
+  }
+
+  if (sessionLoading) {
+    return <div className="flex h-screen items-center justify-center text-stone-400">Loading…</div>;
+  }
+
+  if (!session || !user) {
+    return <AuthScreen />;
+  }
+
+  if (profileLoading || !profile) {
+    return <div className="flex h-screen items-center justify-center text-stone-400">Loading profile…</div>;
+  }
+
+  if (!profile.company_id) {
+    return <CompanyGate userId={user.id} onDone={refreshProfile} />;
   }
 
   return (
@@ -31,6 +57,12 @@ function App() {
             <TabButton active={tab === "cabinet"} onClick={() => setTab("cabinet")}>
               📁 Filing Cabinet
             </TabButton>
+            <TabButton active={tab === "work"} onClick={() => setTab("work")}>
+              📥 My Work
+            </TabButton>
+            <TabButton active={tab === "company"} onClick={() => setTab("company")}>
+              🏛 Company
+            </TabButton>
             <TabButton active={tab === "clients"} onClick={() => setTab("clients")}>
               🤝 AI Clients
             </TabButton>
@@ -38,9 +70,11 @@ function App() {
         </div>
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1 text-sm font-medium text-emerald-700 tabular-nums">
-            💵 ${money.toFixed(2)}
+            💵 ${profile.money.toFixed(2)}
           </span>
-          <span className="text-xs text-stone-400">Junior Clerk · Level 1</span>
+          <span className="text-xs text-stone-400">
+            {profile.job_title} · Level {profile.level}
+          </span>
           <button
             type="button"
             onClick={() => setShowSettings(true)}
@@ -49,13 +83,21 @@ function App() {
           >
             ⚙️
           </button>
+          <button
+            type="button"
+            onClick={() => signOut()}
+            className="text-xs text-stone-400 hover:text-stone-600"
+          >
+            Sign out
+          </button>
         </div>
       </header>
 
       <div className="flex min-h-0 flex-1">
-        {tab === "cabinet" ? (
-          <FilingCabinet onStart={setStartedTemplate} />
-        ) : (
+        {tab === "cabinet" && <FilingCabinet onStart={setStartedTemplate} />}
+        {tab === "work" && <WorkPage profile={profile} onProfileChanged={refreshProfile} />}
+        {tab === "company" && <CompanyPage profile={profile} onProfileChanged={refreshProfile} />}
+        {tab === "clients" && (
           <AiClients
             apiKey={apiKey}
             hasApiKey={hasApiKey}
@@ -67,7 +109,8 @@ function App() {
 
       {startedTemplate && (
         <div className="fixed bottom-4 right-4 rounded-lg border border-stone-200 bg-white p-4 text-sm shadow-lg">
-          Starting <strong>{startedTemplate.title}</strong>… (fill-out screen lands in Phase 2)
+          Browsing <strong>{startedTemplate.title}</strong> — use "My Work" or "Company" to
+          request/assign it.
           <button
             type="button"
             onClick={() => setStartedTemplate(null)}

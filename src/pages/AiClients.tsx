@@ -71,7 +71,7 @@ export function AiClients({ apiKey, hasApiKey, onOpenSettings, onCompleteRequest
 
         {!hasApiKey && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            No Anthropic API key configured — clients will hand you a fixed preview request
+            No Groq API key configured — clients will hand you a fixed preview request
             instead of a live, dynamic one, and negotiation chat is unavailable. Add a key in
             Settings to unlock the full AI Clients experience.
           </div>

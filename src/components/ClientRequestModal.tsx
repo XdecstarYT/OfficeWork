@@ -67,7 +67,7 @@ export function ClientRequestModal({
 
         {request.isPreview && (
           <p className="mt-2 text-xs text-stone-400">
-            This is a static preview request. Add an Anthropic API key in Settings to unlock
+            This is a static preview request. Add a Groq API key in Settings to unlock
             live, dynamic requests and negotiation chat.
           </p>
         )}
