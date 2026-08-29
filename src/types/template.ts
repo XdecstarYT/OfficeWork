@@ -36,6 +36,25 @@ export interface DocumentTemplate {
   bodyTemplate: string;
 }
 
+export interface ClientRequest {
+  id: string;
+  clientId: string;
+  title: string;
+  description: string;
+  categoryHint: string;
+  payout: number;
+  deadlineDays: number;
+  fields: TemplateField[];
+  bodyTemplate: string;
+  isPreview: boolean;
+  createdAt: number;
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  text: string;
+}
+
 export interface TaxonomySubcategory {
   id: string;
   name: string;
