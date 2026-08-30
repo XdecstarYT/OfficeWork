@@ -6,7 +6,7 @@ import {
   approveDocument,
   rejectDocument,
   sendToPerson,
-  estimatePayout,
+  payoutFor,
   type DocumentRow,
 } from "../lib/documents";
 import { fetchCompanyMembers, awardMoney } from "../lib/company";
@@ -104,7 +104,7 @@ export function WorkPage({ profile, onProfileChanged }: WorkPageProps) {
     if (nextStatus === "completed") {
       // Self-serve completion (no approval needed) - pay the assignee, who is
       // always the caller here since this document didn't need sign-off.
-      await awardMoney(profile.id, estimatePayout(asTemplate(openDoc)));
+      await awardMoney(profile.id, payoutFor(openDoc, asTemplate(openDoc)));
       onProfileChanged();
     }
     setOpenDoc(null);
@@ -117,7 +117,7 @@ export function WorkPage({ profile, onProfileChanged }: WorkPageProps) {
     // profiles_update_by_manager RLS policy allows since approving requires
     // outranking that person. Refresh only matters for our own balance.
     if (doc.assigned_to) {
-      await awardMoney(doc.assigned_to, estimatePayout(asTemplate(doc)));
+      await awardMoney(doc.assigned_to, payoutFor(doc, asTemplate(doc)));
       if (doc.assigned_to === profile.id) onProfileChanged();
     }
     load();
@@ -164,6 +164,8 @@ export function WorkPage({ profile, onProfileChanged }: WorkPageProps) {
                 <p className="text-xs text-stone-400">
                   {STATUS_LABEL[d.status]} · assigned by{" "}
                   {members.find((m) => m.id === d.created_by)?.display_name ?? "someone"}
+                  {" · "}💵 ${payoutFor(d, asTemplate(d))}
+                  {d.due_at && <> · ⏱ due {new Date(d.due_at).toLocaleDateString()}</>}
                   {d.approval_note && (
                     <span className="text-red-500"> · rejected: {d.approval_note}</span>
                   )}

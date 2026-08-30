@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchCompany, fetchCompanyMembers, updateMemberRank, leaveCompany } from "../lib/company";
-import { assignWork } from "../lib/documents";
+import { assignWork, estimatePayout } from "../lib/documents";
 import { TemplatePickerModal } from "../components/TemplatePickerModal";
 import { TemplateBuilder } from "../components/TemplateBuilder";
 import { useCustomTemplates } from "../hooks/useCustomTemplates";
@@ -22,6 +22,9 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
   const [copyLabel, setCopyLabel] = useState("Copy Code");
   const [assignTargetId, setAssignTargetId] = useState<string | null>(null);
   const [showBuilder, setShowBuilder] = useState(false);
+  const [pendingTemplate, setPendingTemplate] = useState<DocumentTemplate | null>(null);
+  const [taskDueDays, setTaskDueDays] = useState(3);
+  const [taskPayout, setTaskPayout] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editLevel, setEditLevel] = useState(1);
@@ -44,20 +47,30 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
     load();
   }, [load]);
 
-  async function handleAssign(template: DocumentTemplate) {
-    if (!company || !assignTargetId) return;
+  function reviewTaskDetails(template: DocumentTemplate) {
+    setPendingTemplate(template);
+    setTaskDueDays(3);
+    setTaskPayout(estimatePayout(template));
+  }
+
+  async function handleConfirmAssign() {
+    if (!company || !assignTargetId || !pendingTemplate) return;
     const isSelfRequest = assignTargetId === profile.id;
     await assignWork({
       companyId: company.id,
-      template,
+      template: pendingTemplate,
       createdBy: profile.id,
       assignedTo: assignTargetId,
       isSelfRequest,
+      dueInDays: taskDueDays > 0 ? taskDueDays : undefined,
+      payoutOverride: taskPayout,
     });
+    const title = pendingTemplate.title;
     setAssignTargetId(null);
     setShowBuilder(false);
+    setPendingTemplate(null);
     setStatusMessage(
-      isSelfRequest ? `Requested "${template.title}" for yourself.` : `Assigned "${template.title}".`,
+      isSelfRequest ? `Requested "${title}" for yourself.` : `Assigned "${title}".`,
     );
     setTimeout(() => setStatusMessage(null), 4000);
   }
@@ -241,19 +254,19 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
         </button>
       </div>
 
-      {assignTargetId && !showBuilder && (
+      {assignTargetId && !showBuilder && !pendingTemplate && (
         <TemplatePickerModal
           title={
             assignTargetId === profile.id
               ? "Request work for yourself"
               : `Assign work to ${members.find((m) => m.id === assignTargetId)?.display_name}`
           }
-          onPick={handleAssign}
+          onPick={reviewTaskDetails}
           onClose={() => setAssignTargetId(null)}
         />
       )}
 
-      {assignTargetId && showBuilder && (
+      {assignTargetId && showBuilder && !pendingTemplate && (
         <TemplateBuilder
           heading={
             assignTargetId === profile.id
@@ -266,8 +279,69 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
             setShowBuilder(false);
           }}
           onSaveTemplate={addCustomTemplate}
-          onFillOutNow={handleAssign}
+          onFillOutNow={reviewTaskDetails}
         />
+      )}
+
+      {pendingTemplate && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+          onClick={() => setPendingTemplate(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-stone-900">Set Task Details</h2>
+            <p className="mt-1 text-sm text-stone-500">
+              "{pendingTemplate.title}" for{" "}
+              {assignTargetId === profile.id
+                ? "yourself"
+                : members.find((m) => m.id === assignTargetId)?.display_name}
+            </p>
+
+            <label className="mt-4 block text-xs font-medium uppercase tracking-wide text-stone-400">
+              Due in (days)
+            </label>
+            <input
+              type="number"
+              min={0}
+              value={taskDueDays}
+              onChange={(e) => setTaskDueDays(Number(e.target.value))}
+              className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <p className="mt-1 text-xs text-stone-400">0 = no deadline.</p>
+
+            <label className="mt-3 block text-xs font-medium uppercase tracking-wide text-stone-400">
+              Payout ($)
+            </label>
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={taskPayout}
+              onChange={(e) => setTaskPayout(Number(e.target.value))}
+              className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingTemplate(null)}
+                className="rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAssign}
+                className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+              >
+                {assignTargetId === profile.id ? "Confirm & Request" : "Confirm & Assign"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

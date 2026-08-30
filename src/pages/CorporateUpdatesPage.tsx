@@ -1,0 +1,191 @@
+import { useCallback, useEffect, useState } from "react";
+import {
+  fetchCorporateUpdates,
+  postCorporateUpdate,
+  type CorporateUpdateRow,
+} from "../lib/corporateUpdates";
+import { fetchCompanyMembers } from "../lib/company";
+import { supabase } from "../lib/supabaseClient";
+import type { Database } from "../types/database";
+
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+type Company = Database["public"]["Tables"]["companies"]["Row"];
+
+interface CorporateUpdatesPageProps {
+  profile: Profile;
+  company: Company;
+}
+
+export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageProps) {
+  const [updates, setUpdates] = useState<CorporateUpdateRow[]>([]);
+  const [members, setMembers] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCompose, setShowCompose] = useState(false);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isOwner = profile.id === company.owner_id;
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const [rows, m] = await Promise.all([
+      fetchCorporateUpdates(company.id),
+      fetchCompanyMembers(company.id),
+    ]);
+    setUpdates(rows);
+    setMembers(m);
+    setLoading(false);
+  }, [company.id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`corporate-updates-${company.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "corporate_updates", filter: `company_id=eq.${company.id}` },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [company.id, load]);
+
+  async function handlePost(e: React.FormEvent) {
+    e.preventDefault();
+    if (!title.trim() || !body.trim()) return;
+    setPosting(true);
+    setError(null);
+    try {
+      await postCorporateUpdate({
+        companyId: company.id,
+        title: title.trim(),
+        body: body.trim(),
+        postedBy: profile.id,
+      });
+      setShowCompose(false);
+      setTitle("");
+      setBody("");
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't post that update.");
+    } finally {
+      setPosting(false);
+    }
+  }
+
+  if (loading) {
+    return <div className="flex-1 p-6 text-sm text-stone-400">Loading updates…</div>;
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-6">
+      <div className="mx-auto flex max-w-2xl flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-stone-900">📰 Corporate Updates</h1>
+            <p className="text-sm text-stone-500">Company-wide news and announcements.</p>
+          </div>
+          {isOwner && (
+            <button
+              type="button"
+              onClick={() => setShowCompose(true)}
+              className="shrink-0 rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800"
+            >
+              📢 Post Update
+            </button>
+          )}
+        </div>
+
+        {updates.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-stone-200 bg-stone-50 p-6 text-center text-sm text-stone-400">
+            {isOwner
+              ? "Nothing posted yet — share the first company-wide update."
+              : "No corporate updates yet."}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {updates.map((u) => (
+              <article
+                key={u.id}
+                className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                    Company-Wide
+                  </span>
+                  <span className="text-xs text-stone-400">
+                    {new Date(u.created_at).toLocaleString()}
+                  </span>
+                </div>
+                <h2 className="mt-2 text-base font-semibold text-stone-900">{u.title}</h2>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-stone-700">
+                  {u.body}
+                </p>
+                <p className="mt-3 text-xs font-medium text-stone-400">
+                  — {members.find((m) => m.id === u.posted_by)?.display_name ?? "Leadership"}
+                </p>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showCompose && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+          onClick={() => setShowCompose(false)}
+        >
+          <form
+            onSubmit={handlePost}
+            className="flex w-full max-w-lg flex-col gap-3 rounded-xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-stone-900">Post a Corporate Update</h2>
+            <p className="text-xs text-stone-500">Every member of the company will see this.</p>
+            <input
+              type="text"
+              placeholder="Headline (e.g. Q3 Results, New Office Policy...)"
+              required
+              autoFocus
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <textarea
+              placeholder="Write the update…"
+              rows={6}
+              required
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              className="rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            {error && <p className="text-xs text-red-600">{error}</p>}
+            <div className="mt-2 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCompose(false)}
+                className="rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={posting}
+                className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+              >
+                {posting ? "Posting…" : "Post to Everyone"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}

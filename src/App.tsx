@@ -8,6 +8,7 @@ import { CompanyPage } from "./pages/CompanyPage";
 import { WorkPage } from "./pages/WorkPage";
 import { InboxPage } from "./pages/InboxPage";
 import { BoardMeetingsPage } from "./pages/BoardMeetingsPage";
+import { CorporateUpdatesPage } from "./pages/CorporateUpdatesPage";
 import { awardMoney } from "./lib/company";
 import { DEFAULT_LLM_CONFIG } from "./lib/llmConfig";
 import { useSession } from "./hooks/useSession";
@@ -16,7 +17,7 @@ import { useCompany } from "./hooks/useCompany";
 import { signOut } from "./lib/auth";
 import type { DocumentTemplate, ClientRequest } from "./types/template";
 
-type Tab = "cabinet" | "clients" | "company" | "work" | "inbox" | "meetings";
+type Tab = "cabinet" | "clients" | "company" | "work" | "inbox" | "meetings" | "updates";
 
 function App() {
   const { session, user, loading: sessionLoading } = useSession();
@@ -79,6 +80,9 @@ function App() {
             <TabButton active={tab === "meetings"} onClick={() => setTab("meetings")}>
               📅 Board Meetings
             </TabButton>
+            <TabButton active={tab === "updates"} onClick={() => setTab("updates")}>
+              📰 Corporate Updates
+            </TabButton>
             <TabButton active={tab === "clients"} onClick={() => setTab("clients")}>
               🤝 AI Clients
             </TabButton>
@@ -107,6 +111,7 @@ function App() {
         {tab === "inbox" && <InboxPage profile={profile} llmConfig={DEFAULT_LLM_CONFIG} />}
         {tab === "company" && <CompanyPage profile={profile} onProfileChanged={refreshProfile} />}
         {tab === "meetings" && <BoardMeetingsPage profile={profile} />}
+        {tab === "updates" && <CorporateUpdatesPage profile={profile} company={company} />}
         {tab === "clients" && (
           <AiClients llmConfig={DEFAULT_LLM_CONFIG} onCompleteRequest={handleCompleteRequest} />
         )}

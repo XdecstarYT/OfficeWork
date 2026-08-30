@@ -101,6 +101,7 @@ export interface Database {
           approver_id: string | null;
           approval_note: string | null;
           due_at: string | null;
+          payout_override: number | null;
           created_at: string;
           updated_at: string;
           completed_at: string | null;
@@ -119,6 +120,7 @@ export interface Database {
           approver_id?: string | null;
           approval_note?: string | null;
           due_at?: string | null;
+          payout_override?: number | null;
           created_at?: string;
           updated_at?: string;
           completed_at?: string | null;
@@ -212,6 +214,26 @@ export interface Database {
           responded_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["board_meeting_rsvps"]["Insert"]>;
+        Relationships: [];
+      };
+      corporate_updates: {
+        Row: {
+          id: string;
+          company_id: string;
+          title: string;
+          body: string;
+          posted_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          title: string;
+          body: string;
+          posted_by: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["corporate_updates"]["Insert"]>;
         Relationships: [];
       };
     };

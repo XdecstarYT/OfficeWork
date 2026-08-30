@@ -14,6 +14,11 @@ export function estimatePayout(template: DocumentTemplate | { difficulty: Diffic
   return PAYOUT_BY_DIFFICULTY[template.difficulty];
 }
 
+/** A manager-set payout wins over the flat per-difficulty default. */
+export function payoutFor(doc: Pick<DocumentRow, "payout_override">, template: DocumentTemplate): number {
+  return doc.payout_override ?? estimatePayout(template);
+}
+
 export function templateRequiresApproval(template: DocumentTemplate): boolean {
   return template.fields.some((f) => f.type === "signature");
 }
@@ -34,14 +39,28 @@ export async function assignWork(params: {
   assignedTo: string;
   isSelfRequest: boolean;
   initialFieldValues?: Record<string, string>;
+  dueInDays?: number;
+  payoutOverride?: number;
 }): Promise<DocumentRow> {
-  const { companyId, template, createdBy, assignedTo, isSelfRequest, initialFieldValues } = params;
+  const {
+    companyId,
+    template,
+    createdBy,
+    assignedTo,
+    isSelfRequest,
+    initialFieldValues,
+    dueInDays,
+    payoutOverride,
+  } = params;
   const status: DocumentStatus = isSelfRequest ? "requested" : "assigned";
   // Self-requested work has no natural approver (nobody necessarily outranks
   // you), so only boss-assigned work carries the sign-off requirement -
   // otherwise a solo owner could self-assign a signature-required template
   // and have it stuck in pending_approval forever with nobody able to clear it.
   const requiresApproval = !isSelfRequest && templateRequiresApproval(template);
+  const due_at = dueInDays
+    ? new Date(Date.now() + dueInDays * 24 * 60 * 60 * 1000).toISOString()
+    : undefined;
 
   const { data, error } = await supabase
     .from("documents")
@@ -55,6 +74,8 @@ export async function assignWork(params: {
       created_by: createdBy,
       assigned_to: assignedTo,
       ...(initialFieldValues ? { field_values: initialFieldValues } : {}),
+      ...(due_at ? { due_at } : {}),
+      ...(payoutOverride != null ? { payout_override: payoutOverride } : {}),
     })
     .select()
     .single();

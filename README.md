@@ -41,8 +41,12 @@ with real coworkers.
   and level the moment someone joins with it.
 - **Boss-built custom tasks**: from the Company tab, a manager can either
   assign an existing template or open the drag-and-drop builder to make a
-  brand-new task on the spot and assign it directly to a coworker (or
-  themselves), no premade template required.
+  brand-new task on the spot. Either way, a "Set Task Details" step lets
+  them pick a due date and a payout before it's assigned directly to a
+  coworker (or themselves) — no premade template required.
+- **Corporate Updates**: a company-wide news/announcements feed. The Owner
+  posts a headline + body from a new "📰 Corporate Updates" tab and every
+  member sees it appear live.
 - **Work assignment with a live document preview**: a manager can assign any
   template to someone they outrank; anyone can request a template be sent
   to themselves. The fill-out modal shows the actual rendered document
@@ -172,11 +176,15 @@ normally — no Edge Function needed for that half.
   client-side and by RLS).
 - **Work items** (`documents` table): created either as `requested` (you
   asking for a template yourself) or `assigned` (someone who outranks you
-  assigning it to you). Submitting a non-signature template completes it
-  immediately and pays you; submitting a signature-bearing assigned template
-  moves it to `pending_approval` until someone who outranks the assignee
-  approves (→ paid + completed) or rejects (→ back to `assigned` with a
-  note) it.
+  assigning it to you), optionally carrying a manager-set `due_at` and
+  `payout_override` (falls back to a flat per-difficulty amount when unset).
+  Submitting a non-signature template completes it immediately and pays
+  you; submitting a signature-bearing assigned template moves it to
+  `pending_approval` until someone who outranks the assignee approves
+  (→ paid + completed) or rejects (→ back to `assigned` with a note) it.
+- **Corporate Updates** (`corporate_updates` table): company-wide posts,
+  readable by every member but insertable only by the company's Owner
+  (enforced by RLS, not just the UI).
 - **Emails** (`emails` table): sender/recipient can each be either a company
   member or an AI Client (by static id) — a client "reply" is just a second
   row your own client inserts on the client's behalf right after you send.
