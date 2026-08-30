@@ -247,6 +247,10 @@ export interface Database {
         Args: { p_code: string };
         Returns: { company_id: string; company_name: string; job_title: string; level: number }[];
       };
+      kick_member: {
+        Args: { p_member_id: string };
+        Returns: void;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

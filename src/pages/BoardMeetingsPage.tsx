@@ -4,6 +4,7 @@ import {
   fetchRsvpsForMeetings,
   scheduleMeeting,
   setRsvp,
+  cancelMeeting,
   type BoardMeetingRow,
   type RsvpRow,
 } from "../lib/boardMeetings";
@@ -94,6 +95,16 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
     load();
   }
 
+  async function handleCancel(meeting: BoardMeetingRow) {
+    if (!window.confirm(`Cancel "${meeting.title}"? This can't be undone.`)) return;
+    try {
+      await cancelMeeting(meeting.id);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't cancel that meeting.");
+    }
+  }
+
   async function handleGenerateMinutes(meeting: BoardMeetingRow) {
     if (!profile.company_id) return;
     const template = getTemplate(BOARD_MEETING_MINUTES_TEMPLATE_ID);
@@ -164,6 +175,7 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
           profile={profile}
           onRsvp={handleRsvp}
           onGenerateMinutes={handleGenerateMinutes}
+          onCancel={handleCancel}
           emptyLabel="No upcoming meetings."
         />
         <MeetingList
@@ -174,6 +186,7 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
           profile={profile}
           onRsvp={handleRsvp}
           onGenerateMinutes={handleGenerateMinutes}
+          onCancel={handleCancel}
           emptyLabel="No past meetings yet."
         />
       </div>
@@ -242,6 +255,7 @@ function MeetingList({
   profile,
   onRsvp,
   onGenerateMinutes,
+  onCancel,
   emptyLabel,
 }: {
   title: string;
@@ -251,6 +265,7 @@ function MeetingList({
   profile: Profile;
   onRsvp: (meetingId: string, status: "attending" | "declined") => void;
   onGenerateMinutes: (meeting: BoardMeetingRow) => void;
+  onCancel: (meeting: BoardMeetingRow) => void;
   emptyLabel: string;
 }) {
   return (
@@ -265,13 +280,25 @@ function MeetingList({
           const meetingRsvps = rsvps.filter((r) => r.meeting_id === meeting.id);
           const myRsvp = meetingRsvps.find((r) => r.user_id === profile.id);
           const attendingCount = meetingRsvps.filter((r) => r.status === "attending").length;
+          const canCancel = meeting.created_by === profile.id || profile.level >= 100;
           return (
             <div key={meeting.id} className="rounded-md border border-stone-100 p-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-stone-800">{meeting.title}</p>
-                <p className="text-xs text-stone-400">
-                  {new Date(meeting.scheduled_at).toLocaleString()}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-stone-400">
+                    {new Date(meeting.scheduled_at).toLocaleString()}
+                  </p>
+                  {canCancel && (
+                    <button
+                      type="button"
+                      onClick={() => onCancel(meeting)}
+                      className="text-xs font-medium text-red-500 hover:text-red-700"
+                    >
+                      🗑️ Cancel
+                    </button>
+                  )}
+                </div>
               </div>
               {meeting.agenda && <p className="mt-1 text-xs text-stone-500">{meeting.agenda}</p>}
               <p className="mt-1 text-xs text-stone-400">

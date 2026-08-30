@@ -170,6 +170,25 @@ export async function awardXp(userId: string, amount: number) {
   if (error) throw error;
 }
 
+/**
+ * Removes a member from the company via a security-definer RPC - a plain
+ * client update can't do this itself, since setting company_id to null would
+ * fail the profiles_update_by_manager policy's implicit WITH CHECK (which
+ * requires the target's post-update company_id to still equal the caller's).
+ */
+export async function kickMember(memberId: string) {
+  const { error } = await supabase.rpc("kick_member", { p_member_id: memberId });
+  if (error) throw error;
+}
+
+/** Awards a one-off bonus to every current member the caller outranks. */
+export async function awardBonusToAll(companyId: string, callerId: string, callerLevel: number, amount: number) {
+  const members = await fetchCompanyMembers(companyId);
+  const targets = members.filter((m) => m.id !== callerId && callerLevel > m.level);
+  await Promise.all(targets.map((m) => awardMoney(m.id, amount)));
+  return targets.length;
+}
+
 export async function leaveCompany(userId: string) {
   const { error } = await supabase
     .from("profiles")

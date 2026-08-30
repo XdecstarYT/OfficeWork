@@ -38,6 +38,11 @@ with real coworkers.
   Owner) or join one with an invite code. Every member has a custom job
   title and a numeric level — anyone can assign or manage someone with a
   strictly lower level than their own.
+- **Boss powers**: a manager can award an ad-hoc money bonus to any member
+  they outrank (individually, or "Bonus Everyone" to give the same amount
+  to everyone they outrank in one click), or kick a member from the company
+  entirely (they're reset to a base Employee, free to rejoin another
+  company with an invite code).
 - **Pre-start lobby**: a new game doesn't drop you straight into the office.
   The Owner lands in a waiting room showing the company's Main Code and the
   players who've joined so far, and only enters the game (for everyone) by
@@ -46,17 +51,25 @@ with real coworkers.
   base-level Employee) plus as many role-granting sub codes as the Owner
   wants to create from the lobby — each one assigns a specific job title
   and level the moment someone joins with it.
-- **Boss-built custom tasks**: from the Company tab, a manager can either
-  assign an existing template or open the drag-and-drop builder to make a
-  brand-new task on the spot. Either way, a "Set Task Details" step lets
-  them pick a due date and a payout, pre-fill any of the template's fields
-  with data they already know (with a live preview), and attach freeform
-  **Reference Data** — e.g. a price sheet of item/cost rows — that shows up
-  as a read-only panel for whoever does the work, so they have what they
-  need to fill the form out correctly without the boss doing it for them.
+- **Boss-built custom tasks**: from the Company tab or straight from the
+  Filing Cabinet, a manager can either assign an existing template or open
+  the drag-and-drop builder to make a brand-new task on the spot. Either
+  way, a "Set Task Details" step lets them pick a due date and a payout,
+  check **"Require review by boss"** to force manager sign-off before the
+  task is marked complete even when the template has no signature field,
+  pre-fill any of the template's fields with data they already know (with a
+  live preview), and attach freeform **Reference Data** — e.g. a price
+  sheet of item/cost rows — that shows up as a read-only panel for whoever
+  does the work. A final **Review** step then summarizes everything
+  (assignee, due date, payout, boss-review requirement, reference data,
+  pre-filled fields, and the live document preview) before it's sent.
+- **Assign from the Filing Cabinet**: browsing the Filing Cabinet isn't
+  read-only — hitting "Start" on any template lets you pick who it's for
+  (yourself, or anyone you outrank) and goes straight into the same Set
+  Task Details → Review flow, without a detour through the Company tab.
 - **Corporate Updates**: a company-wide news/announcements feed. The Owner
   posts a headline + body from a new "📰 Corporate Updates" tab and every
-  member sees it appear live.
+  member sees it appear live. The poster (or the Owner) can delete a post.
 - **Work assignment with a live document preview**: a manager can assign any
   template to someone they outrank; anyone can request a template be sent
   to themselves. The fill-out modal shows the actual rendered document
@@ -72,6 +85,7 @@ with real coworkers.
   is reachable, otherwise a short canned reply so it still works.
 - **Board Meetings**: schedule one, everyone RSVPs, and "Generate Minutes"
   drops a pre-filled Board Meeting Minutes document into your Work queue.
+  The organizer (or the Owner) can cancel a meeting.
 - **Money**: a wallet on your account (`profiles.money`), credited on
   completion — correctly even when a different person (your manager)
   is the one who approves the work.

@@ -62,6 +62,8 @@ export async function assignWork(params: {
   dueInDays?: number;
   payoutOverride?: number;
   referenceData?: ReferenceRow[];
+  /** Manager opted in to sign-off even though the template has no signature field. */
+  forceApproval?: boolean;
 }): Promise<DocumentRow> {
   const {
     companyId,
@@ -73,13 +75,14 @@ export async function assignWork(params: {
     dueInDays,
     payoutOverride,
     referenceData,
+    forceApproval,
   } = params;
   const status: DocumentStatus = isSelfRequest ? "requested" : "assigned";
   // Self-requested work has no natural approver (nobody necessarily outranks
   // you), so only boss-assigned work carries the sign-off requirement -
   // otherwise a solo owner could self-assign a signature-required template
   // and have it stuck in pending_approval forever with nobody able to clear it.
-  const requiresApproval = !isSelfRequest && templateRequiresApproval(template);
+  const requiresApproval = !isSelfRequest && (templateRequiresApproval(template) || !!forceApproval);
   const due_at = dueInDays
     ? new Date(Date.now() + dueInDays * 24 * 60 * 60 * 1000).toISOString()
     : undefined;

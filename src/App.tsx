@@ -9,7 +9,7 @@ import { useSession } from "./hooks/useSession";
 import { useProfile } from "./hooks/useProfile";
 import { useCompany } from "./hooks/useCompany";
 import { signOut } from "./lib/auth";
-import type { DocumentTemplate, ClientRequest } from "./types/template";
+import type { ClientRequest } from "./types/template";
 
 // Each tab is its own chunk, downloaded only when opened - with 10 tabs and a
 // 1000+-template library, shipping every page's code upfront on first load
@@ -50,7 +50,6 @@ function App() {
   const { profile, loading: profileLoading, refresh: refreshProfile } = useProfile(user?.id ?? null);
   const { company, loading: companyLoading, refresh: refreshCompany } = useCompany(profile?.company_id ?? null);
   const [tab, setTab] = useState<Tab>("cabinet");
-  const [startedTemplate, setStartedTemplate] = useState<DocumentTemplate | null>(null);
 
   async function handleCompleteRequest(request: ClientRequest) {
     if (!user) return;
@@ -159,7 +158,7 @@ function App() {
         <Suspense
           fallback={<div className="flex-1 p-6 text-sm text-stone-400">Loading…</div>}
         >
-          {tab === "cabinet" && <FilingCabinet onStart={setStartedTemplate} />}
+          {tab === "cabinet" && <FilingCabinet profile={profile} />}
           {tab === "work" && <WorkPage profile={profile} onProfileChanged={refreshProfile} />}
           {tab === "inbox" && <InboxPage profile={profile} llmConfig={DEFAULT_LLM_CONFIG} />}
           {tab === "company" && <CompanyPage profile={profile} onProfileChanged={refreshProfile} />}
@@ -173,20 +172,6 @@ function App() {
           )}
         </Suspense>
       </div>
-
-      {startedTemplate && (
-        <div className="fixed bottom-4 right-4 rounded-lg border border-stone-200 bg-white p-4 text-sm shadow-lg">
-          Browsing <strong>{startedTemplate.title}</strong> — use "My Work" or "Company" to
-          request/assign it.
-          <button
-            type="button"
-            onClick={() => setStartedTemplate(null)}
-            className="ml-3 text-stone-400 hover:text-stone-600"
-          >
-            ✕
-          </button>
-        </div>
-      )}
     </div>
   );
 }

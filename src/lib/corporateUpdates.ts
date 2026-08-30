@@ -28,3 +28,8 @@ export async function postCorporateUpdate(params: {
   if (error) throw error;
   return data;
 }
+
+export async function deleteCorporateUpdate(id: string) {
+  const { error } = await supabase.from("corporate_updates").delete().eq("id", id);
+  if (error) throw error;
+}

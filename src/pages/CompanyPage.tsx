@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchCompany, fetchCompanyMembers, updateMemberRank, leaveCompany } from "../lib/company";
-import { assignWork, estimatePayout, type ReferenceRow } from "../lib/documents";
+import {
+  fetchCompany,
+  fetchCompanyMembers,
+  updateMemberRank,
+  leaveCompany,
+  kickMember,
+  awardMoney,
+  awardBonusToAll,
+} from "../lib/company";
+import { assignWork } from "../lib/documents";
 import { TemplatePickerModal } from "../components/TemplatePickerModal";
 import { TemplateBuilder } from "../components/TemplateBuilder";
-import { DocumentFieldForm } from "../components/DocumentFieldForm";
-import { DocumentPreview } from "../components/DocumentPreview";
+import { AssignTaskModal, type AssignTaskDetails } from "../components/AssignTaskModal";
 import { useCustomTemplates } from "../hooks/useCustomTemplates";
 import type { Database } from "../types/database";
 import type { DocumentTemplate } from "../types/template";
@@ -25,14 +32,13 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
   const [assignTargetId, setAssignTargetId] = useState<string | null>(null);
   const [showBuilder, setShowBuilder] = useState(false);
   const [pendingTemplate, setPendingTemplate] = useState<DocumentTemplate | null>(null);
-  const [taskDueDays, setTaskDueDays] = useState(3);
-  const [taskPayout, setTaskPayout] = useState(0);
-  const [prefillValues, setPrefillValues] = useState<Record<string, string>>({});
-  const [referenceRows, setReferenceRows] = useState<ReferenceRow[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editLevel, setEditLevel] = useState(1);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [bonusTargetId, setBonusTargetId] = useState<string | null>(null);
+  const [bonusAmount, setBonusAmount] = useState(50);
+  const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
   const { addCustomTemplate } = useCustomTemplates();
 
   const load = useCallback(async () => {
@@ -53,29 +59,18 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
 
   function reviewTaskDetails(template: DocumentTemplate) {
     setPendingTemplate(template);
-    setTaskDueDays(3);
-    setTaskPayout(estimatePayout(template));
-    setPrefillValues({});
-    setReferenceRows([]);
   }
 
-  async function handleConfirmAssign() {
+  async function handleConfirmAssign(details: AssignTaskDetails) {
     if (!company || !assignTargetId || !pendingTemplate) return;
     const isSelfRequest = assignTargetId === profile.id;
-    const filledValues = Object.fromEntries(
-      Object.entries(prefillValues).filter(([, v]) => v.trim() !== ""),
-    );
-    const filledReferenceRows = referenceRows.filter((r) => r.label.trim() !== "" || r.value.trim() !== "");
     await assignWork({
       companyId: company.id,
       template: pendingTemplate,
       createdBy: profile.id,
       assignedTo: assignTargetId,
       isSelfRequest,
-      dueInDays: taskDueDays > 0 ? taskDueDays : undefined,
-      payoutOverride: taskPayout,
-      ...(Object.keys(filledValues).length > 0 ? { initialFieldValues: filledValues } : {}),
-      ...(filledReferenceRows.length > 0 ? { referenceData: filledReferenceRows } : {}),
+      ...details,
     });
     const title = pendingTemplate.title;
     setAssignTargetId(null);
@@ -85,6 +80,47 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
       isSelfRequest ? `Requested "${title}" for yourself.` : `Assigned "${title}".`,
     );
     setTimeout(() => setStatusMessage(null), 4000);
+  }
+
+  async function handleKick(memberId: string) {
+    const target = members.find((m) => m.id === memberId);
+    try {
+      await kickMember(memberId);
+      setConfirmKickId(null);
+      setStatusMessage(`Removed ${target?.display_name ?? "that member"} from the company.`);
+      setTimeout(() => setStatusMessage(null), 4000);
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't remove that member.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    }
+  }
+
+  async function handleAwardBonus(memberId: string, amount: number) {
+    const target = members.find((m) => m.id === memberId);
+    try {
+      await awardMoney(memberId, amount);
+      setBonusTargetId(null);
+      setStatusMessage(`Gave ${target?.display_name ?? "that member"} a $${amount.toFixed(2)} bonus.`);
+      setTimeout(() => setStatusMessage(null), 4000);
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't award that bonus.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    }
+  }
+
+  async function handleAwardBonusToAll(amount: number) {
+    if (!company) return;
+    try {
+      const count = await awardBonusToAll(company.id, profile.id, profile.level, amount);
+      setStatusMessage(`Gave a $${amount.toFixed(2)} bonus to ${count} member${count === 1 ? "" : "s"}.`);
+      setTimeout(() => setStatusMessage(null), 4000);
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't award company-wide bonus.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    }
   }
 
   function openBuilderFor(targetId: string) {
@@ -166,6 +202,20 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
               >
                 🧩 Build Custom Task
               </button>
+              {members.some((m) => profile.level > m.level) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const amount = Number(
+                      window.prompt("Bonus amount for every member you outrank?", "50"),
+                    );
+                    if (amount > 0) handleAwardBonusToAll(amount);
+                  }}
+                  className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                >
+                  💰 Bonus Everyone
+                </button>
+              )}
             </div>
           </div>
 
@@ -215,13 +265,57 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
                     </div>
                   ) : (
                     <p className="text-xs text-stone-400">
-                      {m.job_title} · level {m.level}
+                      {m.job_title} · level {m.level} · ${m.money.toFixed(2)}
                     </p>
+                  )}
+                  {bonusTargetId === m.id && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        value={bonusAmount}
+                        onChange={(e) => setBonusAmount(Number(e.target.value))}
+                        className="w-20 rounded border border-stone-300 px-2 py-1 text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAwardBonus(m.id, bonusAmount)}
+                        className="rounded bg-amber-600 px-2 py-1 text-xs text-white hover:bg-amber-700"
+                      >
+                        Give Bonus
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBonusTargetId(null)}
+                        className="text-xs text-stone-400 hover:text-stone-600"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                  {confirmKickId === m.id && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-xs text-red-700">Remove {m.display_name} from the company?</span>
+                      <button
+                        type="button"
+                        onClick={() => handleKick(m.id)}
+                        className="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
+                      >
+                        Confirm Kick
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmKickId(null)}
+                        className="text-xs text-stone-400 hover:text-stone-600"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   )}
                 </div>
 
                 {!isEditing && (
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {iOutrank && (
                       <>
                         <button
@@ -244,6 +338,26 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
                           className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
                         >
                           🧩 Custom
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBonusTargetId(m.id);
+                            setConfirmKickId(null);
+                          }}
+                          className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                        >
+                          💰 Bonus
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setConfirmKickId(m.id);
+                            setBonusTargetId(null);
+                          }}
+                          className="rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
+                        >
+                          🚪 Kick
                         </button>
                       </>
                     )}
@@ -296,149 +410,17 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
       )}
 
       {pendingTemplate && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
-          onClick={() => setPendingTemplate(null)}
-        >
-          <div
-            className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg font-semibold text-stone-900">Set Task Details</h2>
-            <p className="mt-1 text-sm text-stone-500">
-              "{pendingTemplate.title}" for{" "}
-              {assignTargetId === profile.id
-                ? "yourself"
-                : members.find((m) => m.id === assignTargetId)?.display_name}
-            </p>
-
-            <div className="mt-4 flex gap-4">
-              <div className="flex-1">
-                <label className="block text-xs font-medium uppercase tracking-wide text-stone-400">
-                  Due in (days)
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  value={taskDueDays}
-                  onChange={(e) => setTaskDueDays(Number(e.target.value))}
-                  className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-                <p className="mt-1 text-xs text-stone-400">0 = no deadline.</p>
-              </div>
-              <div className="flex-1">
-                <label className="block text-xs font-medium uppercase tracking-wide text-stone-400">
-                  Payout ($)
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={taskPayout}
-                  onChange={(e) => setTaskPayout(Number(e.target.value))}
-                  className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div className="mt-5">
-              <p className="text-xs font-medium uppercase tracking-wide text-stone-400">
-                Reference Data (optional)
-              </p>
-              <p className="mt-1 text-xs text-stone-500">
-                Give {assignTargetId === profile.id ? "yourself" : "them"} data to work from — e.g. a
-                price sheet — without filling in the actual fields for them.
-              </p>
-              <div className="mt-2 flex flex-col gap-1.5">
-                {referenceRows.map((row, index) => (
-                  <div key={index} className="flex items-start gap-2 sm:items-center">
-                    <div className="flex flex-1 flex-col gap-1.5 sm:flex-row sm:gap-2">
-                      <input
-                        type="text"
-                        value={row.label}
-                        onChange={(e) =>
-                          setReferenceRows((prev) =>
-                            prev.map((r, i) => (i === index ? { ...r, label: e.target.value } : r)),
-                          )
-                        }
-                        placeholder="Item (e.g. Printer Paper)"
-                        className="min-w-0 flex-1 rounded-md border border-stone-300 px-2.5 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                      <input
-                        type="text"
-                        value={row.value}
-                        onChange={(e) =>
-                          setReferenceRows((prev) =>
-                            prev.map((r, i) => (i === index ? { ...r, value: e.target.value } : r)),
-                          )
-                        }
-                        placeholder="Value (e.g. $4.99/ream)"
-                        className="min-w-0 flex-1 rounded-md border border-stone-300 px-2.5 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setReferenceRows((prev) => prev.filter((_, i) => i !== index))}
-                      className="mt-1.5 shrink-0 text-stone-300 hover:text-red-500 sm:mt-0"
-                      aria-label="Remove row"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={() => setReferenceRows((prev) => [...prev, { label: "", value: "" }])}
-                className="mt-2 text-xs font-medium text-emerald-700 hover:text-emerald-800"
-              >
-                + Add Row
-              </button>
-            </div>
-
-            {pendingTemplate.fields.length > 0 && (
-              <>
-                <p className="mt-5 text-xs font-medium uppercase tracking-wide text-stone-400">
-                  Fill in what you already know — {assignTargetId === profile.id ? "you'll" : "they'll"}{" "}
-                  only need to fill in the rest.
-                </p>
-                <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <DocumentFieldForm
-                      fields={pendingTemplate.fields}
-                      values={prefillValues}
-                      onChange={(id, value) => setPrefillValues((prev) => ({ ...prev, [id]: value }))}
-                    />
-                  </div>
-                  <div className="rounded-md border border-stone-100">
-                    <DocumentPreview
-                      title={pendingTemplate.title}
-                      bodyTemplate={pendingTemplate.bodyTemplate}
-                      values={prefillValues}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setPendingTemplate(null)}
-                className="rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmAssign}
-                className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
-              >
-                {assignTargetId === profile.id ? "Confirm & Request" : "Confirm & Assign"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <AssignTaskModal
+          template={pendingTemplate}
+          targetLabel={
+            assignTargetId === profile.id
+              ? "yourself"
+              : (members.find((m) => m.id === assignTargetId)?.display_name ?? "them")
+          }
+          isSelfRequest={assignTargetId === profile.id}
+          onClose={() => setPendingTemplate(null)}
+          onConfirm={handleConfirmAssign}
+        />
       )}
     </div>
   );

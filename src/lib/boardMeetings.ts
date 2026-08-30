@@ -67,3 +67,9 @@ export async function setRsvp(meetingId: string, userId: string, status: RsvpSta
     .eq("user_id", userId);
   if (error) throw error;
 }
+
+/** RSVPs cascade-delete with the meeting (FK on board_meeting_rsvps.meeting_id). */
+export async function cancelMeeting(meetingId: string) {
+  const { error } = await supabase.from("board_meetings").delete().eq("id", meetingId);
+  if (error) throw error;
+}

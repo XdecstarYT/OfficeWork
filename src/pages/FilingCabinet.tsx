@@ -5,17 +5,23 @@ import { SearchBar } from "../components/SearchBar";
 import { TemplateCard } from "../components/TemplateCard";
 import { TemplateDetailModal } from "../components/TemplateDetailModal";
 import { TemplateBuilder } from "../components/TemplateBuilder";
+import { AssignTaskModal, type AssignTaskDetails } from "../components/AssignTaskModal";
 import { useFavorites } from "../hooks/useFavorites";
 import { useRecent } from "../hooks/useRecent";
 import { useCustomTemplates } from "../hooks/useCustomTemplates";
 import { BLANK_PAGE_TEMPLATE } from "../data/blankPage";
+import { fetchCompanyMembers } from "../lib/company";
+import { assignWork } from "../lib/documents";
+import type { Database } from "../types/database";
 import type { DocumentTemplate } from "../types/template";
 
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+
 interface FilingCabinetProps {
-  onStart: (template: DocumentTemplate) => void;
+  profile: Profile;
 }
 
-export function FilingCabinet({ onStart }: FilingCabinetProps) {
+export function FilingCabinet({ profile }: FilingCabinetProps) {
   const [selection, setSelection] = useState<CategorySelection>({
     categoryId: null,
     subcategoryId: null,
@@ -23,9 +29,51 @@ export function FilingCabinet({ onStart }: FilingCabinetProps) {
   const [query, setQuery] = useState("");
   const [activeTemplate, setActiveTemplate] = useState<DocumentTemplate | null>(null);
   const [showBuilder, setShowBuilder] = useState(false);
+  const [assigningTemplate, setAssigningTemplate] = useState<DocumentTemplate | null>(null);
+  const [assignTargetId, setAssignTargetId] = useState<string>(profile.id);
+  const [members, setMembers] = useState<Profile[]>([]);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const { favorites, toggleFavorite } = useFavorites();
   const { recentIds } = useRecent();
   const { customTemplates, addCustomTemplate, removeCustomTemplate } = useCustomTemplates();
+
+  useEffect(() => {
+    if (profile.company_id) {
+      fetchCompanyMembers(profile.company_id).then(setMembers);
+    }
+  }, [profile.company_id]);
+
+  function handleStart(template: DocumentTemplate) {
+    setActiveTemplate(null);
+    setShowBuilder(false);
+    setAssignTargetId(profile.id);
+    setAssigningTemplate(template);
+  }
+
+  async function handleConfirmAssign(details: AssignTaskDetails) {
+    if (!profile.company_id || !assigningTemplate) return;
+    const isSelfRequest = assignTargetId === profile.id;
+    await assignWork({
+      companyId: profile.company_id,
+      template: assigningTemplate,
+      createdBy: profile.id,
+      assignedTo: assignTargetId,
+      isSelfRequest,
+      ...details,
+    });
+    setStatusMessage(
+      isSelfRequest
+        ? `Requested "${assigningTemplate.title}" for yourself.`
+        : `Assigned "${assigningTemplate.title}" to ${members.find((m) => m.id === assignTargetId)?.display_name}.`,
+    );
+    setTimeout(() => setStatusMessage(null), 4000);
+    setAssigningTemplate(null);
+  }
+
+  const assignableTargets = [
+    { id: profile.id, label: "Myself" },
+    ...members.filter((m) => m.id !== profile.id && profile.level > m.level).map((m) => ({ id: m.id, label: m.display_name })),
+  ];
 
   const subcategoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -209,7 +257,7 @@ export function FilingCabinet({ onStart }: FilingCabinetProps) {
           onClose={() => setActiveTemplate(null)}
           onStart={(t) => {
             setActiveTemplate(null);
-            onStart(t);
+            handleStart(t);
           }}
           onDelete={
             activeTemplate.categoryId === "custom"
@@ -231,9 +279,39 @@ export function FilingCabinet({ onStart }: FilingCabinetProps) {
           }}
           onFillOutNow={(t) => {
             setShowBuilder(false);
-            onStart(t);
+            handleStart(t);
           }}
         />
+      )}
+
+      {assigningTemplate && (
+        <AssignTaskModal
+          template={assigningTemplate}
+          targetLabel={
+            assignTargetId === profile.id
+              ? "yourself"
+              : (members.find((m) => m.id === assignTargetId)?.display_name ?? "them")
+          }
+          isSelfRequest={assignTargetId === profile.id}
+          targetOptions={assignableTargets}
+          targetId={assignTargetId}
+          onTargetChange={setAssignTargetId}
+          onClose={() => setAssigningTemplate(null)}
+          onConfirm={handleConfirmAssign}
+        />
+      )}
+
+      {statusMessage && (
+        <div className="fixed bottom-4 right-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 shadow-lg">
+          {statusMessage}
+          <button
+            type="button"
+            onClick={() => setStatusMessage(null)}
+            className="ml-3 text-emerald-400 hover:text-emerald-600"
+          >
+            ✕
+          </button>
+        </div>
       )}
     </div>
   );

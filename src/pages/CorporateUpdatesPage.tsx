@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   fetchCorporateUpdates,
   postCorporateUpdate,
+  deleteCorporateUpdate,
   type CorporateUpdateRow,
 } from "../lib/corporateUpdates";
 import { fetchCompanyMembers } from "../lib/company";
@@ -80,6 +81,16 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
     }
   }
 
+  async function handleDelete(id: string) {
+    if (!window.confirm("Delete this update? This can't be undone.")) return;
+    try {
+      await deleteCorporateUpdate(id);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't delete that update.");
+    }
+  }
+
   if (loading) {
     return <div className="flex-1 p-6 text-sm text-stone-400">Loading updates…</div>;
   }
@@ -128,9 +139,20 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-stone-700">
                   {u.body}
                 </p>
-                <p className="mt-3 text-xs font-medium text-stone-400">
-                  — {members.find((m) => m.id === u.posted_by)?.display_name ?? "Leadership"}
-                </p>
+                <div className="mt-3 flex items-center justify-between">
+                  <p className="text-xs font-medium text-stone-400">
+                    — {members.find((m) => m.id === u.posted_by)?.display_name ?? "Leadership"}
+                  </p>
+                  {(isOwner || u.posted_by === profile.id) && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(u.id)}
+                      className="text-xs font-medium text-red-500 hover:text-red-700"
+                    >
+                      🗑️ Delete
+                    </button>
+                  )}
+                </div>
               </article>
             ))}
           </div>
