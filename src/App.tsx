@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FilingCabinet } from "./pages/FilingCabinet";
 import { AiClients } from "./pages/AiClients";
-import { SessionScreen } from "./pages/SessionScreen";
+import { GameEntryScreen } from "./pages/GameEntryScreen";
 import { CompanyGate } from "./pages/CompanyGate";
 import { CompanyPage } from "./pages/CompanyPage";
 import { WorkPage } from "./pages/WorkPage";
@@ -36,7 +36,7 @@ function App() {
   }
 
   if (!session || !user) {
-    return <SessionScreen />;
+    return <GameEntryScreen />;
   }
 
   if (profileLoading || !profile) {
