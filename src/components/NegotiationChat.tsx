@@ -2,15 +2,16 @@ import { useState } from "react";
 import type { ClientPersona } from "../data/clients";
 import type { ChatMessage, ClientRequest } from "../types/template";
 import { sendNegotiationMessage, type NegotiationOffer } from "../lib/aiClient";
+import type { LlmConfig } from "../lib/llmConfig";
 
 interface NegotiationChatProps {
   clientPersona: ClientPersona;
   request: ClientRequest;
-  apiKey: string;
+  llmConfig: LlmConfig;
   onAcceptOffer: (offer: NegotiationOffer) => void;
 }
 
-export function NegotiationChat({ clientPersona, request, apiKey, onAcceptOffer }: NegotiationChatProps) {
+export function NegotiationChat({ clientPersona, request, llmConfig, onAcceptOffer }: NegotiationChatProps) {
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [pendingOffer, setPendingOffer] = useState<NegotiationOffer | null>(null);
@@ -26,7 +27,7 @@ export function NegotiationChat({ clientPersona, request, apiKey, onAcceptOffer 
     setHistory(nextHistory);
     setLoading(true);
     try {
-      const result = await sendNegotiationMessage(clientPersona, request, history, text, apiKey);
+      const result = await sendNegotiationMessage(clientPersona, request, history, text, llmConfig);
       setHistory([...nextHistory, { role: "assistant", text: result.reply }]);
       if (result.offer) setPendingOffer(result.offer);
     } catch (err) {

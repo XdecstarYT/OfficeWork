@@ -9,7 +9,7 @@ import { InboxPage } from "./pages/InboxPage";
 import { BoardMeetingsPage } from "./pages/BoardMeetingsPage";
 import { SettingsModal } from "./components/SettingsModal";
 import { awardMoney } from "./lib/company";
-import { useApiKey } from "./hooks/useApiKey";
+import { useLlmConfig } from "./hooks/useLlmConfig";
 import { useSession } from "./hooks/useSession";
 import { useProfile } from "./hooks/useProfile";
 import { signOut } from "./lib/auth";
@@ -23,7 +23,7 @@ function App() {
   const [tab, setTab] = useState<Tab>("cabinet");
   const [startedTemplate, setStartedTemplate] = useState<DocumentTemplate | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const { apiKey, hasApiKey, setApiKey } = useApiKey();
+  const { config: llmConfig, setConfig: setLlmConfig } = useLlmConfig();
 
   async function handleCompleteRequest(request: ClientRequest) {
     if (!user) return;
@@ -104,13 +104,12 @@ function App() {
       <div className="flex min-h-0 flex-1">
         {tab === "cabinet" && <FilingCabinet onStart={setStartedTemplate} />}
         {tab === "work" && <WorkPage profile={profile} onProfileChanged={refreshProfile} />}
-        {tab === "inbox" && <InboxPage profile={profile} apiKey={apiKey} hasApiKey={hasApiKey} />}
+        {tab === "inbox" && <InboxPage profile={profile} llmConfig={llmConfig} />}
         {tab === "company" && <CompanyPage profile={profile} onProfileChanged={refreshProfile} />}
         {tab === "meetings" && <BoardMeetingsPage profile={profile} />}
         {tab === "clients" && (
           <AiClients
-            apiKey={apiKey}
-            hasApiKey={hasApiKey}
+            llmConfig={llmConfig}
             onOpenSettings={() => setShowSettings(true)}
             onCompleteRequest={handleCompleteRequest}
           />
@@ -133,8 +132,8 @@ function App() {
 
       {showSettings && (
         <SettingsModal
-          currentKey={apiKey}
-          onSave={setApiKey}
+          currentConfig={llmConfig}
+          onSave={setLlmConfig}
           onClose={() => setShowSettings(false)}
         />
       )}

@@ -3,12 +3,12 @@ import type { ClientPersona } from "../data/clients";
 import type { ClientRequest } from "../types/template";
 import { NegotiationChat } from "./NegotiationChat";
 import type { NegotiationOffer } from "../lib/aiClient";
+import type { LlmConfig } from "../lib/llmConfig";
 
 interface ClientRequestModalProps {
   clientPersona: ClientPersona;
   request: ClientRequest;
-  hasApiKey: boolean;
-  apiKey: string;
+  llmConfig: LlmConfig;
   onClose: () => void;
   onDecline: () => void;
   onComplete: (finalRequest: ClientRequest) => void;
@@ -18,8 +18,7 @@ interface ClientRequestModalProps {
 export function ClientRequestModal({
   clientPersona,
   request,
-  hasApiKey,
-  apiKey,
+  llmConfig,
   onClose,
   onDecline,
   onComplete,
@@ -67,18 +66,18 @@ export function ClientRequestModal({
 
         {request.isPreview && (
           <p className="mt-2 text-xs text-stone-400">
-            This is a static preview request. Add a Groq API key in Settings to unlock
-            live, dynamic requests and negotiation chat.
+            This is a static preview request (couldn't reach your local LLM). Check your local
+            LLM server and the URL in Settings, then try "Ask for Work" again.
           </p>
         )}
 
-        {!request.isPreview && hasApiKey && (
+        {!request.isPreview && (
           <div className="mt-4">
             {showChat ? (
               <NegotiationChat
                 clientPersona={clientPersona}
                 request={request}
-                apiKey={apiKey}
+                llmConfig={llmConfig}
                 onAcceptOffer={handleAcceptOffer}
               />
             ) : (

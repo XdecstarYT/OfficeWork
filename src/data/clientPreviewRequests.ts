@@ -1,7 +1,7 @@
 import type { ClientRequest } from "../types/template";
 
 /**
- * Static example requests shown when no Groq API key is configured, so
+ * Static example requests shown when a local LLM isn't reachable, so
  * the AI Clients feature isn't a dead end. Each is clearly marked isPreview
  * and completing one awards a small fixed payout without any AI call.
  */

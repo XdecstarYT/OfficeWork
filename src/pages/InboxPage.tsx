@@ -12,18 +12,18 @@ import { CLIENTS, getClient } from "../data/clients";
 import { generateClientEmailReply, staticClientEmailReply } from "../lib/aiClient";
 import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../types/database";
+import type { LlmConfig } from "../lib/llmConfig";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 interface InboxPageProps {
   profile: Profile;
-  apiKey: string;
-  hasApiKey: boolean;
+  llmConfig: LlmConfig;
 }
 
 type RecipientChoice = { type: "coworker"; id: string } | { type: "client"; id: string };
 
-export function InboxPage({ profile, apiKey, hasApiKey }: InboxPageProps) {
+export function InboxPage({ profile, llmConfig }: InboxPageProps) {
   const [emails, setEmails] = useState<EmailRow[]>([]);
   const [members, setMembers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,11 +107,12 @@ export function InboxPage({ profile, apiKey, hasApiKey }: InboxPageProps) {
           subject: subject.trim(),
           body: body.trim(),
         });
-        const reply = hasApiKey
-          ? await generateClientEmailReply(client, subject.trim(), body.trim(), apiKey).catch(() =>
-              staticClientEmailReply(client, subject.trim()),
-            )
-          : staticClientEmailReply(client, subject.trim());
+        const reply = await generateClientEmailReply(
+          client,
+          subject.trim(),
+          body.trim(),
+          llmConfig,
+        ).catch(() => staticClientEmailReply(client, subject.trim()));
         await recordClientReply({
           companyId: profile.company_id,
           recipientId: profile.id,
@@ -271,12 +272,6 @@ export function InboxPage({ profile, apiKey, hasApiKey }: InboxPageProps) {
               className="mt-1 rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
 
-            {recipient?.type === "client" && !hasApiKey && (
-              <p className="mt-2 text-xs text-amber-600">
-                No Groq key connected — this client will send back a canned reply instead of an
-                AI-written one.
-              </p>
-            )}
             {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
 
             <div className="mt-4 flex justify-end gap-2">

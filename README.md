@@ -12,9 +12,12 @@ with real coworkers.
   for how the library was built.
 - **Filing-cabinet browsing UI**: category tree with live counts, search,
   favorites, recently used, template detail modal.
-- **No email/password** — sign up with just a display name and an email
-  handle; you get a one-time join code (no real email involved) that logs
-  you back into the same account on any device.
+- **Game-first onboarding**: pick "Create a game" or "Join a game" before
+  anything else, then set up your identity (display name + email handle) —
+  you get a one-time join code (no real email involved) that logs you back
+  into the same account on any device.
+- **No email/password** — the join code above is the whole login, no
+  password to remember.
 - **Multiplayer companies** (Supabase-backed): create a company (you become
   Owner) or join one with an invite code. Every member has a custom job
   title and a numeric level — anyone can assign or manage someone with a
@@ -30,18 +33,19 @@ with real coworkers.
   approve it).
 - **Send to person**: reassign an open document to any coworker.
 - **In-game email/Inbox**: email coworkers or any of the 8 AI Clients.
-  Emailing a client gets you a reply — AI-written via Groq if you've
-  connected a key, otherwise a short canned reply so it still works.
+  Emailing a client gets you a reply — AI-written via your local LLM if one
+  is reachable, otherwise a short canned reply so it still works.
 - **Board Meetings**: schedule one, everyone RSVPs, and "Generate Minutes"
   drops a pre-filled Board Meeting Minutes document into your Work queue.
 - **Money**: a wallet on your account (`profiles.money`), credited on
   completion — correctly even when a different person (your manager)
   is the one who approves the work.
-- **AI Clients**: a roster of 8 recurring client personas. With a free Groq
-  API key configured in Settings, each client hands out a live, dynamically
-  generated paperwork request and supports a negotiation chat (the client
-  can counter-offer payout/deadline). Without a key, each client falls back
-  to a static preview request so the feature still works end-to-end.
+- **AI Clients**: a roster of 8 recurring client personas. With a local LLM
+  (e.g. [Ollama](https://ollama.com)) running and configured in Settings,
+  each client hands out a live, dynamically generated paperwork request and
+  supports a negotiation chat (the client can counter-offer
+  payout/deadline). Without one reachable, each client falls back to a
+  static preview request so the feature still works end-to-end.
 
 Not yet built: an avatar/office world, XP/leveling, cosmetics, a full
 document archive.
@@ -53,14 +57,20 @@ npm install
 npm run dev
 ```
 
-Pick a display name and an email handle (no real email needed) — you'll get
-a one-time code, then either create a company (you're the Owner) or join one
-with a coworker's invite code (shown on their Company tab). To use AI
-Clients' live mode and AI-written email replies, open Settings (⚙️ in the
-header) and paste a free Groq API key from
-[console.groq.com/keys](https://console.groq.com/keys) — no payment
-required. It's stored only in your browser's local storage and used only
-for direct browser→Groq calls.
+Choose "Create a game" or "Join a game" first, then pick a display name and
+an email handle (no real email needed) — you'll get a one-time code that
+logs you back in later. Creating starts a new company (you're the Owner);
+joining uses a coworker's invite code (shown on their Company tab).
+
+To use AI Clients' live mode and AI-written email replies, run a local,
+OpenAI-compatible LLM server — [Ollama](https://ollama.com) is the easiest
+option (`ollama pull llama3.1 && ollama serve`) — then open Settings (⚙️ in
+the header) and point it at your server (defaults match Ollama's). No API
+key, account, or payment required; everything is called directly from your
+browser to `localhost`, and the config is stored only in your browser's
+local storage. Without a local LLM running, AI Clients and client email
+replies fall back to static preview content so the rest of the game still
+works.
 
 ## Generating the template library
 
@@ -104,10 +114,11 @@ React + Vite + TypeScript + Tailwind CSS v4. Templates are static JSON
 loaded client-side via `import.meta.glob`. Accounts, companies, ranks, work
 items, emails, and board meetings live in Supabase (Postgres + Auth +
 Realtime) under Row Level Security. Per-browser conveniences (favorites,
-recently used, the Groq key) stay in `localStorage`; anything another
-person's actions need to affect (Money, rank, document status, emails)
-lives server-side. AI Clients calls Groq's free-tier API directly from the
-browser with a user-supplied key.
+recently used, the local LLM config) stay in `localStorage`; anything
+another person's actions need to affect (Money, rank, document status,
+emails) lives server-side. AI Clients calls a local, OpenAI-compatible LLM
+server (e.g. Ollama) directly from the browser — no cloud API or key
+involved.
 
 ## Session-code login (no email/password)
 

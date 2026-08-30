@@ -4,16 +4,16 @@ import { getPreviewRequestForClient } from "../data/clientPreviewRequests";
 import { generateClientRequest } from "../lib/aiClient";
 import { useClientRequests } from "../hooks/useClientRequests";
 import { ClientRequestModal } from "../components/ClientRequestModal";
+import type { LlmConfig } from "../lib/llmConfig";
 import type { ClientRequest } from "../types/template";
 
 interface AiClientsProps {
-  apiKey: string;
-  hasApiKey: boolean;
+  llmConfig: LlmConfig;
   onOpenSettings: () => void;
   onCompleteRequest: (request: ClientRequest) => void;
 }
 
-export function AiClients({ apiKey, hasApiKey, onOpenSettings, onCompleteRequest }: AiClientsProps) {
+export function AiClients({ llmConfig, onOpenSettings, onCompleteRequest }: AiClientsProps) {
   const { requests, setRequest, clearRequest } = useClientRequests();
   const [loadingClientId, setLoadingClientId] = useState<string | null>(null);
   const [errorByClient, setErrorByClient] = useState<Record<string, string>>({});
@@ -23,25 +23,27 @@ export function AiClients({ apiKey, hasApiKey, onOpenSettings, onCompleteRequest
     setErrorByClient((prev) => ({ ...prev, [clientId]: "" }));
     const client = CLIENTS.find((c) => c.id === clientId)!;
 
-    if (!hasApiKey) {
-      const preview = getPreviewRequestForClient(clientId);
-      if (preview) setRequest(clientId, preview);
-      setOpenClientId(clientId);
-      return;
-    }
-
     setLoadingClientId(clientId);
     try {
-      const request = await generateClientRequest(client, apiKey);
+      const request = await generateClientRequest(client, llmConfig);
       setRequest(clientId, request);
-      setOpenClientId(clientId);
     } catch (err) {
-      setErrorByClient((prev) => ({
-        ...prev,
-        [clientId]: err instanceof Error ? err.message : "Couldn't reach the client.",
-      }));
+      const preview = getPreviewRequestForClient(clientId);
+      if (preview) {
+        setRequest(clientId, preview);
+        setErrorByClient((prev) => ({
+          ...prev,
+          [clientId]: `${err instanceof Error ? err.message : "Couldn't reach your local LLM."} Showing a preview request instead.`,
+        }));
+      } else {
+        setErrorByClient((prev) => ({
+          ...prev,
+          [clientId]: err instanceof Error ? err.message : "Couldn't reach the client.",
+        }));
+      }
     } finally {
       setLoadingClientId(null);
+      setOpenClientId(clientId);
     }
   }
 
@@ -58,24 +60,14 @@ export function AiClients({ apiKey, hasApiKey, onOpenSettings, onCompleteRequest
               Take on real work from recurring clients — dynamic requests you can negotiate.
             </p>
           </div>
-          {!hasApiKey && (
-            <button
-              type="button"
-              onClick={onOpenSettings}
-              className="shrink-0 rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
-            >
-              🔑 Connect API Key
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="shrink-0 rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+          >
+            ⚙️ Local LLM Settings
+          </button>
         </div>
-
-        {!hasApiKey && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            No Groq API key configured — clients will hand you a fixed preview request
-            instead of a live, dynamic one, and negotiation chat is unavailable. Add a key in
-            Settings to unlock the full AI Clients experience.
-          </div>
-        )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {CLIENTS.map((c) => {
@@ -96,7 +88,7 @@ export function AiClients({ apiKey, hasApiKey, onOpenSettings, onCompleteRequest
                 <p className="text-xs text-stone-500">{c.personality}</p>
 
                 {errorByClient[c.id] && (
-                  <p className="text-xs text-red-600">{errorByClient[c.id]}</p>
+                  <p className="text-xs text-amber-600">{errorByClient[c.id]}</p>
                 )}
 
                 {activeRequest ? (
@@ -127,8 +119,7 @@ export function AiClients({ apiKey, hasApiKey, onOpenSettings, onCompleteRequest
         <ClientRequestModal
           clientPersona={openClient}
           request={openRequest}
-          hasApiKey={hasApiKey}
-          apiKey={apiKey}
+          llmConfig={llmConfig}
           onClose={() => setOpenClientId(null)}
           onDecline={() => {
             clearRequest(openClient.id);

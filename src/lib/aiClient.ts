@@ -1,7 +1,8 @@
 import { TAXONOMY } from "../data/taxonomy";
 import type { ClientPersona } from "../data/clients";
 import type { ChatMessage, ClientRequest, FieldType } from "../types/template";
-import { groqChatCompletion, parseToolArguments, type GroqTool } from "./groqClient";
+import { llmChatCompletion, parseToolArguments, type LlmTool } from "./localLlmClient";
+import type { LlmConfig } from "./llmConfig";
 
 const FIELD_TYPES: FieldType[] = [
   "text",
@@ -14,7 +15,7 @@ const FIELD_TYPES: FieldType[] = [
   "signature",
 ];
 
-const REQUEST_TOOL: GroqTool = {
+const REQUEST_TOOL: LlmTool = {
   type: "function",
   function: {
     name: "submit_client_request",
@@ -64,7 +65,7 @@ const REQUEST_TOOL: GroqTool = {
 
 export async function generateClientRequest(
   clientPersona: ClientPersona,
-  apiKey: string,
+  config: LlmConfig,
 ): Promise<ClientRequest> {
   const categoryList = TAXONOMY.map((c) => `${c.id}: ${c.name}`).join("\n");
   const [minPayout, maxPayout] = clientPersona.payoutRange;
@@ -86,8 +87,8 @@ ${categoryList}
 
 Generate one realistic, specific paperwork request from this client and submit it via the submit_client_request tool.`;
 
-  const result = await groqChatCompletion({
-    apiKey,
+  const result = await llmChatCompletion({
+    config,
     messages: [
       { role: "system", content: system },
       { role: "user", content: user },
@@ -138,7 +139,7 @@ export interface NegotiationResult {
   offer: NegotiationOffer | null;
 }
 
-const OFFER_TOOL: GroqTool = {
+const OFFER_TOOL: LlmTool = {
   type: "function",
   function: {
     name: "propose_terms",
@@ -161,7 +162,7 @@ export async function sendNegotiationMessage(
   request: ClientRequest,
   history: ChatMessage[],
   userMessage: string,
-  apiKey: string,
+  config: LlmConfig,
 ): Promise<NegotiationResult> {
   const system = `You are ${clientPersona.name} from ${clientPersona.company}, a client in a cozy office-life simulation game. \
 Personality: ${clientPersona.personality}
@@ -178,8 +179,8 @@ Otherwise, just reply in plain text.`;
     { role: "user" as const, content: userMessage },
   ];
 
-  const result = await groqChatCompletion({
-    apiKey,
+  const result = await llmChatCompletion({
+    config,
     messages,
     tools: [OFFER_TOOL],
     maxTokens: 512,
@@ -207,11 +208,11 @@ export interface EmailReply {
   body: string;
 }
 
-/** Canned, no-API-key fallback so emailing a client still feels like something happened. */
+/** Canned fallback used when the local LLM can't be reached, so emailing a client still feels like something happened. */
 export function staticClientEmailReply(clientPersona: ClientPersona, subject: string): EmailReply {
   return {
     subject: subject.toLowerCase().startsWith("re:") ? subject : `Re: ${subject}`,
-    body: `Thanks for the note - got it. I'll follow up soon.\n\n${clientPersona.name}\n${clientPersona.company}\n\n(Connect a Groq API key in Settings for real AI-written replies.)`,
+    body: `Thanks for the note - got it. I'll follow up soon.\n\n${clientPersona.name}\n${clientPersona.company}\n\n(Couldn't reach your local LLM for a real reply - check Settings.)`,
   };
 }
 
@@ -219,15 +220,15 @@ export async function generateClientEmailReply(
   clientPersona: ClientPersona,
   subject: string,
   body: string,
-  apiKey: string,
+  config: LlmConfig,
 ): Promise<EmailReply> {
   const system = `You are ${clientPersona.name} from ${clientPersona.company}, a client in a cozy office-life simulation game. \
 Personality: ${clientPersona.personality}
 You just received an email from the player, who does office paperwork for you. Write a short, natural,
 office-appropriate email reply (2-5 sentences). Stay in character. Do not use markdown formatting - plain email prose only.`;
 
-  const result = await groqChatCompletion({
-    apiKey,
+  const result = await llmChatCompletion({
+    config,
     messages: [
       { role: "system", content: system },
       { role: "user", content: `Subject: ${subject}\n\n${body}` },
