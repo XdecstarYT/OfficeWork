@@ -12,6 +12,7 @@ import {
 import { fetchCompanyMembers, awardMoney } from "../lib/company";
 import { supabase } from "../lib/supabaseClient";
 import { DocumentFieldForm } from "../components/DocumentFieldForm";
+import { DocumentPreview } from "../components/DocumentPreview";
 import type { Database } from "../types/database";
 import type { DocumentTemplate } from "../types/template";
 
@@ -287,17 +288,26 @@ export function WorkPage({ profile, onProfileChanged }: WorkPageProps) {
           onClick={() => setOpenDoc(null)}
         >
           <div
-            className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl bg-white p-6 shadow-xl"
+            className="flex max-h-[85vh] w-full max-w-4xl flex-col rounded-xl bg-white p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-semibold text-stone-900">{openDoc.title}</h2>
-            <div className="mt-3 flex-1 overflow-y-auto">
-              <DocumentFieldForm
-                fields={asTemplate(openDoc).fields}
-                values={fieldValues}
-                onChange={(id, value) => setFieldValues((prev) => ({ ...prev, [id]: value }))}
-                readOnly={openDoc.status === "pending_approval"}
-              />
+            <div className="mt-3 grid flex-1 grid-cols-1 gap-4 overflow-y-auto sm:grid-cols-2">
+              <div className="overflow-y-auto pr-1">
+                <DocumentFieldForm
+                  fields={asTemplate(openDoc).fields}
+                  values={fieldValues}
+                  onChange={(id, value) => setFieldValues((prev) => ({ ...prev, [id]: value }))}
+                  readOnly={openDoc.status === "pending_approval"}
+                />
+              </div>
+              <div className="overflow-y-auto rounded-md border border-stone-100">
+                <DocumentPreview
+                  title={openDoc.title}
+                  bodyTemplate={asTemplate(openDoc).bodyTemplate}
+                  values={fieldValues}
+                />
+              </div>
             </div>
             <div className="mt-4 flex justify-end gap-2">
               <button

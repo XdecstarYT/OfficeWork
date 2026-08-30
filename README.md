@@ -19,11 +19,15 @@ with real coworkers.
   Owner) or join one with an invite code. Every member has a custom job
   title and a numeric level — anyone can assign or manage someone with a
   strictly lower level than their own.
-- **Work assignment**: a manager can assign any template to someone they
-  outrank; anyone can request a template be sent to themselves. Templates
-  with a signature field require sign-off from someone who outranks the
-  assignee before they're marked complete (self-requested work is exempt,
-  so a solo owner never gets stuck with nobody able to approve it).
+- **Work assignment with a live document preview**: a manager can assign any
+  template to someone they outrank; anyone can request a template be sent
+  to themselves. The fill-out modal shows the actual rendered document
+  (monospace, letterhead-style) updating live next to the form, for both
+  filling it out and reviewing someone else's submission before approving.
+  Templates with a signature field require sign-off from someone who
+  outranks the assignee before they're marked complete (self-requested
+  work is exempt, so a solo owner never gets stuck with nobody able to
+  approve it).
 - **Send to person**: reassign an open document to any coworker.
 - **In-game email/Inbox**: email coworkers or any of the 8 AI Clients.
   Emailing a client gets you a reply — AI-written via Groq if you've
@@ -39,9 +43,8 @@ with real coworkers.
   can counter-offer payout/deadline). Without a key, each client falls back
   to a static preview request so the feature still works end-to-end.
 
-Not yet built: a live-preview fill-out screen (the current fill-out form is
-plain inputs, no rendered document preview), an avatar/office world,
-XP/leveling, cosmetics.
+Not yet built: an avatar/office world, XP/leveling, cosmetics, a full
+document archive.
 
 ## Getting started
 
@@ -151,6 +154,7 @@ normally — no Edge Function needed for that half.
 2. Money stat + AI Clients (dynamic requests, negotiation chat) — done
 3. Multiplayer: accounts, companies, ranks, work assignment, approvals — done
 4. Session-code login, in-game email, board meetings — done
-5. Fill-out live document preview + archive
-6. Avatar & office world
-7. Progression & polish (XP/levels, cosmetics, streaks, dashboard)
+5. Live document preview in the fill-out/approval modal — done
+6. Document archive
+7. Avatar & office world
+8. Progression & polish (XP/levels, cosmetics, streaks, dashboard)
