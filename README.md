@@ -43,6 +43,9 @@ with real coworkers.
   to everyone they outrank in one click), or kick a member from the company
   entirely (they're reset to a base Employee, free to rejoin another
   company with an invite code).
+- **Company Settings**: the Owner can rename the company and regenerate the
+  main invite code (invalidating the old one) from a "⚙️ Settings" panel on
+  the Company tab.
 - **Pre-start lobby**: a new game doesn't drop you straight into the office.
   The Owner lands in a waiting room showing the company's Main Code and the
   players who've joined so far, and only enters the game (for everyone) by
@@ -78,7 +81,9 @@ with real coworkers.
   Templates with a signature field require sign-off from someone who
   outranks the assignee before they're marked complete (self-requested
   work is exempt, so a solo owner never gets stuck with nobody able to
-  approve it).
+  approve it). Overdue work (past its due date) is flagged with a red
+  "⏰ Overdue" badge in My Work, plus a running overdue count next to the
+  page title.
 - **Send to person**: reassign an open document to any coworker.
 - **In-game email/Inbox**: email coworkers or any of the 8 AI Clients.
   Emailing a client gets you a reply — AI-written via your local LLM if one
@@ -98,7 +103,10 @@ with real coworkers.
   which document, and when) — built entirely from data already recorded
   in `document_events`.
 - **Leaderboard**: ranks every company member by Money, tasks completed,
-  and Career Level.
+  and Career Level, plus an **Achievements** section awarding badges
+  (First Task, Workhorse, Legend, Well Off, Rich, Rising Star, Veteran,
+  One Month In) computed from their existing stats — no separate tracking
+  needed.
 - **Document Archive**: the full company-wide history of completed
   documents, searchable by title and filterable by who did the work (the
   Work tab only ever shows your last 10).
@@ -110,6 +118,9 @@ with real coworkers.
   static preview request so the feature still works end-to-end. There's no
   Settings screen — it always targets `http://localhost:11434` (Ollama's
   default) with the `llama3.1` model; run your local server there.
+  Completing work for a client builds a relationship (tracked locally in
+  your browser): 1 completion earns "Familiar Face", 5 earns "Favorite
+  Client", 10 earns "Trusted Partner" — shown as a badge on their card.
 
 Not yet built: an avatar/office world, XP/leveling, cosmetics, a full
 document archive.

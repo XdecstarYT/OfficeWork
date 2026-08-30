@@ -7,6 +7,8 @@ import {
   kickMember,
   awardMoney,
   awardBonusToAll,
+  renameCompany,
+  regenerateInviteCode,
 } from "../lib/company";
 import { assignWork } from "../lib/documents";
 import { TemplatePickerModal } from "../components/TemplatePickerModal";
@@ -39,6 +41,9 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
   const [bonusTargetId, setBonusTargetId] = useState<string | null>(null);
   const [bonusAmount, setBonusAmount] = useState(50);
   const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [regenerating, setRegenerating] = useState(false);
   const { addCustomTemplate } = useCustomTemplates();
 
   const load = useCallback(async () => {
@@ -123,6 +128,36 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
     }
   }
 
+  async function handleRename() {
+    if (!company || !nameDraft.trim() || nameDraft.trim() === company.name) {
+      setShowSettings(false);
+      return;
+    }
+    try {
+      await renameCompany(company.id, nameDraft.trim());
+      setShowSettings(false);
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't rename the company.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    }
+  }
+
+  async function handleRegenerateCode() {
+    if (!company) return;
+    if (!window.confirm("Regenerate the main invite code? The old code will stop working.")) return;
+    setRegenerating(true);
+    try {
+      await regenerateInviteCode(company.id);
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't regenerate the invite code.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    } finally {
+      setRegenerating(false);
+    }
+  }
+
   function openBuilderFor(targetId: string) {
     setAssignTargetId(targetId);
     setShowBuilder(true);
@@ -156,6 +191,8 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
     return <div className="flex-1 p-6 text-sm text-stone-400">No company found.</div>;
   }
 
+  const isOwner = company.owner_id === profile.id;
+
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
@@ -167,18 +204,82 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
               <strong>{profile.job_title}</strong> (level {profile.level})
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              navigator.clipboard?.writeText(company.invite_code).catch(() => {});
-              setCopyLabel("Copied!");
-              setTimeout(() => setCopyLabel("Copy Code"), 1500);
-            }}
-            className="shrink-0 rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
-          >
-            🔑 Invite Code: {company.invite_code} · {copyLabel}
-          </button>
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard?.writeText(company.invite_code).catch(() => {});
+                setCopyLabel("Copied!");
+                setTimeout(() => setCopyLabel("Copy Code"), 1500);
+              }}
+              className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+            >
+              🔑 Invite Code: {company.invite_code} · {copyLabel}
+            </button>
+            {isOwner && (
+              <button
+                type="button"
+                onClick={() => {
+                  setNameDraft(company.name);
+                  setShowSettings((s) => !s);
+                }}
+                className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+              >
+                ⚙️ Settings
+              </button>
+            )}
+          </div>
         </div>
+
+        {showSettings && isOwner && (
+          <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-400">
+              Company Settings
+            </h2>
+            <div>
+              <label className="block text-xs font-medium uppercase tracking-wide text-stone-400">
+                Company Name
+              </label>
+              <div className="mt-1 flex gap-2">
+                <input
+                  type="text"
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  className="flex-1 rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleRename}
+                  className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium uppercase tracking-wide text-stone-400">
+                Main Invite Code
+              </label>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium text-stone-700">
+                  {company.invite_code}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRegenerateCode}
+                  disabled={regenerating}
+                  className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                >
+                  {regenerating ? "Regenerating…" : "🔄 Regenerate"}
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-stone-400">
+                Regenerating invalidates the old code — anyone who hasn't joined yet will need the
+                new one.
+              </p>
+            </div>
+          </div>
+        )}
 
         {statusMessage && (
           <div className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-800">{statusMessage}</div>

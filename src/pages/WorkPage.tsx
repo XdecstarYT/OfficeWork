@@ -52,6 +52,9 @@ export function WorkPage({ profile, onProfileChanged }: WorkPageProps) {
 
   const memberLevel = (id: string | null) => members.find((m) => m.id === id)?.level ?? 0;
 
+  const isOverdue = (d: DocumentRow) =>
+    !!d.due_at && new Date(d.due_at).getTime() < Date.now() && d.status !== "completed";
+
   const load = useCallback(async () => {
     setLoading(true);
     const [mine, companyDocs, companyMembers] = await Promise.all([
@@ -150,6 +153,7 @@ export function WorkPage({ profile, onProfileChanged }: WorkPageProps) {
     (d) => d.created_by === profile.id && d.assigned_to !== profile.id && d.status !== "completed",
   );
   const completed = documents.filter((d) => d.status === "completed").slice(0, 10);
+  const overdueCount = documents.filter(isOverdue).length;
 
   if (loading) {
     return <div className="flex-1 p-6 text-sm text-stone-400">Loading work…</div>;
@@ -158,18 +162,39 @@ export function WorkPage({ profile, onProfileChanged }: WorkPageProps) {
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
-        <h1 className="text-lg font-semibold text-stone-900">My Work</h1>
+        <h1 className="text-lg font-semibold text-stone-900">
+          My Work
+          {overdueCount > 0 && (
+            <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+              ⏰ {overdueCount} overdue
+            </span>
+          )}
+        </h1>
 
         <Section title="📥 Your Open Work" empty="Nothing assigned right now.">
           {myOpenWork.map((d) => (
-            <div key={d.id} className="relative flex items-center justify-between rounded-md border border-stone-100 p-3">
+            <div
+              key={d.id}
+              className={`relative flex items-center justify-between rounded-md border p-3 ${
+                isOverdue(d) ? "border-red-200 bg-red-50" : "border-stone-100"
+              }`}
+            >
               <div>
-                <p className="text-sm font-medium text-stone-800">{d.title}</p>
+                <p className="text-sm font-medium text-stone-800">
+                  {d.title} {isOverdue(d) && <span className="text-xs font-semibold text-red-600">⏰ Overdue</span>}
+                </p>
                 <p className="text-xs text-stone-400">
                   {STATUS_LABEL[d.status]} · assigned by{" "}
                   {members.find((m) => m.id === d.created_by)?.display_name ?? "someone"}
                   {" · "}💵 ${payoutFor(d, asTemplate(d))}
-                  {d.due_at && <> · ⏱ due {new Date(d.due_at).toLocaleDateString()}</>}
+                  {d.due_at && (
+                    <>
+                      {" · "}
+                      <span className={isOverdue(d) ? "font-medium text-red-600" : ""}>
+                        ⏱ due {new Date(d.due_at).toLocaleDateString()}
+                      </span>
+                    </>
+                  )}
                   {d.approval_note && (
                     <span className="text-red-500"> · rejected: {d.approval_note}</span>
                   )}
@@ -265,11 +290,26 @@ export function WorkPage({ profile, onProfileChanged }: WorkPageProps) {
 
         <Section title="👀 Assigned to Others" empty="You haven't assigned anything.">
           {iAssignedToOthers.map((d) => (
-            <div key={d.id} className="flex items-center justify-between rounded-md border border-stone-100 p-3">
+            <div
+              key={d.id}
+              className={`flex items-center justify-between rounded-md border p-3 ${
+                isOverdue(d) ? "border-red-200 bg-red-50" : "border-stone-100"
+              }`}
+            >
               <div>
-                <p className="text-sm font-medium text-stone-800">{d.title}</p>
+                <p className="text-sm font-medium text-stone-800">
+                  {d.title} {isOverdue(d) && <span className="text-xs font-semibold text-red-600">⏰ Overdue</span>}
+                </p>
                 <p className="text-xs text-stone-400">
                   {STATUS_LABEL[d.status]} · {members.find((m) => m.id === d.assigned_to)?.display_name}
+                  {d.due_at && (
+                    <>
+                      {" · "}
+                      <span className={isOverdue(d) ? "font-medium text-red-600" : ""}>
+                        ⏱ due {new Date(d.due_at).toLocaleDateString()}
+                      </span>
+                    </>
+                  )}
                 </p>
               </div>
             </div>

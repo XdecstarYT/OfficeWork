@@ -13,6 +13,23 @@ interface LeaderboardPageProps {
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 
+interface Badge {
+  emoji: string;
+  label: string;
+  earned: (stats: { completed: number; money: number; careerLevel: number; tenureDays: number }) => boolean;
+}
+
+const BADGES: Badge[] = [
+  { emoji: "🏁", label: "First Task", earned: (s) => s.completed >= 1 },
+  { emoji: "💼", label: "Workhorse", earned: (s) => s.completed >= 10 },
+  { emoji: "🏆", label: "Legend", earned: (s) => s.completed >= 50 },
+  { emoji: "💰", label: "Well Off", earned: (s) => s.money >= 500 },
+  { emoji: "💎", label: "Rich", earned: (s) => s.money >= 2000 },
+  { emoji: "⭐", label: "Rising Star", earned: (s) => s.careerLevel >= 5 },
+  { emoji: "🌟", label: "Veteran", earned: (s) => s.careerLevel >= 10 },
+  { emoji: "📅", label: "One Month In", earned: (s) => s.tenureDays >= 30 },
+];
+
 function Rankings({
   title,
   rows,
@@ -137,6 +154,48 @@ export function LeaderboardPage({ profile }: LeaderboardPageProps) {
           profile={profile}
           formatValue={(v) => `Lvl ${v}`}
         />
+
+        <section className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-white p-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-400">
+            🎖 Achievements
+          </h2>
+          <div className="flex flex-col gap-2">
+            {members.map((m) => {
+              const stats = {
+                completed: completedCounts[m.id] ?? 0,
+                money: m.money,
+                careerLevel: careerLevelFromXp(m.xp),
+                tenureDays: (Date.now() - new Date(m.created_at).getTime()) / 86_400_000,
+              };
+              const earned = BADGES.filter((b) => b.earned(stats));
+              return (
+                <div
+                  key={m.id}
+                  className={`flex flex-wrap items-center gap-2 rounded-md px-3 py-2 text-sm ${
+                    m.id === profile.id ? "bg-emerald-50" : ""
+                  }`}
+                >
+                  <span className={m.id === profile.id ? "font-semibold text-emerald-800" : "text-stone-700"}>
+                    {m.display_name} {m.id === profile.id && "(you)"}
+                  </span>
+                  {earned.length === 0 ? (
+                    <span className="text-xs text-stone-400">No badges yet.</span>
+                  ) : (
+                    earned.map((b) => (
+                      <span
+                        key={b.label}
+                        title={b.label}
+                        className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                      >
+                        {b.emoji} {b.label}
+                      </span>
+                    ))
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
       </div>
     </div>
   );

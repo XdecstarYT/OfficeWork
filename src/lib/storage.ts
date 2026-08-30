@@ -41,6 +41,25 @@ export function pushRecentId(id: string) {
   }
 }
 
+const CLIENT_RELATIONSHIPS_KEY = "officequest.clientRelationships";
+
+export function loadClientRelationships(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(CLIENT_RELATIONSHIPS_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveClientRelationships(relationships: Record<string, number>) {
+  try {
+    localStorage.setItem(CLIENT_RELATIONSHIPS_KEY, JSON.stringify(relationships));
+  } catch {
+    // ignore storage failures
+  }
+}
+
 export function loadCustomTemplates(): DocumentTemplate[] {
   try {
     const raw = localStorage.getItem(CUSTOM_TEMPLATES_KEY);

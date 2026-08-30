@@ -3,6 +3,7 @@ import { CLIENTS } from "../data/clients";
 import { getPreviewRequestForClient } from "../data/clientPreviewRequests";
 import { generateClientRequest } from "../lib/aiClient";
 import { useClientRequests } from "../hooks/useClientRequests";
+import { useClientRelationships } from "../hooks/useClientRelationships";
 import { ClientRequestModal } from "../components/ClientRequestModal";
 import type { LlmConfig } from "../lib/llmConfig";
 import type { ClientRequest } from "../types/template";
@@ -12,8 +13,19 @@ interface AiClientsProps {
   onCompleteRequest: (request: ClientRequest) => void;
 }
 
+const RELATIONSHIP_TIERS = [
+  { threshold: 10, emoji: "🤝", label: "Trusted Partner" },
+  { threshold: 5, emoji: "🌟", label: "Favorite Client" },
+  { threshold: 1, emoji: "🙂", label: "Familiar Face" },
+];
+
+function relationshipTier(completions: number) {
+  return RELATIONSHIP_TIERS.find((t) => completions >= t.threshold) ?? null;
+}
+
 export function AiClients({ llmConfig, onCompleteRequest }: AiClientsProps) {
   const { requests, setRequest, clearRequest } = useClientRequests();
+  const { relationships, recordCompletion } = useClientRelationships();
   const [loadingClientId, setLoadingClientId] = useState<string | null>(null);
   const [errorByClient, setErrorByClient] = useState<Record<string, string>>({});
   const [openClientId, setOpenClientId] = useState<string | null>(null);
@@ -77,6 +89,15 @@ export function AiClients({ llmConfig, onCompleteRequest }: AiClientsProps) {
                 </div>
                 <p className="text-xs text-stone-500">{c.personality}</p>
 
+                {(() => {
+                  const tier = relationshipTier(relationships[c.id] ?? 0);
+                  return tier ? (
+                    <span className="w-fit rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+                      {tier.emoji} {tier.label} · {relationships[c.id]} completed
+                    </span>
+                  ) : null;
+                })()}
+
                 {errorByClient[c.id] && (
                   <p className="text-xs text-amber-600">{errorByClient[c.id]}</p>
                 )}
@@ -118,6 +139,7 @@ export function AiClients({ llmConfig, onCompleteRequest }: AiClientsProps) {
           onUpdateRequest={(updated) => setRequest(openClient.id, updated)}
           onComplete={(finalRequest) => {
             onCompleteRequest(finalRequest);
+            recordCompletion(openClient.id);
             clearRequest(openClient.id);
             setOpenClientId(null);
           }}
