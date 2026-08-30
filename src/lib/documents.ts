@@ -3,6 +3,14 @@ import type { Database, DocumentStatus } from "../types/database";
 import type { DocumentTemplate, Difficulty } from "../types/template";
 
 export type DocumentRow = Database["public"]["Tables"]["documents"]["Row"];
+export interface ReferenceRow {
+  label: string;
+  value: string;
+}
+
+export function referenceDataFor(doc: Pick<DocumentRow, "reference_data">): ReferenceRow[] {
+  return Array.isArray(doc.reference_data) ? (doc.reference_data as unknown as ReferenceRow[]) : [];
+}
 
 const PAYOUT_BY_DIFFICULTY: Record<Difficulty, number> = {
   quick: 10,
@@ -53,6 +61,7 @@ export async function assignWork(params: {
   initialFieldValues?: Record<string, string>;
   dueInDays?: number;
   payoutOverride?: number;
+  referenceData?: ReferenceRow[];
 }): Promise<DocumentRow> {
   const {
     companyId,
@@ -63,6 +72,7 @@ export async function assignWork(params: {
     initialFieldValues,
     dueInDays,
     payoutOverride,
+    referenceData,
   } = params;
   const status: DocumentStatus = isSelfRequest ? "requested" : "assigned";
   // Self-requested work has no natural approver (nobody necessarily outranks
@@ -88,6 +98,9 @@ export async function assignWork(params: {
       ...(initialFieldValues ? { field_values: initialFieldValues } : {}),
       ...(due_at ? { due_at } : {}),
       ...(payoutOverride != null ? { payout_override: payoutOverride } : {}),
+      ...(referenceData && referenceData.length > 0
+        ? { reference_data: referenceData as unknown as Database["public"]["Tables"]["documents"]["Row"]["reference_data"] }
+        : {}),
     })
     .select()
     .single();

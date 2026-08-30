@@ -61,8 +61,16 @@ export async function fetchCompany(companyId: string): Promise<Company | null> {
 }
 
 export async function startCompany(companyId: string) {
-  const { error } = await supabase.from("companies").update({ started: true }).eq("id", companyId);
+  // .select().single() so a 0-row update (RLS silently blocked it - not the
+  // owner, wrong id) throws instead of looking like a no-op success.
+  const { data, error } = await supabase
+    .from("companies")
+    .update({ started: true })
+    .eq("id", companyId)
+    .select()
+    .single();
   if (error) throw error;
+  return data;
 }
 
 export async function fetchInviteCodes(companyId: string): Promise<CompanyInviteCode[]> {

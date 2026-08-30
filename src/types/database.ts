@@ -104,6 +104,7 @@ export interface Database {
           approval_note: string | null;
           due_at: string | null;
           payout_override: number | null;
+          reference_data: Json;
           created_at: string;
           updated_at: string;
           completed_at: string | null;
@@ -123,6 +124,7 @@ export interface Database {
           approval_note?: string | null;
           due_at?: string | null;
           payout_override?: number | null;
+          reference_data?: Json;
           created_at?: string;
           updated_at?: string;
           completed_at?: string | null;

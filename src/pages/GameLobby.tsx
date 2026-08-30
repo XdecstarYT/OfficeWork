@@ -18,6 +18,7 @@ interface GameLobbyProps {
   profile: Profile;
   company: Company;
   onProfileChanged: () => void;
+  onStarted: () => void;
 }
 
 function CopyCode({ code, label }: { code: string; label: string }) {
@@ -41,7 +42,7 @@ function CopyCode({ code, label }: { code: string; label: string }) {
   );
 }
 
-export function GameLobby({ profile, company, onProfileChanged }: GameLobbyProps) {
+export function GameLobby({ profile, company, onProfileChanged, onStarted }: GameLobbyProps) {
   const [members, setMembers] = useState<Profile[]>([]);
   const [inviteCodes, setInviteCodes] = useState<CompanyInviteCode[]>([]);
   const [newJobTitle, setNewJobTitle] = useState("");
@@ -116,6 +117,9 @@ export function GameLobby({ profile, company, onProfileChanged }: GameLobbyProps
     setError(null);
     try {
       await startCompany(company.id);
+      // Don't rely solely on the realtime subscription picking this up -
+      // refresh directly so the owner's own click always works immediately.
+      onStarted();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't start the game.");
       setStarting(false);

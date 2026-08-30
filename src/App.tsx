@@ -48,7 +48,7 @@ type Tab =
 function App() {
   const { session, user, loading: sessionLoading } = useSession();
   const { profile, loading: profileLoading, refresh: refreshProfile } = useProfile(user?.id ?? null);
-  const { company, loading: companyLoading } = useCompany(profile?.company_id ?? null);
+  const { company, loading: companyLoading, refresh: refreshCompany } = useCompany(profile?.company_id ?? null);
   const [tab, setTab] = useState<Tab>("cabinet");
   const [startedTemplate, setStartedTemplate] = useState<DocumentTemplate | null>(null);
 
@@ -79,7 +79,14 @@ function App() {
   }
 
   if (!company.started) {
-    return <GameLobby profile={profile} company={company} onProfileChanged={refreshProfile} />;
+    return (
+      <GameLobby
+        profile={profile}
+        company={company}
+        onProfileChanged={refreshProfile}
+        onStarted={refreshCompany}
+      />
+    );
   }
 
   const careerXp = careerProgress(profile.xp);

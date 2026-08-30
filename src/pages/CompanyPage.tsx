@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchCompany, fetchCompanyMembers, updateMemberRank, leaveCompany } from "../lib/company";
-import { assignWork, estimatePayout } from "../lib/documents";
+import { assignWork, estimatePayout, type ReferenceRow } from "../lib/documents";
 import { TemplatePickerModal } from "../components/TemplatePickerModal";
 import { TemplateBuilder } from "../components/TemplateBuilder";
 import { DocumentFieldForm } from "../components/DocumentFieldForm";
@@ -28,6 +28,7 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
   const [taskDueDays, setTaskDueDays] = useState(3);
   const [taskPayout, setTaskPayout] = useState(0);
   const [prefillValues, setPrefillValues] = useState<Record<string, string>>({});
+  const [referenceRows, setReferenceRows] = useState<ReferenceRow[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editLevel, setEditLevel] = useState(1);
@@ -55,6 +56,7 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
     setTaskDueDays(3);
     setTaskPayout(estimatePayout(template));
     setPrefillValues({});
+    setReferenceRows([]);
   }
 
   async function handleConfirmAssign() {
@@ -63,6 +65,7 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
     const filledValues = Object.fromEntries(
       Object.entries(prefillValues).filter(([, v]) => v.trim() !== ""),
     );
+    const filledReferenceRows = referenceRows.filter((r) => r.label.trim() !== "" || r.value.trim() !== "");
     await assignWork({
       companyId: company.id,
       template: pendingTemplate,
@@ -72,6 +75,7 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
       dueInDays: taskDueDays > 0 ? taskDueDays : undefined,
       payoutOverride: taskPayout,
       ...(Object.keys(filledValues).length > 0 ? { initialFieldValues: filledValues } : {}),
+      ...(filledReferenceRows.length > 0 ? { referenceData: filledReferenceRows } : {}),
     });
     const title = pendingTemplate.title;
     setAssignTargetId(null);
@@ -335,6 +339,59 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
                   className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
+            </div>
+
+            <div className="mt-5">
+              <p className="text-xs font-medium uppercase tracking-wide text-stone-400">
+                Reference Data (optional)
+              </p>
+              <p className="mt-1 text-xs text-stone-500">
+                Give {assignTargetId === profile.id ? "yourself" : "them"} data to work from — e.g. a
+                price sheet — without filling in the actual fields for them.
+              </p>
+              <div className="mt-2 flex flex-col gap-1.5">
+                {referenceRows.map((row, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={row.label}
+                      onChange={(e) =>
+                        setReferenceRows((prev) =>
+                          prev.map((r, i) => (i === index ? { ...r, label: e.target.value } : r)),
+                        )
+                      }
+                      placeholder="Item (e.g. Printer Paper)"
+                      className="flex-1 rounded-md border border-stone-300 px-2.5 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                    <input
+                      type="text"
+                      value={row.value}
+                      onChange={(e) =>
+                        setReferenceRows((prev) =>
+                          prev.map((r, i) => (i === index ? { ...r, value: e.target.value } : r)),
+                        )
+                      }
+                      placeholder="Value (e.g. $4.99/ream)"
+                      className="flex-1 rounded-md border border-stone-300 px-2.5 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setReferenceRows((prev) => prev.filter((_, i) => i !== index))}
+                      className="shrink-0 text-stone-300 hover:text-red-500"
+                      aria-label="Remove row"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setReferenceRows((prev) => [...prev, { label: "", value: "" }])}
+                className="mt-2 text-xs font-medium text-emerald-700 hover:text-emerald-800"
+              >
+                + Add Row
+              </button>
             </div>
 
             {pendingTemplate.fields.length > 0 && (

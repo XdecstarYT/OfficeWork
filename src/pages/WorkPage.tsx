@@ -8,6 +8,7 @@ import {
   sendToPerson,
   payoutFor,
   estimateXp,
+  referenceDataFor,
   type DocumentRow,
 } from "../lib/documents";
 import { fetchCompanyMembers, awardMoney, awardXp } from "../lib/company";
@@ -297,6 +298,23 @@ export function WorkPage({ profile, onProfileChanged }: WorkPageProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-semibold text-stone-900">{openDoc.title}</h2>
+
+            {referenceDataFor(openDoc).length > 0 && (
+              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                  📎 Reference Data — use this to fill out the form
+                </p>
+                <div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+                  {referenceDataFor(openDoc).map((row, i) => (
+                    <div key={i} className="flex justify-between gap-3 text-sm">
+                      <span className="text-stone-600">{row.label}</span>
+                      <span className="font-medium text-stone-900">{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="mt-3 grid flex-1 grid-cols-1 gap-4 overflow-y-auto sm:grid-cols-2">
               <div className="overflow-y-auto pr-1">
                 <DocumentFieldForm

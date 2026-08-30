@@ -42,10 +42,11 @@ with real coworkers.
 - **Boss-built custom tasks**: from the Company tab, a manager can either
   assign an existing template or open the drag-and-drop builder to make a
   brand-new task on the spot. Either way, a "Set Task Details" step lets
-  them pick a due date and a payout — and pre-fill any of the template's
-  fields with data they already know (with a live preview), so the person
-  it's assigned to isn't starting from a fully blank form — before it's
-  assigned directly to a coworker (or themselves).
+  them pick a due date and a payout, pre-fill any of the template's fields
+  with data they already know (with a live preview), and attach freeform
+  **Reference Data** — e.g. a price sheet of item/cost rows — that shows up
+  as a read-only panel for whoever does the work, so they have what they
+  need to fill the form out correctly without the boss doing it for them.
 - **Corporate Updates**: a company-wide news/announcements feed. The Owner
   posts a headline + body from a new "📰 Corporate Updates" tab and every
   member sees it appear live.
@@ -217,9 +218,14 @@ normally — no Edge Function needed for that half.
   creation time. "Generate Minutes" creates a self-requested document from
   the `meeting-minutes-08` ("Board Meeting Minutes") template, pre-filled
   with the attendee list.
-- **Realtime**: your profile, your company's documents, emails, and board
-  meetings all update live via Supabase Realtime subscriptions, so anything
-  a coworker does shows up without a refresh.
+- **Realtime**: your profile, your company's documents, emails, board
+  meetings, invite codes, and corporate updates all update live via
+  Supabase Realtime subscriptions, so anything a coworker does shows up
+  without a refresh. Every one of those tables has to be explicitly added
+  to the `supabase_realtime` publication for `postgres_changes` events to
+  fire at all — a table created without that is a silent no-op, not an
+  error, which is exactly what broke "Start Game" (the owner's click
+  updated the database fine, but no client ever heard about it).
 
 ## Build order
 
