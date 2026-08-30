@@ -5,10 +5,17 @@ import { supabase } from "../lib/supabaseClient";
 
 const EMAIL_SUFFIX = "@officequest.mail";
 
-type Step = "choose" | "create-details" | "join-details" | "identity" | "code" | "login";
-type Intent = "create" | "join" | null;
+type Step = "choose" | "create-details" | "join-details" | "solo-details" | "identity" | "code" | "login";
+type Intent = "create" | "join" | "solo" | null;
 
-export function GameEntryScreen() {
+interface GameEntryScreenProps {
+  /** Called after sign-in and company create/join settle, so App.tsx's
+   * profile (and, in turn, company) data refreshes immediately instead of
+   * waiting on the realtime subscription to notice the change. */
+  onAccountReady: () => void;
+}
+
+export function GameEntryScreen({ onAccountReady }: GameEntryScreenProps) {
   const [step, setStep] = useState<Step>("choose");
   const [intent, setIntent] = useState<Intent>(null);
 
@@ -53,6 +60,8 @@ export function GameEntryScreen() {
 
       if (intent === "create") {
         await createCompany(gameName.trim(), userId);
+      } else if (intent === "solo") {
+        await createCompany(gameName.trim() || "My Office", userId, { started: true });
       } else if (intent === "join") {
         try {
           await joinCompany(inviteCode, userId);
@@ -62,8 +71,11 @@ export function GameEntryScreen() {
           setError(err instanceof Error ? err.message : "Couldn't join that game.");
         }
       }
-      // On success (or the join-failure fallback above), App.tsx takes over
-      // from here based on the now-authenticated session.
+      // Refresh App.tsx's profile now rather than waiting on the realtime
+      // subscription - it'll pick up the just-created/joined company_id
+      // (or, on the join-failure fallback above, correctly find it still
+      // unset and let App.tsx fall back to the "join a game" screen).
+      onAccountReady();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -101,7 +113,7 @@ export function GameEntryScreen() {
   if (step === "choose") {
     return (
       <Shell>
-        <p className="text-sm text-stone-500">Start a new office, or join a friend's.</p>
+        <p className="text-sm text-stone-500">Start a new office, join a friend's, or play solo.</p>
         <div className="mt-4 flex flex-col gap-2">
           <button
             type="button"
@@ -122,6 +134,17 @@ export function GameEntryScreen() {
             className="rounded-md border border-stone-300 px-4 py-3 text-sm font-medium text-stone-700 hover:bg-stone-100"
           >
             🔑 Join a Game
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIntent("solo");
+              setGameName("My Office");
+              setStep("solo-details");
+            }}
+            className="rounded-md border border-stone-300 px-4 py-3 text-sm font-medium text-stone-700 hover:bg-stone-100"
+          >
+            🧍 Play Solo
           </button>
         </div>
         <button
@@ -215,6 +238,52 @@ export function GameEntryScreen() {
     );
   }
 
+  if (step === "solo-details") {
+    return (
+      <Shell>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            setStep("identity");
+          }}
+          className="flex flex-col gap-3"
+        >
+          <p className="text-sm text-stone-500">
+            Play by yourself — no waiting room, no invite code needed. Name your office (or keep
+            the default).
+          </p>
+          <input
+            type="text"
+            placeholder="Office name"
+            required
+            autoFocus
+            value={gameName}
+            onChange={(e) => setGameName(e.target.value)}
+            className="rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          />
+          <p className="text-xs text-stone-400">
+            You can still share your invite code later if you want friends to join.
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setStep("choose")}
+              className="rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+            >
+              Back
+            </button>
+            <button
+              type="submit"
+              className="flex-1 rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+            >
+              Next
+            </button>
+          </div>
+        </form>
+      </Shell>
+    );
+  }
+
   if (step === "identity") {
     return (
       <Shell>
@@ -246,7 +315,11 @@ export function GameEntryScreen() {
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => setStep(intent === "create" ? "create-details" : "join-details")}
+              onClick={() =>
+                setStep(
+                  intent === "create" ? "create-details" : intent === "solo" ? "solo-details" : "join-details",
+                )
+              }
               className="rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
             >
               Back
@@ -309,7 +382,9 @@ export function GameEntryScreen() {
               ? "Entering the office…"
               : intent === "create"
                 ? `I've saved it — Create "${gameName}"`
-                : "I've saved it — Join the Game"}
+                : intent === "solo"
+                  ? `I've saved it — Enter "${gameName}"`
+                  : "I've saved it — Join the Game"}
           </button>
         </div>
       </Shell>

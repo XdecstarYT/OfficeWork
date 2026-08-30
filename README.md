@@ -28,12 +28,19 @@ with real coworkers.
   palette becomes a horizontally-scrolling strip, and every modal with a
   viewport-relative max-height actually scrolls internally instead of
   silently overflowing past the screen edge or the buttons below it.
-- **Game-first onboarding**: pick "Create a game" or "Join a game" before
-  anything else, then set up your identity (display name + email handle) —
-  you get a one-time join code (no real email involved) that logs you back
-  into the same account on any device.
+- **Game-first onboarding**: pick "Start a New Game," "Join a Game," or
+  "Play Solo" before anything else, then set up your identity (display
+  name + email handle) — you get a one-time join code (no real email
+  involved) that logs you back into the same account on any device.
 - **No email/password** — the join code above is the whole login, no
   password to remember.
+- **Single-player mode**: "Play Solo" (from the entry screen, or the
+  "🧍 Solo" tab if you're a returning player between companies) creates a
+  company that's already started — no waiting room, no invite code to
+  share, straight into the game as its Owner. It's not a separate mode
+  under the hood: a solo game is a perfectly ordinary company that happens
+  to start pre-started, so its invite code still works if you decide to
+  invite friends later.
 - **Multiplayer companies** (Supabase-backed): create a company (you become
   Owner) or join one with an invite code. Every member has a custom job
   title and a numeric level — anyone can assign or manage someone with a

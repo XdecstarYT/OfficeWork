@@ -8,21 +8,28 @@ export function useProfile(userId: string | null) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Resolves the *currently* signed-in user via supabase.auth.getUser()
+  // rather than trusting the userId this closure was created with - a
+  // caller that signs in and immediately creates/joins a company (see
+  // GameEntryScreen) may still be holding a pre-login closure bound to
+  // userId=null by the time that call resolves and wants to refresh.
   const refresh = useCallback(async () => {
-    if (!userId) {
+    const { data: userData } = await supabase.auth.getUser();
+    const uid = userData.user?.id ?? null;
+    if (!uid) {
       setProfile(null);
       setLoading(false);
       return;
     }
     setLoading(true);
-    const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+    const { data } = await supabase.from("profiles").select("*").eq("id", uid).maybeSingle();
     setProfile(data ?? null);
     setLoading(false);
-  }, [userId]);
+  }, []);
 
   useEffect(() => {
     refresh();
-  }, [refresh]);
+  }, [userId, refresh]);
 
   useEffect(() => {
     if (!userId) return;

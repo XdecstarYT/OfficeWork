@@ -15,11 +15,15 @@ function generateInviteCode(): string {
   return code;
 }
 
-export async function createCompany(name: string, ownerId: string): Promise<Company> {
+export async function createCompany(
+  name: string,
+  ownerId: string,
+  options?: { started?: boolean },
+): Promise<Company> {
   const invite_code = generateInviteCode();
   const { data: company, error } = await supabase
     .from("companies")
-    .insert({ name, invite_code, owner_id: ownerId })
+    .insert({ name, invite_code, owner_id: ownerId, ...(options?.started ? { started: true } : {}) })
     .select()
     .single();
   if (error) throw error;

@@ -62,7 +62,7 @@ function App() {
   }
 
   if (!session || !user) {
-    return <GameEntryScreen />;
+    return <GameEntryScreen onAccountReady={refreshProfile} />;
   }
 
   if (profileLoading || !profile) {
