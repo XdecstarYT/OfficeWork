@@ -1,8 +1,9 @@
 import { TAXONOMY } from "../data/taxonomy";
 import type { ClientPersona } from "../data/clients";
-import type { ChatMessage, ClientRequest, FieldType } from "../types/template";
+import type { ChatMessage, ClientRequest, FieldType, TemplateField } from "../types/template";
 import { llmChatCompletion, parseToolArguments, type LlmTool } from "./localLlmClient";
 import type { LlmConfig } from "./llmConfig";
+import type { ReferenceRow } from "./documents";
 
 const FIELD_TYPES: FieldType[] = [
   "text",
@@ -240,4 +241,83 @@ office-appropriate email reply (2-5 sentences). Stay in character. Do not use ma
     subject: subject.toLowerCase().startsWith("re:") ? subject : `Re: ${subject}`,
     body: result.content ?? staticClientEmailReply(clientPersona, subject).body,
   };
+}
+
+const DRAFT_TOOL: LlmTool = {
+  type: "function",
+  function: {
+    name: "fill_fields",
+    description: "Provide realistic suggested values for the given office-document form fields.",
+    parameters: {
+      type: "object",
+      properties: {
+        values: {
+          type: "object",
+          description: "Map of field id to suggested value (plain string for every field type, including dates and numbers).",
+          additionalProperties: { type: "string" },
+        },
+      },
+      required: ["values"],
+    },
+  },
+};
+
+/**
+ * Suggests values for a document's still-empty fields, using its title,
+ * any already-filled fields, and any manager-provided reference data as
+ * context. Only returns suggestions for fields that are both draftable
+ * (not signature/checkbox) and currently empty in `filledValues`.
+ */
+export async function draftDocumentFields(params: {
+  title: string;
+  fields: TemplateField[];
+  filledValues: Record<string, string>;
+  referenceData?: ReferenceRow[];
+  config: LlmConfig;
+}): Promise<Record<string, string>> {
+  const { title, fields, filledValues, referenceData, config } = params;
+  const draftable = fields.filter(
+    (f) => f.type !== "signature" && f.type !== "checkbox" && !filledValues[f.id]?.trim(),
+  );
+  if (draftable.length === 0) return {};
+
+  const fieldList = draftable
+    .map(
+      (f) =>
+        `- ${f.id} (label: "${f.label}", type: ${f.type}${f.options ? `, options: ${f.options.join(" / ")}` : ""})`,
+    )
+    .join("\n");
+  const filledList = Object.entries(filledValues)
+    .filter(([, v]) => v.trim())
+    .map(([k, v]) => `- ${k}: ${v}`)
+    .join("\n");
+  const referenceList = (referenceData ?? [])
+    .filter((r) => r.label.trim() || r.value.trim())
+    .map((r) => `- ${r.label}: ${r.value}`)
+    .join("\n");
+
+  const system = `You are helping an office worker in a paperwork simulation game draft the document "${title}". \
+Suggest plausible, realistic, professional values for the listed empty form fields, consistent with any reference \
+data and already-filled fields given below. Dates should be plausible near-future or recent dates in YYYY-MM-DD \
+format. Keep text fields concise and businesslike, and textarea fields a short paragraph. \
+Respond only by calling the fill_fields tool.`;
+  const user = `Fields to draft:\n${fieldList}${
+    filledList ? `\n\nAlready filled in (for context, do not overwrite):\n${filledList}` : ""
+  }${referenceList ? `\n\nReference data:\n${referenceList}` : ""}`;
+
+  const result = await llmChatCompletion({
+    config,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    tools: [DRAFT_TOOL],
+    forceToolName: "fill_fields",
+    maxTokens: 1500,
+  });
+
+  const call = result.toolCalls.find((c) => c.function.name === "fill_fields");
+  if (!call) return {};
+  const input = parseToolArguments<{ values: Record<string, string> }>(call);
+  return input.values ?? {};
 }

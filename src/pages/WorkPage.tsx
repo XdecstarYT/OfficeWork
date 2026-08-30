@@ -12,17 +12,20 @@ import {
   type DocumentRow,
 } from "../lib/documents";
 import { fetchCompanyMembers, awardMoney, awardXp } from "../lib/company";
+import { draftDocumentFields } from "../lib/aiClient";
 import { supabase } from "../lib/supabaseClient";
 import { DocumentFieldForm } from "../components/DocumentFieldForm";
 import { DocumentPreview } from "../components/DocumentPreview";
 import type { Database } from "../types/database";
 import type { DocumentTemplate } from "../types/template";
+import type { LlmConfig } from "../lib/llmConfig";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 interface WorkPageProps {
   profile: Profile;
   onProfileChanged: () => void;
+  llmConfig: LlmConfig;
 }
 
 function asTemplate(row: DocumentRow): DocumentTemplate {
@@ -40,7 +43,7 @@ const STATUS_LABEL: Record<string, string> = {
   completed: "Completed",
 };
 
-export function WorkPage({ profile, onProfileChanged }: WorkPageProps) {
+export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps) {
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [members, setMembers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +52,8 @@ export function WorkPage({ profile, onProfileChanged }: WorkPageProps) {
   const [sendToId, setSendToId] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState("");
   const [showRejectFor, setShowRejectFor] = useState<string | null>(null);
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
 
   const memberLevel = (id: string | null) => members.find((m) => m.id === id)?.level ?? 0;
 
@@ -96,6 +101,31 @@ export function WorkPage({ profile, onProfileChanged }: WorkPageProps) {
   function openForFillOut(doc: DocumentRow) {
     setOpenDoc(doc);
     setFieldValues((doc.field_values as Record<string, string>) ?? {});
+    setDraftError(null);
+  }
+
+  async function handleAiDraft() {
+    if (!openDoc) return;
+    setDrafting(true);
+    setDraftError(null);
+    try {
+      const suggestions = await draftDocumentFields({
+        title: openDoc.title,
+        fields: asTemplate(openDoc).fields,
+        filledValues: fieldValues,
+        referenceData: referenceDataFor(openDoc),
+        config: llmConfig,
+      });
+      if (Object.keys(suggestions).length === 0) {
+        setDraftError("AI didn't suggest anything - try filling in a bit more first.");
+      } else {
+        setFieldValues((prev) => ({ ...suggestions, ...prev }));
+      }
+    } catch (err) {
+      setDraftError(err instanceof Error ? err.message : "Couldn't reach AI for a draft.");
+    } finally {
+      setDrafting(false);
+    }
   }
 
   async function handleSubmit() {
@@ -337,7 +367,20 @@ export function WorkPage({ profile, onProfileChanged }: WorkPageProps) {
             className="flex max-h-[85vh] w-full max-w-4xl flex-col overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-semibold text-stone-900">{openDoc.title}</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-stone-900">{openDoc.title}</h2>
+              {openDoc.status !== "pending_approval" && (
+                <button
+                  type="button"
+                  onClick={handleAiDraft}
+                  disabled={drafting}
+                  className="shrink-0 rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-100 disabled:opacity-50"
+                >
+                  {drafting ? "Drafting…" : "✨ AI Draft"}
+                </button>
+              )}
+            </div>
+            {draftError && <p className="mt-1 text-xs text-red-600">{draftError}</p>}
 
             {referenceDataFor(openDoc).length > 0 && (
               <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3">

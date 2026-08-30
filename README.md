@@ -110,17 +110,22 @@ with real coworkers.
 - **Document Archive**: the full company-wide history of completed
   documents, searchable by title and filterable by who did the work (the
   Work tab only ever shows your last 10).
-- **AI Clients**: a roster of 8 recurring client personas. With a local LLM
-  (e.g. [Ollama](https://ollama.com)) running at the default address, each
-  client hands out a live, dynamically generated paperwork request and
-  supports a negotiation chat (the client can counter-offer
-  payout/deadline). Without one reachable, each client falls back to a
-  static preview request so the feature still works end-to-end. There's no
-  Settings screen — it always targets `http://localhost:11434` (Ollama's
-  default) with the `llama3.1` model; run your local server there.
+- **AI Clients**: a roster of 8 recurring client personas that hand out
+  live, dynamically generated paperwork requests and support a negotiation
+  chat (the client can counter-offer payout/deadline). Powered by a hosted
+  Groq-backed AI (see [AI architecture](#ai-architecture) below) — works
+  for every player automatically, no local setup required. If the hosted
+  service is ever unreachable, it falls back to a locally-configured
+  OpenAI-compatible server (e.g. [Ollama](https://ollama.com)), then to a
+  static preview request, so the feature always does *something*.
   Completing work for a client builds a relationship (tracked locally in
   your browser): 1 completion earns "Familiar Face", 5 earns "Favorite
   Client", 10 earns "Trusted Partner" — shown as a badge on their card.
+- **AI Draft Assist**: while filling out any document, hit "✨ AI Draft" to
+  have the AI suggest realistic values for the fields you haven't filled
+  in yet, using the document's title and any manager-provided reference
+  data as context. It never overwrites a field you've already typed
+  into — only fills the gaps.
 
 Not yet built: an avatar/office world, XP/leveling, cosmetics, a full
 document archive.
@@ -191,9 +196,8 @@ items, emails, and board meetings live in Supabase (Postgres + Auth +
 Realtime) under Row Level Security. Per-browser conveniences (favorites,
 recently used, custom templates you've built) stay in `localStorage`;
 anything another person's actions need to affect (Money, rank, document
-status, emails) lives server-side. AI Clients calls a local, OpenAI-
-compatible LLM server (Ollama, at its default address) directly from the
-browser — no cloud API, key, or config screen involved.
+status, emails) lives server-side. All AI features go through a hosted
+Supabase Edge Function — see [AI architecture](#ai-architecture).
 
 **Performance**: every tab is its own lazily-loaded chunk (`React.lazy` +
 `Suspense` in `App.tsx`) instead of one upfront bundle, and the Filing
@@ -215,6 +219,33 @@ in-game identity used for the Inbox feature — a separate, purely cosmetic
 concept from the technical synthetic address), and their join code. Logging
 back in re-derives the same synthetic email from the code and signs in
 normally — no Edge Function needed for that half.
+
+## AI architecture
+
+AI Clients, client email replies, and AI Draft Assist all call a shared
+`llmChatCompletion()` client that tries two backends in order:
+
+1. **Hosted (primary)**: the `ai-chat` Supabase Edge Function. The browser
+   calls it via `supabase.functions.invoke`, authenticated as the signed-in
+   player (the function has `verify_jwt` on, so only players of this game
+   can reach it — not the open internet). The function itself reads a Groq
+   API key out of `app_secrets`, a table with RLS enabled and *no policies*
+   plus revoked grants for `anon`/`authenticated` — only the edge
+   function's service-role connection can read it. The key never appears
+   in any client-side code, bundle, or repo file.
+2. **Local (fallback)**: if the hosted function is unreachable, falls back
+   to whatever OpenAI-compatible endpoint is configured in `llmConfig.ts`
+   (Ollama's default address, `http://localhost:11434`), so a local LLM
+   still works as a backup or for offline development. If that's also
+   unreachable, callers fall back further to static canned content so the
+   feature never hard-fails.
+
+This design exists specifically because the game itself is a static,
+client-side SPA with no backend of its own — any API key placed directly
+in its source or a `VITE_*` env var would ship verbatim in the built JS,
+visible to anyone who opens dev tools on the deployed page. Routing AI
+calls through a Supabase Edge Function keeps the real key server-side
+while still working from a pure static frontend.
 
 ## Multiplayer model
 

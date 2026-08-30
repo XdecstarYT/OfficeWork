@@ -159,7 +159,9 @@ function App() {
           fallback={<div className="flex-1 p-6 text-sm text-stone-400">Loading…</div>}
         >
           {tab === "cabinet" && <FilingCabinet profile={profile} />}
-          {tab === "work" && <WorkPage profile={profile} onProfileChanged={refreshProfile} />}
+          {tab === "work" && (
+            <WorkPage profile={profile} onProfileChanged={refreshProfile} llmConfig={DEFAULT_LLM_CONFIG} />
+          )}
           {tab === "inbox" && <InboxPage profile={profile} llmConfig={DEFAULT_LLM_CONFIG} />}
           {tab === "company" && <CompanyPage profile={profile} onProfileChanged={refreshProfile} />}
           {tab === "meetings" && <BoardMeetingsPage profile={profile} />}

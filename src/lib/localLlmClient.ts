@@ -1,9 +1,14 @@
 /**
- * Minimal client for any OpenAI-compatible chat completions endpoint - the
- * shape Ollama, LM Studio, llama.cpp's server, and most other local LLM
- * runners all expose. Raw fetch, no SDK, and no API key required by default
- * (most local servers ignore auth entirely).
+ * Chat-completion client with two backends, tried in order:
+ *
+ * 1. Hosted: the `ai-chat` Supabase Edge Function, which proxies to Groq
+ *    using a server-side API key (never shipped to the browser). This is
+ *    the primary path - it works for every player with no local setup.
+ * 2. Local: any OpenAI-compatible endpoint configured in `config.baseUrl`
+ *    (Ollama, LM Studio, llama.cpp's server, ...), used as a fallback if
+ *    the hosted function is unreachable or not configured.
  */
+import { supabase } from "./supabaseClient";
 import type { LlmConfig } from "./llmConfig";
 
 export interface LlmToolFunction {
@@ -37,6 +42,21 @@ export interface LlmCompletionResult {
 
 export class LocalLlmError extends Error {}
 
+async function hostedChatCompletion(params: {
+  messages: LlmMessage[];
+  tools?: LlmTool[];
+  forceToolName?: string;
+  maxTokens?: number;
+}): Promise<LlmCompletionResult | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke("ai-chat", { body: params });
+    if (error || !data || data.error) return null;
+    return { content: data.content ?? null, toolCalls: data.toolCalls ?? [] };
+  } catch {
+    return null;
+  }
+}
+
 export async function llmChatCompletion(params: {
   config: LlmConfig;
   messages: LlmMessage[];
@@ -46,8 +66,11 @@ export async function llmChatCompletion(params: {
 }): Promise<LlmCompletionResult> {
   const { config, messages, tools, forceToolName, maxTokens } = params;
 
+  const hosted = await hostedChatCompletion({ messages, tools, forceToolName, maxTokens });
+  if (hosted) return hosted;
+
   if (!config.baseUrl.trim()) {
-    throw new LocalLlmError("No local LLM configured.");
+    throw new LocalLlmError("AI is unavailable right now - couldn't reach the hosted service.");
   }
 
   let response: Response;

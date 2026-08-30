@@ -1,5 +1,10 @@
 export interface LlmConfig {
-  /** Full chat-completions endpoint URL, OpenAI-compatible. */
+  /**
+   * Fallback-only: a full chat-completions endpoint URL, OpenAI-compatible.
+   * The primary AI path is the hosted `ai-chat` Supabase Edge Function
+   * (Groq-backed, works for every player automatically) - this local
+   * config is only used if that's unreachable.
+   */
   baseUrl: string;
   model: string;
   /** Most local servers ignore this; kept for setups that do check a key. */
