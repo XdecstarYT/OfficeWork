@@ -294,7 +294,7 @@ export function WorkPage({ profile, onProfileChanged }: WorkPageProps) {
           onClick={() => setOpenDoc(null)}
         >
           <div
-            className="flex max-h-[85vh] w-full max-w-4xl flex-col rounded-xl bg-white p-6 shadow-xl"
+            className="flex max-h-[85vh] w-full max-w-4xl flex-col overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-semibold text-stone-900">{openDoc.title}</h2>
@@ -315,8 +315,8 @@ export function WorkPage({ profile, onProfileChanged }: WorkPageProps) {
               </div>
             )}
 
-            <div className="mt-3 grid flex-1 grid-cols-1 gap-4 overflow-y-auto sm:grid-cols-2">
-              <div className="overflow-y-auto pr-1">
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
                 <DocumentFieldForm
                   fields={asTemplate(openDoc).fields}
                   values={fieldValues}
@@ -324,7 +324,7 @@ export function WorkPage({ profile, onProfileChanged }: WorkPageProps) {
                   readOnly={openDoc.status === "pending_approval"}
                 />
               </div>
-              <div className="overflow-y-auto rounded-md border border-stone-100">
+              <div className="rounded-md border border-stone-100">
                 <DocumentPreview
                   title={openDoc.title}
                   bodyTemplate={asTemplate(openDoc).bodyTemplate}

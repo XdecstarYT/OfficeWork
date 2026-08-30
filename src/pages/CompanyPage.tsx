@@ -149,9 +149,9 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
         )}
 
         <div className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-white p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-400">Team</h2>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => setAssignTargetId(profile.id)}
@@ -301,7 +301,7 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
           onClick={() => setPendingTemplate(null)}
         >
           <div
-            className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-xl bg-white p-6 shadow-xl"
+            className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-semibold text-stone-900">Set Task Details</h2>
@@ -351,33 +351,35 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
               </p>
               <div className="mt-2 flex flex-col gap-1.5">
                 {referenceRows.map((row, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={row.label}
-                      onChange={(e) =>
-                        setReferenceRows((prev) =>
-                          prev.map((r, i) => (i === index ? { ...r, label: e.target.value } : r)),
-                        )
-                      }
-                      placeholder="Item (e.g. Printer Paper)"
-                      className="flex-1 rounded-md border border-stone-300 px-2.5 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                    <input
-                      type="text"
-                      value={row.value}
-                      onChange={(e) =>
-                        setReferenceRows((prev) =>
-                          prev.map((r, i) => (i === index ? { ...r, value: e.target.value } : r)),
-                        )
-                      }
-                      placeholder="Value (e.g. $4.99/ream)"
-                      className="flex-1 rounded-md border border-stone-300 px-2.5 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
+                  <div key={index} className="flex items-start gap-2 sm:items-center">
+                    <div className="flex flex-1 flex-col gap-1.5 sm:flex-row sm:gap-2">
+                      <input
+                        type="text"
+                        value={row.label}
+                        onChange={(e) =>
+                          setReferenceRows((prev) =>
+                            prev.map((r, i) => (i === index ? { ...r, label: e.target.value } : r)),
+                          )
+                        }
+                        placeholder="Item (e.g. Printer Paper)"
+                        className="min-w-0 flex-1 rounded-md border border-stone-300 px-2.5 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                      <input
+                        type="text"
+                        value={row.value}
+                        onChange={(e) =>
+                          setReferenceRows((prev) =>
+                            prev.map((r, i) => (i === index ? { ...r, value: e.target.value } : r)),
+                          )
+                        }
+                        placeholder="Value (e.g. $4.99/ream)"
+                        className="min-w-0 flex-1 rounded-md border border-stone-300 px-2.5 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={() => setReferenceRows((prev) => prev.filter((_, i) => i !== index))}
-                      className="shrink-0 text-stone-300 hover:text-red-500"
+                      className="mt-1.5 shrink-0 text-stone-300 hover:text-red-500 sm:mt-0"
                       aria-label="Remove row"
                     >
                       ✕
@@ -400,15 +402,15 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
                   Fill in what you already know — {assignTargetId === profile.id ? "you'll" : "they'll"}{" "}
                   only need to fill in the rest.
                 </p>
-                <div className="mt-2 grid flex-1 grid-cols-1 gap-4 overflow-y-auto sm:grid-cols-2">
-                  <div className="overflow-y-auto pr-1">
+                <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
                     <DocumentFieldForm
                       fields={pendingTemplate.fields}
                       values={prefillValues}
                       onChange={(id, value) => setPrefillValues((prev) => ({ ...prev, [id]: value }))}
                     />
                   </div>
-                  <div className="overflow-y-auto rounded-md border border-stone-100">
+                  <div className="rounded-md border border-stone-100">
                     <DocumentPreview
                       title={pendingTemplate.title}
                       bodyTemplate={pendingTemplate.bodyTemplate}

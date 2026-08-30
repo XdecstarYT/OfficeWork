@@ -99,6 +99,12 @@ export function TemplateBuilder({
     });
   }
 
+  function moveFieldBy(index: number, delta: number) {
+    const target = index + delta;
+    if (target < 0 || target >= fields.length) return;
+    moveField(index, delta > 0 ? target + 1 : target);
+  }
+
   function updateField(index: number, patch: Partial<BuilderField>) {
     setFields((prev) => prev.map((f, i) => (i === index ? { ...f, ...patch } : f)));
   }
@@ -156,12 +162,12 @@ export function TemplateBuilder({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4">
-      <div className="flex h-full max-h-[90vh] w-full max-w-6xl flex-col rounded-xl bg-white shadow-xl">
+      <div className="flex h-full max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-white shadow-xl">
         <div className="flex shrink-0 items-center justify-between border-b border-stone-200 px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold text-stone-900">{heading}</h2>
             <p className="text-xs text-stone-500">
-              Drag fields from the palette onto the canvas, then drag to reorder.
+              Tap a field type to add it (or drag it on desktop), then use ▲▼ to reorder.
             </p>
           </div>
           <button
@@ -174,33 +180,35 @@ export function TemplateBuilder({
           </button>
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-hidden lg:grid-cols-[180px_1fr_320px]">
-          <aside className="overflow-y-auto border-r border-stone-200 bg-stone-50 p-3">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-400">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+          <aside className="flex shrink-0 flex-col gap-2 overflow-hidden border-b border-stone-200 bg-stone-50 p-3 lg:w-[180px] lg:overflow-y-auto lg:border-b-0 lg:border-r">
+            <h3 className="hidden text-xs font-semibold uppercase tracking-wide text-stone-400 lg:block">
               Field Types
             </h3>
-            <div className="flex flex-col gap-2">
+            <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-x-visible lg:pb-0">
               {PALETTE.map((entry) => (
-                <div
+                <button
                   key={entry.type}
+                  type="button"
                   draggable
                   onDragStart={(e) => {
                     e.dataTransfer.setData(FIELD_TYPE_DND, entry.type);
                     e.dataTransfer.effectAllowed = "copy";
                   }}
-                  className="flex cursor-grab items-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-2 text-sm text-stone-700 shadow-sm active:cursor-grabbing"
+                  onClick={() => insertField(entry.type, fields.length)}
+                  className="flex shrink-0 cursor-grab items-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-2 text-left text-sm text-stone-700 shadow-sm hover:bg-stone-50 active:cursor-grabbing"
                 >
                   <span>{entry.icon}</span>
                   <span>{entry.label}</span>
-                </div>
+                </button>
               ))}
             </div>
-            <p className="mt-4 text-xs text-stone-400">
-              Drag a block onto the canvas to add it to your document.
+            <p className="hidden text-xs text-stone-400 lg:block">
+              Tap to add to the end, or drag onto the canvas to place it precisely (desktop only).
             </p>
           </aside>
 
-          <main className="overflow-y-auto p-4">
+          <main className="min-h-0 flex-1 overflow-y-auto p-4">
             <input
               type="text"
               value={title}
@@ -223,11 +231,11 @@ export function TemplateBuilder({
               }}
               onDragLeave={() => setDragOverIndex(null)}
               onDrop={(e) => handleDropAt(e, fields.length)}
-              className="mt-4 flex min-h-[200px] flex-col gap-2 rounded-lg border-2 border-dashed border-stone-300 bg-stone-50 p-3"
+              className="mt-4 flex min-h-[120px] flex-col gap-2 rounded-lg border-2 border-dashed border-stone-300 bg-stone-50 p-3 lg:min-h-[200px]"
             >
               {fields.length === 0 && (
-                <p className="flex flex-1 items-center justify-center text-sm text-stone-400">
-                  Drag field types here to start building.
+                <p className="flex flex-1 items-center justify-center text-center text-sm text-stone-400">
+                  Tap a field type on the left to start building.
                 </p>
               )}
               {fields.map((f, index) => (
@@ -249,7 +257,29 @@ export function TemplateBuilder({
                     className="flex flex-col gap-2 rounded-md border border-stone-200 bg-white p-3 shadow-sm"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="cursor-grab text-stone-300 active:cursor-grabbing">⠿</span>
+                      <span className="hidden cursor-grab text-stone-300 active:cursor-grabbing sm:inline">
+                        ⠿
+                      </span>
+                      <div className="flex shrink-0 flex-col">
+                        <button
+                          type="button"
+                          onClick={() => moveFieldBy(index, -1)}
+                          disabled={index === 0}
+                          className="leading-none text-stone-400 hover:text-stone-700 disabled:opacity-25"
+                          aria-label="Move field up"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveFieldBy(index, 1)}
+                          disabled={index === fields.length - 1}
+                          className="leading-none text-stone-400 hover:text-stone-700 disabled:opacity-25"
+                          aria-label="Move field down"
+                        >
+                          ▼
+                        </button>
+                      </div>
                       <span className="shrink-0 rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-stone-500">
                         {PALETTE.find((p) => p.type === f.type)?.icon} {f.type}
                       </span>
@@ -258,7 +288,7 @@ export function TemplateBuilder({
                         value={f.label}
                         onChange={(e) => updateField(index, { label: e.target.value })}
                         placeholder="Field label"
-                        className="flex-1 rounded border border-stone-200 px-2 py-1 text-sm focus:border-emerald-500 focus:outline-none"
+                        className="min-w-0 flex-1 rounded border border-stone-200 px-2 py-1 text-sm focus:border-emerald-500 focus:outline-none"
                       />
                       <label className="flex shrink-0 items-center gap-1 text-xs text-stone-500">
                         <input
@@ -266,7 +296,7 @@ export function TemplateBuilder({
                           checked={f.required}
                           onChange={(e) => updateField(index, { required: e.target.checked })}
                         />
-                        Required
+                        <span className="hidden sm:inline">Required</span>
                       </label>
                       <button
                         type="button"
@@ -309,7 +339,7 @@ export function TemplateBuilder({
             </div>
           </main>
 
-          <aside className="overflow-y-auto border-l border-stone-100">
+          <aside className="max-h-40 shrink-0 overflow-y-auto border-t border-stone-100 lg:max-h-none lg:w-[320px] lg:border-t-0 lg:border-l">
             <DocumentPreview
               title={title.trim() || "Untitled Document"}
               bodyTemplate={buildBodyTemplate(title, fields)}

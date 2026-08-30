@@ -68,32 +68,46 @@ export function FilingCabinet({ onStart }: FilingCabinetProps) {
 
   const isBrowsingRoot = !selection.categoryId && !selection.subcategoryId && !query;
 
+  const sidebarContent = (
+    <>
+      <button
+        type="button"
+        onClick={() => setActiveTemplate(BLANK_PAGE_TEMPLATE)}
+        className="mb-1 flex w-full items-center gap-2 rounded-md border border-dashed border-stone-300 bg-white px-2.5 py-2 text-left text-sm font-medium text-stone-700 hover:bg-stone-100"
+      >
+        📄 Blank Page
+      </button>
+      <button
+        type="button"
+        onClick={() => setShowBuilder(true)}
+        className="mb-3 flex w-full items-center gap-2 rounded-md border border-dashed border-stone-300 bg-white px-2.5 py-2 text-left text-sm font-medium text-stone-700 hover:bg-stone-100"
+      >
+        🧩 Build Custom Template
+      </button>
+
+      <CategoryTree selection={selection} onSelect={setSelection} counts={subcategoryCounts} />
+    </>
+  );
+
   return (
-    <div className="flex h-full min-h-0 flex-1">
-      <aside className="w-72 shrink-0 overflow-y-auto border-r border-stone-200 bg-stone-50 p-4">
+    <div className="flex h-full min-h-0 flex-1 flex-col md:flex-row">
+      {/* Mobile: collapsible accordion so browsing categories doesn't eat the whole screen */}
+      <details className="shrink-0 border-b border-stone-200 bg-stone-50 md:hidden">
+        <summary className="cursor-pointer select-none px-4 py-3 text-xs font-semibold uppercase tracking-wider text-stone-400">
+          📁 Filing Cabinet — Browse Categories
+        </summary>
+        <div className="max-h-72 overflow-y-auto p-4 pt-0">{sidebarContent}</div>
+      </details>
+
+      {/* Desktop: always-visible sidebar */}
+      <aside className="hidden w-72 shrink-0 overflow-y-auto border-r border-stone-200 bg-stone-50 p-4 md:block">
         <h2 className="mb-3 px-1 text-xs font-semibold uppercase tracking-wider text-stone-400">
           Filing Cabinet
         </h2>
-
-        <button
-          type="button"
-          onClick={() => setActiveTemplate(BLANK_PAGE_TEMPLATE)}
-          className="mb-1 flex w-full items-center gap-2 rounded-md border border-dashed border-stone-300 bg-white px-2.5 py-2 text-left text-sm font-medium text-stone-700 hover:bg-stone-100"
-        >
-          📄 Blank Page
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowBuilder(true)}
-          className="mb-3 flex w-full items-center gap-2 rounded-md border border-dashed border-stone-300 bg-white px-2.5 py-2 text-left text-sm font-medium text-stone-700 hover:bg-stone-100"
-        >
-          🧩 Build Custom Template
-        </button>
-
-        <CategoryTree selection={selection} onSelect={setSelection} counts={subcategoryCounts} />
+        {sidebarContent}
       </aside>
 
-      <main className="flex-1 overflow-y-auto p-6">
+      <main className="min-h-0 flex-1 overflow-y-auto p-6">
         <div className="mx-auto flex max-w-5xl flex-col gap-6">
           <SearchBar value={query} onChange={setQuery} />
 

@@ -223,7 +223,7 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
           onClick={() => setShowCompose(false)}
         >
           <div
-            className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl bg-white p-6 shadow-xl"
+            className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-semibold text-stone-900">New Email</h2>

@@ -17,10 +17,17 @@ with real coworkers.
   imposed.
 - **Drag-and-drop template builder**: build your own document from scratch
   by dragging field blocks (Text, Paragraph, Date, Number, Currency,
-  Checkbox, Dropdown, Signature) onto a canvas, reordering by drag, and
-  editing each field's label/placeholder/required/options inline, with a
-  live preview alongside. Fill it out immediately or save it to "My Custom
-  Templates" (stored in your browser) to reuse or assign to coworkers later.
+  Checkbox, Dropdown, Signature) onto a canvas — or tapping them, since
+  touch devices don't fire drag events at all — reordering by drag or ▲▼
+  buttons, and editing each field's label/placeholder/required/options
+  inline, with a live preview alongside. Fill it out immediately or save
+  it to "My Custom Templates" (stored in your browser) to reuse or assign
+  to coworkers later.
+- **Mobile-friendly**: the Filing Cabinet's category sidebar collapses
+  into a tap-to-expand accordion below `md`, the template builder's field
+  palette becomes a horizontally-scrolling strip, and every modal with a
+  viewport-relative max-height actually scrolls internally instead of
+  silently overflowing past the screen edge or the buttons below it.
 - **Game-first onboarding**: pick "Create a game" or "Join a game" before
   anything else, then set up your identity (display name + email handle) —
   you get a one-time join code (no real email involved) that logs you back

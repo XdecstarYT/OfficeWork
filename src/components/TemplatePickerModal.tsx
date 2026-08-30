@@ -24,7 +24,7 @@ export function TemplatePickerModal({ title, onPick, onClose }: TemplatePickerMo
       onClick={onClose}
     >
       <div
-        className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-xl bg-white p-6 shadow-xl"
+        className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-lg font-semibold text-stone-900">{title}</h2>
@@ -36,7 +36,7 @@ export function TemplatePickerModal({ title, onPick, onClose }: TemplatePickerMo
           placeholder="Search templates…"
           className="mt-3 rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
         />
-        <div className="mt-3 flex-1 overflow-y-auto">
+        <div className="mt-3 min-h-0 flex-1 overflow-y-auto">
           {results.length === 0 ? (
             <p className="p-4 text-center text-sm text-stone-400">No templates found.</p>
           ) : (
