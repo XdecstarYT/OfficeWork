@@ -4,8 +4,11 @@ import { CategoryTree, type CategorySelection } from "../components/CategoryTree
 import { SearchBar } from "../components/SearchBar";
 import { TemplateCard } from "../components/TemplateCard";
 import { TemplateDetailModal } from "../components/TemplateDetailModal";
+import { TemplateBuilder } from "../components/TemplateBuilder";
 import { useFavorites } from "../hooks/useFavorites";
 import { useRecent } from "../hooks/useRecent";
+import { useCustomTemplates } from "../hooks/useCustomTemplates";
+import { BLANK_PAGE_TEMPLATE } from "../data/blankPage";
 import type { DocumentTemplate } from "../types/template";
 
 interface FilingCabinetProps {
@@ -19,8 +22,10 @@ export function FilingCabinet({ onStart }: FilingCabinetProps) {
   });
   const [query, setQuery] = useState("");
   const [activeTemplate, setActiveTemplate] = useState<DocumentTemplate | null>(null);
+  const [showBuilder, setShowBuilder] = useState(false);
   const { favorites, toggleFavorite } = useFavorites();
   const { recentIds } = useRecent();
+  const { customTemplates, addCustomTemplate, removeCustomTemplate } = useCustomTemplates();
 
   const subcategoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -60,6 +65,22 @@ export function FilingCabinet({ onStart }: FilingCabinetProps) {
         <h2 className="mb-3 px-1 text-xs font-semibold uppercase tracking-wider text-stone-400">
           Filing Cabinet
         </h2>
+
+        <button
+          type="button"
+          onClick={() => setActiveTemplate(BLANK_PAGE_TEMPLATE)}
+          className="mb-1 flex w-full items-center gap-2 rounded-md border border-dashed border-stone-300 bg-white px-2.5 py-2 text-left text-sm font-medium text-stone-700 hover:bg-stone-100"
+        >
+          📄 Blank Page
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowBuilder(true)}
+          className="mb-3 flex w-full items-center gap-2 rounded-md border border-dashed border-stone-300 bg-white px-2.5 py-2 text-left text-sm font-medium text-stone-700 hover:bg-stone-100"
+        >
+          🧩 Build Custom Template
+        </button>
+
         <CategoryTree selection={selection} onSelect={setSelection} counts={subcategoryCounts} />
       </aside>
 
@@ -69,6 +90,21 @@ export function FilingCabinet({ onStart }: FilingCabinetProps) {
 
           {isBrowsingRoot && (
             <>
+              <Section
+                title="🧩 My Custom Templates"
+                emptyLabel="Build one with the drag-and-drop template builder, top-left."
+              >
+                {customTemplates.map((t) => (
+                  <TemplateCard
+                    key={t.id}
+                    template={t}
+                    isFavorite={favorites.has(t.id)}
+                    onToggleFavorite={toggleFavorite}
+                    onOpen={setActiveTemplate}
+                  />
+                ))}
+              </Section>
+
               <Section title="⭐ Favorites" emptyLabel="Star a template to pin it here.">
                 {favoriteTemplates.map((t) => (
                   <TemplateCard
@@ -139,6 +175,28 @@ export function FilingCabinet({ onStart }: FilingCabinetProps) {
           onClose={() => setActiveTemplate(null)}
           onStart={(t) => {
             setActiveTemplate(null);
+            onStart(t);
+          }}
+          onDelete={
+            activeTemplate.categoryId === "custom"
+              ? (t) => {
+                  removeCustomTemplate(t.id);
+                  setActiveTemplate(null);
+                }
+              : undefined
+          }
+        />
+      )}
+
+      {showBuilder && (
+        <TemplateBuilder
+          onClose={() => setShowBuilder(false)}
+          onSaveTemplate={(t) => {
+            addCustomTemplate(t);
+            setShowBuilder(false);
+          }}
+          onFillOutNow={(t) => {
+            setShowBuilder(false);
             onStart(t);
           }}
         />

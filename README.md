@@ -12,6 +12,15 @@ with real coworkers.
   for how the library was built.
 - **Filing-cabinet browsing UI**: category tree with live counts, search,
   favorites, recently used, template detail modal.
+- **Blank Page**: an always-pinned entry above the category tree that opens
+  a template with just one wide-open field — write anything, no structure
+  imposed.
+- **Drag-and-drop template builder**: build your own document from scratch
+  by dragging field blocks (Text, Paragraph, Date, Number, Currency,
+  Checkbox, Dropdown, Signature) onto a canvas, reordering by drag, and
+  editing each field's label/placeholder/required/options inline, with a
+  live preview alongside. Fill it out immediately or save it to "My Custom
+  Templates" (stored in your browser) to reuse or assign to coworkers later.
 - **Game-first onboarding**: pick "Create a game" or "Join a game" before
   anything else, then set up your identity (display name + email handle) —
   you get a one-time join code (no real email involved) that logs you back

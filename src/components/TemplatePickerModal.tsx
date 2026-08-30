@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ALL_TEMPLATES, searchTemplates } from "../lib/templates";
+import { useCustomTemplates } from "../hooks/useCustomTemplates";
 import type { DocumentTemplate } from "../types/template";
 
 interface TemplatePickerModalProps {
@@ -10,7 +11,12 @@ interface TemplatePickerModalProps {
 
 export function TemplatePickerModal({ title, onPick, onClose }: TemplatePickerModalProps) {
   const [query, setQuery] = useState("");
-  const results = useMemo(() => searchTemplates(ALL_TEMPLATES, query).slice(0, 30), [query]);
+  const { customTemplates } = useCustomTemplates();
+  const allTemplates = useMemo(
+    () => [...customTemplates, ...ALL_TEMPLATES],
+    [customTemplates],
+  );
+  const results = useMemo(() => searchTemplates(allTemplates, query).slice(0, 30), [allTemplates, query]);
 
   return (
     <div

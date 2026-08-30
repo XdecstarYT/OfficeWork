@@ -12,6 +12,7 @@ interface TemplateDetailModalProps {
   onToggleFavorite: (id: string) => void;
   onClose: () => void;
   onStart: (template: DocumentTemplate) => void;
+  onDelete?: (template: DocumentTemplate) => void;
 }
 
 export function TemplateDetailModal({
@@ -20,6 +21,7 @@ export function TemplateDetailModal({
   onToggleFavorite,
   onClose,
   onStart,
+  onDelete,
 }: TemplateDetailModalProps) {
   return (
     <div
@@ -65,21 +67,34 @@ export function TemplateDetailModal({
           <span>{template.fields.length} fields</span>
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => onStart(template)}
-            className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
-          >
-            Start
-          </button>
+        <div className="mt-6 flex items-center justify-between gap-2">
+          {onDelete ? (
+            <button
+              type="button"
+              onClick={() => onDelete(template)}
+              className="text-xs text-stone-400 hover:text-red-600"
+            >
+              Delete template
+            </button>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => onStart(template)}
+              className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+            >
+              Start
+            </button>
+          </div>
         </div>
       </div>
     </div>
