@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchCompany, fetchCompanyMembers, updateMemberRank, leaveCompany } from "../lib/company";
 import { assignWork } from "../lib/documents";
 import { TemplatePickerModal } from "../components/TemplatePickerModal";
+import { TemplateBuilder } from "../components/TemplateBuilder";
+import { useCustomTemplates } from "../hooks/useCustomTemplates";
 import type { Database } from "../types/database";
 import type { DocumentTemplate } from "../types/template";
 
@@ -19,10 +21,12 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
   const [loading, setLoading] = useState(true);
   const [copyLabel, setCopyLabel] = useState("Copy Code");
   const [assignTargetId, setAssignTargetId] = useState<string | null>(null);
+  const [showBuilder, setShowBuilder] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editLevel, setEditLevel] = useState(1);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const { addCustomTemplate } = useCustomTemplates();
 
   const load = useCallback(async () => {
     if (!profile.company_id) return;
@@ -51,10 +55,16 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
       isSelfRequest,
     });
     setAssignTargetId(null);
+    setShowBuilder(false);
     setStatusMessage(
       isSelfRequest ? `Requested "${template.title}" for yourself.` : `Assigned "${template.title}".`,
     );
     setTimeout(() => setStatusMessage(null), 4000);
+  }
+
+  function openBuilderFor(targetId: string) {
+    setAssignTargetId(targetId);
+    setShowBuilder(true);
   }
 
   function startEdit(m: Profile) {
@@ -116,13 +126,22 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
         <div className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-white p-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-400">Team</h2>
-            <button
-              type="button"
-              onClick={() => setAssignTargetId(profile.id)}
-              className="rounded-md bg-stone-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-900"
-            >
-              📋 Request Work for Myself
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setAssignTargetId(profile.id)}
+                className="rounded-md bg-stone-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-900"
+              >
+                📋 Request Work for Myself
+              </button>
+              <button
+                type="button"
+                onClick={() => openBuilderFor(profile.id)}
+                className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+              >
+                🧩 Build Custom Task
+              </button>
+            </div>
           </div>
 
           {members.map((m) => {
@@ -194,6 +213,13 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
                         >
                           Assign Work
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => openBuilderFor(m.id)}
+                          className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+                        >
+                          🧩 Custom
+                        </button>
                       </>
                     )}
                   </div>
@@ -215,7 +241,7 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
         </button>
       </div>
 
-      {assignTargetId && (
+      {assignTargetId && !showBuilder && (
         <TemplatePickerModal
           title={
             assignTargetId === profile.id
@@ -224,6 +250,23 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
           }
           onPick={handleAssign}
           onClose={() => setAssignTargetId(null)}
+        />
+      )}
+
+      {assignTargetId && showBuilder && (
+        <TemplateBuilder
+          heading={
+            assignTargetId === profile.id
+              ? "🧩 Build a Custom Task for Yourself"
+              : `🧩 Build a Custom Task for ${members.find((m) => m.id === assignTargetId)?.display_name}`
+          }
+          primaryLabel={assignTargetId === profile.id ? "Request for Myself" : "Assign This Task"}
+          onClose={() => {
+            setAssignTargetId(null);
+            setShowBuilder(false);
+          }}
+          onSaveTemplate={addCustomTemplate}
+          onFillOutNow={handleAssign}
         />
       )}
     </div>

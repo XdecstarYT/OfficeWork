@@ -52,9 +52,18 @@ interface TemplateBuilderProps {
   onClose: () => void;
   onFillOutNow: (template: DocumentTemplate) => void;
   onSaveTemplate: (template: DocumentTemplate) => void;
+  /** Overrides the primary action button's label and heading, e.g. "Assign to Sam". */
+  primaryLabel?: string;
+  heading?: string;
 }
 
-export function TemplateBuilder({ onClose, onFillOutNow, onSaveTemplate }: TemplateBuilderProps) {
+export function TemplateBuilder({
+  onClose,
+  onFillOutNow,
+  onSaveTemplate,
+  primaryLabel = "Fill It Out Now",
+  heading = "🧩 Build a Custom Template",
+}: TemplateBuilderProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [fields, setFields] = useState<BuilderField[]>([]);
@@ -150,7 +159,7 @@ export function TemplateBuilder({ onClose, onFillOutNow, onSaveTemplate }: Templ
       <div className="flex h-full max-h-[90vh] w-full max-w-6xl flex-col rounded-xl bg-white shadow-xl">
         <div className="flex shrink-0 items-center justify-between border-b border-stone-200 px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-stone-900">🧩 Build a Custom Template</h2>
+            <h2 className="text-lg font-semibold text-stone-900">{heading}</h2>
             <p className="text-xs text-stone-500">
               Drag fields from the palette onto the canvas, then drag to reorder.
             </p>
@@ -331,7 +340,7 @@ export function TemplateBuilder({ onClose, onFillOutNow, onSaveTemplate }: Templ
             onClick={() => onFillOutNow(assembleTemplate())}
             className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
           >
-            Fill It Out Now
+            {primaryLabel}
           </button>
         </div>
       </div>

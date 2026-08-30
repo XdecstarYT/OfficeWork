@@ -31,6 +31,18 @@ with real coworkers.
   Owner) or join one with an invite code. Every member has a custom job
   title and a numeric level — anyone can assign or manage someone with a
   strictly lower level than their own.
+- **Pre-start lobby**: a new game doesn't drop you straight into the office.
+  The Owner lands in a waiting room showing the company's Main Code and the
+  players who've joined so far, and only enters the game (for everyone) by
+  clicking "Start Game" — join at your own pace first.
+- **Main + sub invite codes**: every company has one Main Code (joins as a
+  base-level Employee) plus as many role-granting sub codes as the Owner
+  wants to create from the lobby — each one assigns a specific job title
+  and level the moment someone joins with it.
+- **Boss-built custom tasks**: from the Company tab, a manager can either
+  assign an existing template or open the drag-and-drop builder to make a
+  brand-new task on the spot and assign it directly to a coworker (or
+  themselves), no premade template required.
 - **Work assignment with a live document preview**: a manager can assign any
   template to someone they outrank; anyone can request a template be sent
   to themselves. The fill-out modal shows the actual rendered document
@@ -50,11 +62,13 @@ with real coworkers.
   completion — correctly even when a different person (your manager)
   is the one who approves the work.
 - **AI Clients**: a roster of 8 recurring client personas. With a local LLM
-  (e.g. [Ollama](https://ollama.com)) running and configured in Settings,
-  each client hands out a live, dynamically generated paperwork request and
+  (e.g. [Ollama](https://ollama.com)) running at the default address, each
+  client hands out a live, dynamically generated paperwork request and
   supports a negotiation chat (the client can counter-offer
   payout/deadline). Without one reachable, each client falls back to a
-  static preview request so the feature still works end-to-end.
+  static preview request so the feature still works end-to-end. There's no
+  Settings screen — it always targets `http://localhost:11434` (Ollama's
+  default) with the `llama3.1` model; run your local server there.
 
 Not yet built: an avatar/office world, XP/leveling, cosmetics, a full
 document archive.
@@ -68,18 +82,18 @@ npm run dev
 
 Choose "Create a game" or "Join a game" first, then pick a display name and
 an email handle (no real email needed) — you'll get a one-time code that
-logs you back in later. Creating starts a new company (you're the Owner);
-joining uses a coworker's invite code (shown on their Company tab).
+logs you back in later. Creating starts a new company (you're the Owner) and
+drops you in a lobby with your Main Code, where you can create role-granting
+sub codes and wait for friends to join before clicking "Start Game." Joining
+uses a Main Code or sub code a friend shared with you.
 
 To use AI Clients' live mode and AI-written email replies, run a local,
-OpenAI-compatible LLM server — [Ollama](https://ollama.com) is the easiest
-option (`ollama pull llama3.1 && ollama serve`) — then open Settings (⚙️ in
-the header) and point it at your server (defaults match Ollama's). No API
-key, account, or payment required; everything is called directly from your
-browser to `localhost`, and the config is stored only in your browser's
-local storage. Without a local LLM running, AI Clients and client email
-replies fall back to static preview content so the rest of the game still
-works.
+OpenAI-compatible LLM server on this machine — [Ollama](https://ollama.com)
+is the easiest option (`ollama pull llama3.1 && ollama serve`). No API key,
+account, Settings screen, or payment required; the app always calls
+`http://localhost:11434` directly from your browser. Without a local LLM
+running, AI Clients and client email replies fall back to static preview
+content so the rest of the game still works.
 
 ## Generating the template library
 
@@ -123,11 +137,11 @@ React + Vite + TypeScript + Tailwind CSS v4. Templates are static JSON
 loaded client-side via `import.meta.glob`. Accounts, companies, ranks, work
 items, emails, and board meetings live in Supabase (Postgres + Auth +
 Realtime) under Row Level Security. Per-browser conveniences (favorites,
-recently used, the local LLM config) stay in `localStorage`; anything
-another person's actions need to affect (Money, rank, document status,
-emails) lives server-side. AI Clients calls a local, OpenAI-compatible LLM
-server (e.g. Ollama) directly from the browser — no cloud API or key
-involved.
+recently used, custom templates you've built) stay in `localStorage`;
+anything another person's actions need to affect (Money, rank, document
+status, emails) lives server-side. AI Clients calls a local, OpenAI-
+compatible LLM server (Ollama, at its default address) directly from the
+browser — no cloud API, key, or config screen involved.
 
 ## Session-code login (no email/password)
 
@@ -143,9 +157,16 @@ normally — no Edge Function needed for that half.
 
 ## Multiplayer model
 
-- **Companies**: created with a random 6-character invite code. The creator
-  becomes Owner at level 100; joining via code makes you an Employee at
-  level 1.
+- **Companies**: created with a random 6-character Main Code (`invite_code`)
+  and start `started = false`. The creator becomes Owner at level 100 and
+  lands in a lobby; joining via the Main Code makes you an Employee at
+  level 1. The Owner can also mint role-granting sub codes
+  (`company_invite_codes`: code, job title, level) from the lobby — joining
+  with one assigns that exact role instead. A `resolve_invite_code`
+  security-definer RPC looks up either kind of code (a not-yet-a-member
+  joiner has no `company_id` yet, so RLS alone can't let them read the
+  companies/company_invite_codes tables directly). The game only becomes
+  visible to everyone once the Owner sets `started = true`.
 - **Ranks**: fully custom per company — any member can rename job titles and
   set numeric levels for anyone with a level below their own (enforced both
   client-side and by RLS).

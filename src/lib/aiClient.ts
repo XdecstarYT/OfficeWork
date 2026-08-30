@@ -212,7 +212,7 @@ export interface EmailReply {
 export function staticClientEmailReply(clientPersona: ClientPersona, subject: string): EmailReply {
   return {
     subject: subject.toLowerCase().startsWith("re:") ? subject : `Re: ${subject}`,
-    body: `Thanks for the note - got it. I'll follow up soon.\n\n${clientPersona.name}\n${clientPersona.company}\n\n(Couldn't reach your local LLM for a real reply - check Settings.)`,
+    body: `Thanks for the note - got it. I'll follow up soon.\n\n${clientPersona.name}\n${clientPersona.company}\n\n(Couldn't reach a local LLM for a real reply - make sure one is running.)`,
   };
 }
 

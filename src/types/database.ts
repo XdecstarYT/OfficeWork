@@ -22,6 +22,7 @@ export interface Database {
           name: string;
           invite_code: string;
           owner_id: string;
+          started: boolean;
           created_at: string;
         };
         Insert: {
@@ -29,9 +30,34 @@ export interface Database {
           name: string;
           invite_code: string;
           owner_id: string;
+          started?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["companies"]["Insert"]>;
+        Relationships: [];
+      };
+      company_invite_codes: {
+        Row: {
+          id: string;
+          company_id: string;
+          code: string;
+          label: string | null;
+          job_title: string;
+          level: number;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          code: string;
+          label?: string | null;
+          job_title?: string;
+          level?: number;
+          created_by: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["company_invite_codes"]["Insert"]>;
         Relationships: [];
       };
       profiles: {
@@ -190,7 +216,12 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      resolve_invite_code: {
+        Args: { p_code: string };
+        Returns: { company_id: string; company_name: string; job_title: string; level: number }[];
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

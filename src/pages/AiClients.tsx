@@ -9,11 +9,10 @@ import type { ClientRequest } from "../types/template";
 
 interface AiClientsProps {
   llmConfig: LlmConfig;
-  onOpenSettings: () => void;
   onCompleteRequest: (request: ClientRequest) => void;
 }
 
-export function AiClients({ llmConfig, onOpenSettings, onCompleteRequest }: AiClientsProps) {
+export function AiClients({ llmConfig, onCompleteRequest }: AiClientsProps) {
   const { requests, setRequest, clearRequest } = useClientRequests();
   const [loadingClientId, setLoadingClientId] = useState<string | null>(null);
   const [errorByClient, setErrorByClient] = useState<Record<string, string>>({});
@@ -53,20 +52,11 @@ export function AiClients({ llmConfig, onOpenSettings, onCompleteRequest }: AiCl
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="mx-auto flex max-w-5xl flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-stone-900">AI Clients</h1>
-            <p className="text-sm text-stone-500">
-              Take on real work from recurring clients — dynamic requests you can negotiate.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            className="shrink-0 rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
-          >
-            ⚙️ Local LLM Settings
-          </button>
+        <div>
+          <h1 className="text-lg font-semibold text-stone-900">AI Clients</h1>
+          <p className="text-sm text-stone-500">
+            Take on real work from recurring clients — dynamic requests you can negotiate.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

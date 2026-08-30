@@ -47,7 +47,7 @@ export async function llmChatCompletion(params: {
   const { config, messages, tools, forceToolName, maxTokens } = params;
 
   if (!config.baseUrl.trim()) {
-    throw new LocalLlmError("No local LLM configured. Set a base URL in Settings.");
+    throw new LocalLlmError("No local LLM configured.");
   }
 
   let response: Response;
@@ -69,9 +69,7 @@ export async function llmChatCompletion(params: {
       }),
     });
   } catch {
-    throw new LocalLlmError(
-      `Couldn't reach a local LLM at ${config.baseUrl}. Is it running? Check the URL in Settings.`,
-    );
+    throw new LocalLlmError(`Couldn't reach a local LLM at ${config.baseUrl}. Is it running?`);
   }
 
   if (!response.ok) {

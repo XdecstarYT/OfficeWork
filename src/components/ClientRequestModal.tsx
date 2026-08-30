@@ -66,8 +66,8 @@ export function ClientRequestModal({
 
         {request.isPreview && (
           <p className="mt-2 text-xs text-stone-400">
-            This is a static preview request (couldn't reach your local LLM). Check your local
-            LLM server and the URL in Settings, then try "Ask for Work" again.
+            This is a static preview request (couldn't reach a local LLM at
+            http://localhost:11434). Run one (e.g. Ollama) and try "Ask for Work" again.
           </p>
         )}
 

@@ -3,15 +3,16 @@ import { FilingCabinet } from "./pages/FilingCabinet";
 import { AiClients } from "./pages/AiClients";
 import { GameEntryScreen } from "./pages/GameEntryScreen";
 import { CompanyGate } from "./pages/CompanyGate";
+import { GameLobby } from "./pages/GameLobby";
 import { CompanyPage } from "./pages/CompanyPage";
 import { WorkPage } from "./pages/WorkPage";
 import { InboxPage } from "./pages/InboxPage";
 import { BoardMeetingsPage } from "./pages/BoardMeetingsPage";
-import { SettingsModal } from "./components/SettingsModal";
 import { awardMoney } from "./lib/company";
-import { useLlmConfig } from "./hooks/useLlmConfig";
+import { DEFAULT_LLM_CONFIG } from "./lib/llmConfig";
 import { useSession } from "./hooks/useSession";
 import { useProfile } from "./hooks/useProfile";
+import { useCompany } from "./hooks/useCompany";
 import { signOut } from "./lib/auth";
 import type { DocumentTemplate, ClientRequest } from "./types/template";
 
@@ -20,10 +21,9 @@ type Tab = "cabinet" | "clients" | "company" | "work" | "inbox" | "meetings";
 function App() {
   const { session, user, loading: sessionLoading } = useSession();
   const { profile, loading: profileLoading, refresh: refreshProfile } = useProfile(user?.id ?? null);
+  const { company, loading: companyLoading } = useCompany(profile?.company_id ?? null);
   const [tab, setTab] = useState<Tab>("cabinet");
   const [startedTemplate, setStartedTemplate] = useState<DocumentTemplate | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const { config: llmConfig, setConfig: setLlmConfig } = useLlmConfig();
 
   async function handleCompleteRequest(request: ClientRequest) {
     if (!user) return;
@@ -45,6 +45,14 @@ function App() {
 
   if (!profile.company_id) {
     return <CompanyGate userId={user.id} onDone={refreshProfile} />;
+  }
+
+  if (companyLoading || !company) {
+    return <div className="flex h-screen items-center justify-center text-stone-400">Loading game…</div>;
+  }
+
+  if (!company.started) {
+    return <GameLobby profile={profile} company={company} onProfileChanged={refreshProfile} />;
   }
 
   return (
@@ -85,14 +93,6 @@ function App() {
           </span>
           <button
             type="button"
-            onClick={() => setShowSettings(true)}
-            className="text-stone-400 hover:text-stone-600"
-            aria-label="Settings"
-          >
-            ⚙️
-          </button>
-          <button
-            type="button"
             onClick={() => signOut()}
             className="text-xs text-stone-400 hover:text-stone-600"
           >
@@ -104,15 +104,11 @@ function App() {
       <div className="flex min-h-0 flex-1">
         {tab === "cabinet" && <FilingCabinet onStart={setStartedTemplate} />}
         {tab === "work" && <WorkPage profile={profile} onProfileChanged={refreshProfile} />}
-        {tab === "inbox" && <InboxPage profile={profile} llmConfig={llmConfig} />}
+        {tab === "inbox" && <InboxPage profile={profile} llmConfig={DEFAULT_LLM_CONFIG} />}
         {tab === "company" && <CompanyPage profile={profile} onProfileChanged={refreshProfile} />}
         {tab === "meetings" && <BoardMeetingsPage profile={profile} />}
         {tab === "clients" && (
-          <AiClients
-            llmConfig={llmConfig}
-            onOpenSettings={() => setShowSettings(true)}
-            onCompleteRequest={handleCompleteRequest}
-          />
+          <AiClients llmConfig={DEFAULT_LLM_CONFIG} onCompleteRequest={handleCompleteRequest} />
         )}
       </div>
 
@@ -128,14 +124,6 @@ function App() {
             ✕
           </button>
         </div>
-      )}
-
-      {showSettings && (
-        <SettingsModal
-          currentConfig={llmConfig}
-          onSave={setLlmConfig}
-          onClose={() => setShowSettings(false)}
-        />
       )}
     </div>
   );
