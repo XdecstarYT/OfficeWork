@@ -19,6 +19,18 @@ export function payoutFor(doc: Pick<DocumentRow, "payout_override">, template: D
   return doc.payout_override ?? estimatePayout(template);
 }
 
+const XP_BY_DIFFICULTY: Record<Difficulty, number> = {
+  quick: 10,
+  standard: 25,
+  detailed: 50,
+};
+
+/** Career XP awarded on completion - a separate track from Money, so harder
+ * work (not just higher-paying work) is what actually moves it. */
+export function estimateXp(template: DocumentTemplate | { difficulty: Difficulty }): number {
+  return XP_BY_DIFFICULTY[template.difficulty];
+}
+
 export function templateRequiresApproval(template: DocumentTemplate): boolean {
   return template.fields.some((f) => f.type === "signature");
 }

@@ -9,15 +9,29 @@ import { WorkPage } from "./pages/WorkPage";
 import { InboxPage } from "./pages/InboxPage";
 import { BoardMeetingsPage } from "./pages/BoardMeetingsPage";
 import { CorporateUpdatesPage } from "./pages/CorporateUpdatesPage";
+import { ActivityFeedPage } from "./pages/ActivityFeedPage";
+import { LeaderboardPage } from "./pages/LeaderboardPage";
+import { ArchivePage } from "./pages/ArchivePage";
 import { awardMoney } from "./lib/company";
 import { DEFAULT_LLM_CONFIG } from "./lib/llmConfig";
+import { careerProgress } from "./lib/careerLevel";
 import { useSession } from "./hooks/useSession";
 import { useProfile } from "./hooks/useProfile";
 import { useCompany } from "./hooks/useCompany";
 import { signOut } from "./lib/auth";
 import type { DocumentTemplate, ClientRequest } from "./types/template";
 
-type Tab = "cabinet" | "clients" | "company" | "work" | "inbox" | "meetings" | "updates";
+type Tab =
+  | "cabinet"
+  | "clients"
+  | "company"
+  | "work"
+  | "inbox"
+  | "meetings"
+  | "updates"
+  | "activity"
+  | "leaderboard"
+  | "archive";
 
 function App() {
   const { session, user, loading: sessionLoading } = useSession();
@@ -56,53 +70,70 @@ function App() {
     return <GameLobby profile={profile} company={company} onProfileChanged={refreshProfile} />;
   }
 
+  const careerXp = careerProgress(profile.xp);
+
   return (
     <div className="flex h-screen flex-col bg-white">
-      <header className="flex shrink-0 items-center justify-between border-b border-stone-200 px-6 py-3">
-        <div className="flex items-center gap-6">
+      <header className="flex shrink-0 flex-col border-b border-stone-200">
+        <div className="flex items-center justify-between px-6 py-3">
           <div className="flex items-center gap-2">
             <span className="text-lg">🏢</span>
             <h1 className="text-base font-semibold text-stone-900">Office Quest</h1>
           </div>
-          <nav className="flex gap-1">
-            <TabButton active={tab === "cabinet"} onClick={() => setTab("cabinet")}>
-              📁 Filing Cabinet
-            </TabButton>
-            <TabButton active={tab === "work"} onClick={() => setTab("work")}>
-              📥 My Work
-            </TabButton>
-            <TabButton active={tab === "inbox"} onClick={() => setTab("inbox")}>
-              ✉️ Inbox
-            </TabButton>
-            <TabButton active={tab === "company"} onClick={() => setTab("company")}>
-              🏛 Company
-            </TabButton>
-            <TabButton active={tab === "meetings"} onClick={() => setTab("meetings")}>
-              📅 Board Meetings
-            </TabButton>
-            <TabButton active={tab === "updates"} onClick={() => setTab("updates")}>
-              📰 Corporate Updates
-            </TabButton>
-            <TabButton active={tab === "clients"} onClick={() => setTab("clients")}>
-              🤝 AI Clients
-            </TabButton>
-          </nav>
+          <div className="flex shrink-0 items-center gap-4">
+            <span className="flex items-center gap-1 text-sm font-medium text-emerald-700 tabular-nums">
+              💵 ${profile.money.toFixed(2)}
+            </span>
+            <span
+              className="flex items-center gap-1 text-xs font-medium text-amber-700 tabular-nums"
+              title={`${careerXp.intoLevel}/${careerXp.xpPerLevel} XP to next Career Level`}
+            >
+              ⭐ Career Lvl {careerXp.level}
+            </span>
+            <span className="text-xs text-stone-400">
+              {profile.job_title} · Rank {profile.level}
+            </span>
+            <button
+              type="button"
+              onClick={() => signOut()}
+              className="text-xs text-stone-400 hover:text-stone-600"
+            >
+              Sign out
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1 text-sm font-medium text-emerald-700 tabular-nums">
-            💵 ${profile.money.toFixed(2)}
-          </span>
-          <span className="text-xs text-stone-400">
-            {profile.job_title} · Level {profile.level}
-          </span>
-          <button
-            type="button"
-            onClick={() => signOut()}
-            className="text-xs text-stone-400 hover:text-stone-600"
-          >
-            Sign out
-          </button>
-        </div>
+        <nav className="flex gap-1 overflow-x-auto border-t border-stone-100 px-6 py-2">
+          <TabButton active={tab === "cabinet"} onClick={() => setTab("cabinet")}>
+            📁 Filing Cabinet
+          </TabButton>
+          <TabButton active={tab === "work"} onClick={() => setTab("work")}>
+            📥 My Work
+          </TabButton>
+          <TabButton active={tab === "inbox"} onClick={() => setTab("inbox")}>
+            ✉️ Inbox
+          </TabButton>
+          <TabButton active={tab === "company"} onClick={() => setTab("company")}>
+            🏛 Company
+          </TabButton>
+          <TabButton active={tab === "meetings"} onClick={() => setTab("meetings")}>
+            📅 Board Meetings
+          </TabButton>
+          <TabButton active={tab === "updates"} onClick={() => setTab("updates")}>
+            📰 Corporate Updates
+          </TabButton>
+          <TabButton active={tab === "activity"} onClick={() => setTab("activity")}>
+            🗞 Activity
+          </TabButton>
+          <TabButton active={tab === "leaderboard"} onClick={() => setTab("leaderboard")}>
+            🏆 Leaderboard
+          </TabButton>
+          <TabButton active={tab === "archive"} onClick={() => setTab("archive")}>
+            🗄 Archive
+          </TabButton>
+          <TabButton active={tab === "clients"} onClick={() => setTab("clients")}>
+            🤝 AI Clients
+          </TabButton>
+        </nav>
       </header>
 
       <div className="flex min-h-0 flex-1">
@@ -112,6 +143,9 @@ function App() {
         {tab === "company" && <CompanyPage profile={profile} onProfileChanged={refreshProfile} />}
         {tab === "meetings" && <BoardMeetingsPage profile={profile} />}
         {tab === "updates" && <CorporateUpdatesPage profile={profile} company={company} />}
+        {tab === "activity" && <ActivityFeedPage profile={profile} />}
+        {tab === "leaderboard" && <LeaderboardPage profile={profile} />}
+        {tab === "archive" && <ArchivePage profile={profile} />}
         {tab === "clients" && (
           <AiClients llmConfig={DEFAULT_LLM_CONFIG} onCompleteRequest={handleCompleteRequest} />
         )}
@@ -147,7 +181,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+      className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
         active ? "bg-stone-800 text-white" : "text-stone-500 hover:bg-stone-100"
       }`}
     >

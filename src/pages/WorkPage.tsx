@@ -7,9 +7,10 @@ import {
   rejectDocument,
   sendToPerson,
   payoutFor,
+  estimateXp,
   type DocumentRow,
 } from "../lib/documents";
-import { fetchCompanyMembers, awardMoney } from "../lib/company";
+import { fetchCompanyMembers, awardMoney, awardXp } from "../lib/company";
 import { supabase } from "../lib/supabaseClient";
 import { DocumentFieldForm } from "../components/DocumentFieldForm";
 import { DocumentPreview } from "../components/DocumentPreview";
@@ -105,6 +106,7 @@ export function WorkPage({ profile, onProfileChanged }: WorkPageProps) {
       // Self-serve completion (no approval needed) - pay the assignee, who is
       // always the caller here since this document didn't need sign-off.
       await awardMoney(profile.id, payoutFor(openDoc, asTemplate(openDoc)));
+      await awardXp(profile.id, estimateXp(asTemplate(openDoc)));
       onProfileChanged();
     }
     setOpenDoc(null);
@@ -118,6 +120,7 @@ export function WorkPage({ profile, onProfileChanged }: WorkPageProps) {
     // outranking that person. Refresh only matters for our own balance.
     if (doc.assigned_to) {
       await awardMoney(doc.assigned_to, payoutFor(doc, asTemplate(doc)));
+      await awardXp(doc.assigned_to, estimateXp(asTemplate(doc)));
       if (doc.assigned_to === profile.id) onProfileChanged();
     }
     load();

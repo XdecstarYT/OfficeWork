@@ -68,6 +68,7 @@ export interface Database {
           job_title: string;
           level: number;
           money: number;
+          xp: number;
           join_code: string | null;
           email_handle: string | null;
           created_at: string;
@@ -79,6 +80,7 @@ export interface Database {
           job_title?: string;
           level?: number;
           money?: number;
+          xp?: number;
           join_code?: string | null;
           email_handle?: string | null;
           created_at?: string;

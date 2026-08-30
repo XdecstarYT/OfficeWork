@@ -142,6 +142,26 @@ export async function awardMoney(userId: string, amount: number) {
   if (error) throw error;
 }
 
+/**
+ * Credits `amount` Career XP - a separate, non-spendable progression track
+ * from Money. Same RLS rules as awardMoney (self, or a manager crediting a
+ * subordinate they outrank).
+ */
+export async function awardXp(userId: string, amount: number) {
+  const { data: current, error: fetchError } = await supabase
+    .from("profiles")
+    .select("xp")
+    .eq("id", userId)
+    .single();
+  if (fetchError) throw fetchError;
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ xp: current.xp + amount })
+    .eq("id", userId);
+  if (error) throw error;
+}
+
 export async function leaveCompany(userId: string) {
   const { error } = await supabase
     .from("profiles")

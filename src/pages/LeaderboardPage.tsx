@@ -1,0 +1,143 @@
+import { useCallback, useEffect, useState } from "react";
+import { fetchCompanyMembers } from "../lib/company";
+import { fetchCompanyDocuments } from "../lib/documents";
+import { careerLevelFromXp } from "../lib/careerLevel";
+import { supabase } from "../lib/supabaseClient";
+import type { Database } from "../types/database";
+
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+
+interface LeaderboardPageProps {
+  profile: Profile;
+}
+
+const MEDALS = ["🥇", "🥈", "🥉"];
+
+function Rankings({
+  title,
+  rows,
+  profile,
+  formatValue,
+}: {
+  title: string;
+  rows: { id: string; display_name: string; value: number }[];
+  profile: Profile;
+  formatValue: (v: number) => string;
+}) {
+  return (
+    <section className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-white p-4">
+      <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-400">{title}</h2>
+      {rows.length === 0 ? (
+        <p className="text-sm text-stone-400">No data yet.</p>
+      ) : (
+        <ol className="flex flex-col gap-1">
+          {rows.map((r, i) => (
+            <li
+              key={r.id}
+              className={`flex items-center justify-between rounded-md px-3 py-1.5 text-sm ${
+                r.id === profile.id ? "bg-emerald-50" : ""
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <span className="w-6 shrink-0 text-center">{MEDALS[i] ?? `#${i + 1}`}</span>
+                <span className={r.id === profile.id ? "font-semibold text-emerald-800" : "text-stone-700"}>
+                  {r.display_name} {r.id === profile.id && "(you)"}
+                </span>
+              </span>
+              <span className="font-medium tabular-nums text-stone-600">{formatValue(r.value)}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+export function LeaderboardPage({ profile }: LeaderboardPageProps) {
+  const [members, setMembers] = useState<Profile[]>([]);
+  const [completedCounts, setCompletedCounts] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    if (!profile.company_id) return;
+    setLoading(true);
+    const [m, docs] = await Promise.all([
+      fetchCompanyMembers(profile.company_id),
+      fetchCompanyDocuments(profile.company_id),
+    ]);
+    setMembers(m);
+    const counts: Record<string, number> = {};
+    for (const d of docs) {
+      if (d.status === "completed" && d.assigned_to) {
+        counts[d.assigned_to] = (counts[d.assigned_to] ?? 0) + 1;
+      }
+    }
+    setCompletedCounts(counts);
+    setLoading(false);
+  }, [profile.company_id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    if (!profile.company_id) return;
+    const channel = supabase
+      .channel(`leaderboard-${profile.company_id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "documents", filter: `company_id=eq.${profile.company_id}` },
+        () => load(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles", filter: `company_id=eq.${profile.company_id}` },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile.company_id, load]);
+
+  if (loading) {
+    return <div className="flex-1 p-6 text-sm text-stone-400">Loading leaderboard…</div>;
+  }
+
+  const byMoney = [...members]
+    .map((m) => ({ id: m.id, display_name: m.display_name, value: m.money }))
+    .sort((a, b) => b.value - a.value);
+
+  const byCompleted = [...members]
+    .map((m) => ({ id: m.id, display_name: m.display_name, value: completedCounts[m.id] ?? 0 }))
+    .sort((a, b) => b.value - a.value);
+
+  const byCareerLevel = [...members]
+    .map((m) => ({ id: m.id, display_name: m.display_name, value: careerLevelFromXp(m.xp) }))
+    .sort((a, b) => b.value - a.value);
+
+  return (
+    <div className="flex-1 overflow-y-auto p-6">
+      <div className="mx-auto flex max-w-2xl flex-col gap-6">
+        <div>
+          <h1 className="text-lg font-semibold text-stone-900">🏆 Leaderboard</h1>
+          <p className="text-sm text-stone-500">See how you stack up against your coworkers.</p>
+        </div>
+
+        <Rankings title="💵 Richest" rows={byMoney} profile={profile} formatValue={(v) => `$${v.toFixed(2)}`} />
+        <Rankings
+          title="✅ Most Tasks Completed"
+          rows={byCompleted}
+          profile={profile}
+          formatValue={(v) => `${v}`}
+        />
+        <Rankings
+          title="⭐ Highest Career Level"
+          rows={byCareerLevel}
+          profile={profile}
+          formatValue={(v) => `Lvl ${v}`}
+        />
+      </div>
+    </div>
+  );
+}

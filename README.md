@@ -65,6 +65,19 @@ with real coworkers.
 - **Money**: a wallet on your account (`profiles.money`), credited on
   completion — correctly even when a different person (your manager)
   is the one who approves the work.
+- **Career XP & Levels**: a separate progression track from Money
+  (`profiles.xp`) — completing a task also grants XP based on its
+  difficulty, and your Career Level (shown in the header) rises every
+  100 XP regardless of your company job rank.
+- **Activity Feed**: a live, human-readable feed of the company's audit
+  trail (who requested/assigned/submitted/approved/rejected/reassigned
+  which document, and when) — built entirely from data already recorded
+  in `document_events`.
+- **Leaderboard**: ranks every company member by Money, tasks completed,
+  and Career Level.
+- **Document Archive**: the full company-wide history of completed
+  documents, searchable by title and filterable by who did the work (the
+  Work tab only ever shows your last 10).
 - **AI Clients**: a roster of 8 recurring client personas. With a local LLM
   (e.g. [Ollama](https://ollama.com)) running at the default address, each
   client hands out a live, dynamically generated paperwork request and
@@ -204,6 +217,8 @@ normally — no Edge Function needed for that half.
 3. Multiplayer: accounts, companies, ranks, work assignment, approvals — done
 4. Session-code login, in-game email, board meetings — done
 5. Live document preview in the fill-out/approval modal — done
-6. Document archive
-7. Avatar & office world
-8. Progression & polish (XP/levels, cosmetics, streaks, dashboard)
+6. Drag-and-drop template builder, pre-start lobby + sub codes, Corporate
+   Updates, boss-assigned task details — done
+7. Document archive, Activity Feed, Leaderboard, Career XP/levels — done
+8. Avatar & office world
+9. Further polish (cosmetics, streaks, a real dashboard)
