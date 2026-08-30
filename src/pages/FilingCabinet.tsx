@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ALL_TEMPLATES, searchTemplates, getTemplate } from "../lib/templates";
 import { CategoryTree, type CategorySelection } from "../components/CategoryTree";
 import { SearchBar } from "../components/SearchBar";
@@ -46,6 +46,15 @@ export function FilingCabinet({ onStart }: FilingCabinetProps) {
   }, [selection]);
 
   const filtered = useMemo(() => searchTemplates(scoped, query), [scoped, query]);
+
+  // Rendering 1000+ cards at once is what actually makes browsing feel
+  // laggy (huge DOM, hover/focus style recalculation on every one). Page it.
+  const PAGE_SIZE = 60;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [selection, query]);
+  const visibleFiltered = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
 
   const favoriteTemplates = useMemo(
     () => ALL_TEMPLATES.filter((t) => favorites.has(t.id)),
@@ -151,17 +160,28 @@ export function FilingCabinet({ onStart }: FilingCabinetProps) {
                 No templates found. Try a different search or category.
               </p>
             ) : (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {filtered.map((t) => (
-                  <TemplateCard
-                    key={t.id}
-                    template={t}
-                    isFavorite={favorites.has(t.id)}
-                    onToggleFavorite={toggleFavorite}
-                    onOpen={setActiveTemplate}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {visibleFiltered.map((t) => (
+                    <TemplateCard
+                      key={t.id}
+                      template={t}
+                      isFavorite={favorites.has(t.id)}
+                      onToggleFavorite={toggleFavorite}
+                      onOpen={setActiveTemplate}
+                    />
+                  ))}
+                </div>
+                {visibleCount < filtered.length && (
+                  <button
+                    type="button"
+                    onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                    className="self-center rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+                  >
+                    Show More ({filtered.length - visibleCount} remaining)
+                  </button>
+                )}
+              </>
             )}
           </section>
         </div>

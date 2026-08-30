@@ -3,6 +3,8 @@ import { fetchCompany, fetchCompanyMembers, updateMemberRank, leaveCompany } fro
 import { assignWork, estimatePayout } from "../lib/documents";
 import { TemplatePickerModal } from "../components/TemplatePickerModal";
 import { TemplateBuilder } from "../components/TemplateBuilder";
+import { DocumentFieldForm } from "../components/DocumentFieldForm";
+import { DocumentPreview } from "../components/DocumentPreview";
 import { useCustomTemplates } from "../hooks/useCustomTemplates";
 import type { Database } from "../types/database";
 import type { DocumentTemplate } from "../types/template";
@@ -25,6 +27,7 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
   const [pendingTemplate, setPendingTemplate] = useState<DocumentTemplate | null>(null);
   const [taskDueDays, setTaskDueDays] = useState(3);
   const [taskPayout, setTaskPayout] = useState(0);
+  const [prefillValues, setPrefillValues] = useState<Record<string, string>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editLevel, setEditLevel] = useState(1);
@@ -51,11 +54,15 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
     setPendingTemplate(template);
     setTaskDueDays(3);
     setTaskPayout(estimatePayout(template));
+    setPrefillValues({});
   }
 
   async function handleConfirmAssign() {
     if (!company || !assignTargetId || !pendingTemplate) return;
     const isSelfRequest = assignTargetId === profile.id;
+    const filledValues = Object.fromEntries(
+      Object.entries(prefillValues).filter(([, v]) => v.trim() !== ""),
+    );
     await assignWork({
       companyId: company.id,
       template: pendingTemplate,
@@ -64,6 +71,7 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
       isSelfRequest,
       dueInDays: taskDueDays > 0 ? taskDueDays : undefined,
       payoutOverride: taskPayout,
+      ...(Object.keys(filledValues).length > 0 ? { initialFieldValues: filledValues } : {}),
     });
     const title = pendingTemplate.title;
     setAssignTargetId(null);
@@ -289,7 +297,7 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
           onClick={() => setPendingTemplate(null)}
         >
           <div
-            className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
+            className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-xl bg-white p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-semibold text-stone-900">Set Task Details</h2>
@@ -300,29 +308,59 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
                 : members.find((m) => m.id === assignTargetId)?.display_name}
             </p>
 
-            <label className="mt-4 block text-xs font-medium uppercase tracking-wide text-stone-400">
-              Due in (days)
-            </label>
-            <input
-              type="number"
-              min={0}
-              value={taskDueDays}
-              onChange={(e) => setTaskDueDays(Number(e.target.value))}
-              className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            />
-            <p className="mt-1 text-xs text-stone-400">0 = no deadline.</p>
+            <div className="mt-4 flex gap-4">
+              <div className="flex-1">
+                <label className="block text-xs font-medium uppercase tracking-wide text-stone-400">
+                  Due in (days)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={taskDueDays}
+                  onChange={(e) => setTaskDueDays(Number(e.target.value))}
+                  className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <p className="mt-1 text-xs text-stone-400">0 = no deadline.</p>
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs font-medium uppercase tracking-wide text-stone-400">
+                  Payout ($)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={taskPayout}
+                  onChange={(e) => setTaskPayout(Number(e.target.value))}
+                  className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
 
-            <label className="mt-3 block text-xs font-medium uppercase tracking-wide text-stone-400">
-              Payout ($)
-            </label>
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              value={taskPayout}
-              onChange={(e) => setTaskPayout(Number(e.target.value))}
-              className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            />
+            {pendingTemplate.fields.length > 0 && (
+              <>
+                <p className="mt-5 text-xs font-medium uppercase tracking-wide text-stone-400">
+                  Fill in what you already know — {assignTargetId === profile.id ? "you'll" : "they'll"}{" "}
+                  only need to fill in the rest.
+                </p>
+                <div className="mt-2 grid flex-1 grid-cols-1 gap-4 overflow-y-auto sm:grid-cols-2">
+                  <div className="overflow-y-auto pr-1">
+                    <DocumentFieldForm
+                      fields={pendingTemplate.fields}
+                      values={prefillValues}
+                      onChange={(id, value) => setPrefillValues((prev) => ({ ...prev, [id]: value }))}
+                    />
+                  </div>
+                  <div className="overflow-y-auto rounded-md border border-stone-100">
+                    <DocumentPreview
+                      title={pendingTemplate.title}
+                      bodyTemplate={pendingTemplate.bodyTemplate}
+                      values={prefillValues}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="mt-5 flex justify-end gap-2">
               <button

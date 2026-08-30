@@ -1,17 +1,7 @@
-import { useState } from "react";
-import { FilingCabinet } from "./pages/FilingCabinet";
-import { AiClients } from "./pages/AiClients";
+import { lazy, Suspense, useState } from "react";
 import { GameEntryScreen } from "./pages/GameEntryScreen";
 import { CompanyGate } from "./pages/CompanyGate";
 import { GameLobby } from "./pages/GameLobby";
-import { CompanyPage } from "./pages/CompanyPage";
-import { WorkPage } from "./pages/WorkPage";
-import { InboxPage } from "./pages/InboxPage";
-import { BoardMeetingsPage } from "./pages/BoardMeetingsPage";
-import { CorporateUpdatesPage } from "./pages/CorporateUpdatesPage";
-import { ActivityFeedPage } from "./pages/ActivityFeedPage";
-import { LeaderboardPage } from "./pages/LeaderboardPage";
-import { ArchivePage } from "./pages/ArchivePage";
 import { awardMoney } from "./lib/company";
 import { DEFAULT_LLM_CONFIG } from "./lib/llmConfig";
 import { careerProgress } from "./lib/careerLevel";
@@ -20,6 +10,28 @@ import { useProfile } from "./hooks/useProfile";
 import { useCompany } from "./hooks/useCompany";
 import { signOut } from "./lib/auth";
 import type { DocumentTemplate, ClientRequest } from "./types/template";
+
+// Each tab is its own chunk, downloaded only when opened - with 10 tabs and a
+// 1000+-template library, shipping every page's code upfront on first load
+// (a single >2MB bundle) was the main contributor to a slow/laggy startup.
+const FilingCabinet = lazy(() => import("./pages/FilingCabinet").then((m) => ({ default: m.FilingCabinet })));
+const AiClients = lazy(() => import("./pages/AiClients").then((m) => ({ default: m.AiClients })));
+const CompanyPage = lazy(() => import("./pages/CompanyPage").then((m) => ({ default: m.CompanyPage })));
+const WorkPage = lazy(() => import("./pages/WorkPage").then((m) => ({ default: m.WorkPage })));
+const InboxPage = lazy(() => import("./pages/InboxPage").then((m) => ({ default: m.InboxPage })));
+const BoardMeetingsPage = lazy(() =>
+  import("./pages/BoardMeetingsPage").then((m) => ({ default: m.BoardMeetingsPage })),
+);
+const CorporateUpdatesPage = lazy(() =>
+  import("./pages/CorporateUpdatesPage").then((m) => ({ default: m.CorporateUpdatesPage })),
+);
+const ActivityFeedPage = lazy(() =>
+  import("./pages/ActivityFeedPage").then((m) => ({ default: m.ActivityFeedPage })),
+);
+const LeaderboardPage = lazy(() =>
+  import("./pages/LeaderboardPage").then((m) => ({ default: m.LeaderboardPage })),
+);
+const ArchivePage = lazy(() => import("./pages/ArchivePage").then((m) => ({ default: m.ArchivePage })));
 
 type Tab =
   | "cabinet"
@@ -137,18 +149,22 @@ function App() {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        {tab === "cabinet" && <FilingCabinet onStart={setStartedTemplate} />}
-        {tab === "work" && <WorkPage profile={profile} onProfileChanged={refreshProfile} />}
-        {tab === "inbox" && <InboxPage profile={profile} llmConfig={DEFAULT_LLM_CONFIG} />}
-        {tab === "company" && <CompanyPage profile={profile} onProfileChanged={refreshProfile} />}
-        {tab === "meetings" && <BoardMeetingsPage profile={profile} />}
-        {tab === "updates" && <CorporateUpdatesPage profile={profile} company={company} />}
-        {tab === "activity" && <ActivityFeedPage profile={profile} />}
-        {tab === "leaderboard" && <LeaderboardPage profile={profile} />}
-        {tab === "archive" && <ArchivePage profile={profile} />}
-        {tab === "clients" && (
-          <AiClients llmConfig={DEFAULT_LLM_CONFIG} onCompleteRequest={handleCompleteRequest} />
-        )}
+        <Suspense
+          fallback={<div className="flex-1 p-6 text-sm text-stone-400">Loading…</div>}
+        >
+          {tab === "cabinet" && <FilingCabinet onStart={setStartedTemplate} />}
+          {tab === "work" && <WorkPage profile={profile} onProfileChanged={refreshProfile} />}
+          {tab === "inbox" && <InboxPage profile={profile} llmConfig={DEFAULT_LLM_CONFIG} />}
+          {tab === "company" && <CompanyPage profile={profile} onProfileChanged={refreshProfile} />}
+          {tab === "meetings" && <BoardMeetingsPage profile={profile} />}
+          {tab === "updates" && <CorporateUpdatesPage profile={profile} company={company} />}
+          {tab === "activity" && <ActivityFeedPage profile={profile} />}
+          {tab === "leaderboard" && <LeaderboardPage profile={profile} />}
+          {tab === "archive" && <ArchivePage profile={profile} />}
+          {tab === "clients" && (
+            <AiClients llmConfig={DEFAULT_LLM_CONFIG} onCompleteRequest={handleCompleteRequest} />
+          )}
+        </Suspense>
       </div>
 
       {startedTemplate && (

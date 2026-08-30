@@ -42,8 +42,10 @@ with real coworkers.
 - **Boss-built custom tasks**: from the Company tab, a manager can either
   assign an existing template or open the drag-and-drop builder to make a
   brand-new task on the spot. Either way, a "Set Task Details" step lets
-  them pick a due date and a payout before it's assigned directly to a
-  coworker (or themselves) — no premade template required.
+  them pick a due date and a payout — and pre-fill any of the template's
+  fields with data they already know (with a live preview), so the person
+  it's assigned to isn't starting from a fully blank form — before it's
+  assigned directly to a coworker (or themselves).
 - **Corporate Updates**: a company-wide news/announcements feed. The Owner
   posts a headline + body from a new "📰 Corporate Updates" tab and every
   member sees it appear live.
@@ -159,6 +161,15 @@ anything another person's actions need to affect (Money, rank, document
 status, emails) lives server-side. AI Clients calls a local, OpenAI-
 compatible LLM server (Ollama, at its default address) directly from the
 browser — no cloud API, key, or config screen involved.
+
+**Performance**: every tab is its own lazily-loaded chunk (`React.lazy` +
+`Suspense` in `App.tsx`) instead of one upfront bundle, and the Filing
+Cabinet paginates its template grid 60 at a time instead of mounting all
+1111+ cards — that grid was the main source of UI jank. The template
+library itself (~1.8MB of JSON) is still loaded in full the first time you
+open Filing Cabinet or use "Assign Work," since it's a static, fully
+client-side dataset; splitting that further would mean lazy-loading it per
+category instead of one flat array.
 
 ## Session-code login (no email/password)
 
