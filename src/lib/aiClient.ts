@@ -407,3 +407,209 @@ export async function draftDocumentAsNpc(
   });
   return renderBody(template.bodyTemplate, values);
 }
+
+const NPC_PERSONA_TOOL: LlmTool = {
+  type: "function",
+  function: {
+    name: "submit_npc_persona",
+    description: "Propose a new AI coworker persona idea for the player's company.",
+    parameters: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "A full human name." },
+        avatar: { type: "string", description: "A single emoji representing this person." },
+        jobTitle: { type: "string", description: "A plausible office job title." },
+        personality: {
+          type: "string",
+          description: "One vivid sentence describing their personality and how they write/talk.",
+        },
+      },
+      required: ["name", "avatar", "jobTitle", "personality"],
+    },
+  },
+};
+
+export interface GeneratedNpcPersona {
+  name: string;
+  avatar: string;
+  jobTitle: string;
+  personality: string;
+}
+
+/** Brainstorms a fresh AI coworker persona idea a boss can then edit before hiring. */
+export async function generateNpcPersonaIdea(hint: string, config: LlmConfig): Promise<GeneratedNpcPersona> {
+  const system = `You are brainstorming a new hireable AI coworker persona for a cozy office-life simulation game. \
+Invent a plausible office worker: a name, a single representative emoji avatar, a job title, and one vivid sentence \
+about their personality and writing voice. Keep it grounded, no fantasy elements. \
+Respond only by calling the submit_npc_persona tool.`;
+  const user = hint.trim()
+    ? `Idea/hint from the player: ${hint.trim()}`
+    : "Surprise me with an original office coworker persona.";
+  const result = await llmChatCompletion({
+    config,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    tools: [NPC_PERSONA_TOOL],
+    forceToolName: "submit_npc_persona",
+    maxTokens: 400,
+  });
+  const call = result.toolCalls.find((c) => c.function.name === "submit_npc_persona");
+  if (!call) throw new Error("AI didn't return a persona idea.");
+  return parseToolArguments<GeneratedNpcPersona>(call);
+}
+
+const CLIENT_PERSONA_TOOL: LlmTool = {
+  type: "function",
+  function: {
+    name: "submit_client_persona",
+    description: "Propose a new recurring AI client persona for the player's company to do business with.",
+    parameters: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "A full human name." },
+        companyName: { type: "string", description: "The name of the client's company." },
+        avatar: { type: "string", description: "A single emoji representing this client." },
+        personality: {
+          type: "string",
+          description: "One vivid sentence describing their personality and how they communicate.",
+        },
+        categoryAffinity: {
+          type: "array",
+          description: "1-3 category ids of the kind of paperwork this client tends to need.",
+          items: { type: "string", enum: TAXONOMY.map((c) => c.id) },
+        },
+        payoutMin: { type: "number", description: "Low end of what this client typically pays, in dollars." },
+        payoutMax: { type: "number", description: "High end of what this client typically pays, in dollars." },
+      },
+      required: ["name", "companyName", "avatar", "personality", "categoryAffinity", "payoutMin", "payoutMax"],
+    },
+  },
+};
+
+export interface GeneratedClientPersona {
+  name: string;
+  companyName: string;
+  avatar: string;
+  personality: string;
+  categoryAffinity: string[];
+  payoutMin: number;
+  payoutMax: number;
+}
+
+/** Brainstorms a fresh AI client persona idea a boss can then edit before adding. */
+export async function generateClientPersonaIdea(hint: string, config: LlmConfig): Promise<GeneratedClientPersona> {
+  const categoryList = TAXONOMY.map((c) => `${c.id}: ${c.name}`).join("\n");
+  const system = `You are brainstorming a new recurring AI client persona for a cozy office-life simulation game - \
+an outside business that will send the player's company paperwork requests. Invent a plausible person and company, \
+a single representative emoji avatar, their personality and communication style, which categories of work they \
+tend to need, and a fair payout range in dollars. Keep it grounded, no fantasy elements. \
+Respond only by calling the submit_client_persona tool.\n\nAvailable categories:\n${categoryList}`;
+  const user = hint.trim()
+    ? `Idea/hint from the player: ${hint.trim()}`
+    : "Surprise me with an original recurring client persona.";
+  const result = await llmChatCompletion({
+    config,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    tools: [CLIENT_PERSONA_TOOL],
+    forceToolName: "submit_client_persona",
+    maxTokens: 500,
+  });
+  const call = result.toolCalls.find((c) => c.function.name === "submit_client_persona");
+  if (!call) throw new Error("AI didn't return a persona idea.");
+  const input = parseToolArguments<GeneratedClientPersona>(call);
+  return {
+    ...input,
+    payoutMin: Math.max(1, Math.round(input.payoutMin)),
+    payoutMax: Math.max(Math.round(input.payoutMin) + 1, Math.round(input.payoutMax)),
+  };
+}
+
+const CUSTOM_TEMPLATE_TOOL: LlmTool = {
+  type: "function",
+  function: {
+    name: "submit_custom_template",
+    description: "Submit a brand-new office paperwork template built from the boss's one-line idea.",
+    parameters: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "Short, specific document title." },
+        description: { type: "string", description: "One sentence describing what this document is for." },
+        estimatedMinutes: { type: "integer", description: "Roughly how many minutes this takes to fill out, 2-30." },
+        difficulty: { type: "string", enum: ["quick", "standard", "detailed"] },
+        fields: {
+          type: "array",
+          description: "Form fields the player fills in to produce the document. At least 3.",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string", description: "snake_case field id, referenced in bodyTemplate as {{id}}." },
+              label: { type: "string" },
+              type: { type: "string", enum: FIELD_TYPES },
+              required: { type: "boolean" },
+              placeholder: { type: "string" },
+              options: { type: "array", items: { type: "string" } },
+            },
+            required: ["id", "label", "type", "required"],
+          },
+        },
+        bodyTemplate: {
+          type: "string",
+          description:
+            "The full document body, realistically formatted, using {{field_id}} tokens matching the fields array.",
+        },
+      },
+      required: ["title", "description", "estimatedMinutes", "difficulty", "fields", "bodyTemplate"],
+    },
+  },
+};
+
+/** Generates a complete, editable custom document template from a one-line prompt - the boss reviews/tweaks it in
+ * the drag-and-drop builder before saving, same as a hand-built one. */
+export async function generateCustomTemplate(prompt: string, config: LlmConfig): Promise<DocumentTemplate> {
+  const system = `You are helping a manager in a cozy office-life paperwork simulation game invent a brand-new \
+document template from a short idea. Design realistic, fillable form fields and a well-formatted body using \
+{{field_id}} tokens. No fantasy elements, no lorem ipsum. Respond only by calling the submit_custom_template tool.`;
+  const user = `Idea: ${prompt.trim()}`;
+
+  const result = await llmChatCompletion({
+    config,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    tools: [CUSTOM_TEMPLATE_TOOL],
+    forceToolName: "submit_custom_template",
+    maxTokens: 3000,
+  });
+
+  const call = result.toolCalls.find((c) => c.function.name === "submit_custom_template");
+  if (!call) throw new Error("AI didn't return a template.");
+  const input = parseToolArguments<{
+    title: string;
+    description: string;
+    estimatedMinutes: number;
+    difficulty: DocumentTemplate["difficulty"];
+    fields: TemplateField[];
+    bodyTemplate: string;
+  }>(call);
+
+  return {
+    id: `custom-ai-${Date.now()}`,
+    category: "Custom Templates",
+    categoryId: "custom",
+    subcategory: "My Templates",
+    subcategoryId: "custom-my-templates",
+    title: input.title,
+    description: input.description,
+    estimatedMinutes: Math.max(2, Math.round(input.estimatedMinutes)),
+    difficulty: input.difficulty,
+    tags: ["custom", "ai-generated"],
+    fields: input.fields,
+    bodyTemplate: input.bodyTemplate,
+  };
+}

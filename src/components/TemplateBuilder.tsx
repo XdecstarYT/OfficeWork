@@ -1,5 +1,7 @@
 import { useRef, useState } from "react";
 import { DocumentPreview } from "./DocumentPreview";
+import { generateCustomTemplate } from "../lib/aiClient";
+import type { LlmConfig } from "../lib/llmConfig";
 import type { DocumentTemplate, FieldType, TemplateField } from "../types/template";
 
 interface BuilderField extends TemplateField {
@@ -55,6 +57,8 @@ interface TemplateBuilderProps {
   /** Overrides the primary action button's label and heading, e.g. "Assign to Sam". */
   primaryLabel?: string;
   heading?: string;
+  /** When provided, shows a "✨ Generate with AI" prompt that drafts the whole template from a one-line idea. */
+  llmConfig?: LlmConfig;
 }
 
 export function TemplateBuilder({
@@ -63,12 +67,41 @@ export function TemplateBuilder({
   onSaveTemplate,
   primaryLabel = "Fill It Out Now",
   heading = "🧩 Build a Custom Template",
+  llmConfig,
 }: TemplateBuilderProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [fields, setFields] = useState<BuilderField[]>([]);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [showAiPrompt, setShowAiPrompt] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState("");
   const nextSeq = useRef(1);
+
+  async function handleGenerateWithAi() {
+    if (!llmConfig || !aiPrompt.trim()) return;
+    setAiGenerating(true);
+    setAiError("");
+    try {
+      const generated = await generateCustomTemplate(aiPrompt, llmConfig);
+      setTitle(generated.title);
+      setDescription(generated.description);
+      setFields(
+        generated.fields.map((f) => ({
+          ...f,
+          optionsText: f.options?.join(", "),
+        })),
+      );
+      nextSeq.current = generated.fields.length + 1;
+      setShowAiPrompt(false);
+      setAiPrompt("");
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "Couldn't reach the AI.");
+    } finally {
+      setAiGenerating(false);
+    }
+  }
 
   function insertField(type: FieldType, atIndex: number) {
     const seq = nextSeq.current++;
@@ -209,6 +242,53 @@ export function TemplateBuilder({
           </aside>
 
           <main className="min-h-0 flex-1 overflow-y-auto p-4">
+            {llmConfig && (
+              <div className="mb-3 rounded-lg border border-violet-200 bg-violet-50 p-3">
+                {!showAiPrompt ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowAiPrompt(true)}
+                    className="text-xs font-medium text-violet-700 hover:text-violet-900"
+                  >
+                    ✨ Generate with AI
+                  </button>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-xs font-medium text-violet-700">
+                      Describe the document and the AI will draft the whole thing - title, fields, and body.
+                    </p>
+                    <input
+                      type="text"
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      placeholder="e.g. an annual performance review form"
+                      className="w-full rounded-md border border-violet-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                    />
+                    {aiError && <p className="text-xs text-red-600">{aiError}</p>}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleGenerateWithAi}
+                        disabled={aiGenerating || !aiPrompt.trim()}
+                        className="rounded-md bg-violet-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-800 disabled:opacity-50"
+                      >
+                        {aiGenerating ? "Generating…" : "Generate"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAiPrompt(false);
+                          setAiError("");
+                        }}
+                        className="rounded-md px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-white"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <input
               type="text"
               value={title}

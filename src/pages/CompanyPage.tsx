@@ -9,13 +9,23 @@ import {
   awardBonusToAll,
   renameCompany,
   regenerateInviteCode,
+  startCompanyDay,
+  endCompanyDay,
+  setCareerMode,
 } from "../lib/company";
-import { assignWork, fetchCompanyDocuments } from "../lib/documents";
+import { assignWork, fetchCompanyDocuments, payoutFor } from "../lib/documents";
 import { sendEmailToCoworker } from "../lib/emails";
 import { postCorporateUpdate } from "../lib/corporateUpdates";
-import { fetchCompanyNpcs, hireNpc, fireNpc, type CompanyNpcRow } from "../lib/npcs";
+import { fetchCompanyNpcs, hireNpc, fireNpc, resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
+import {
+  fetchCustomNpcPersonas,
+  createCustomNpcPersona,
+  deleteCustomNpcPersona,
+  customPersonaToNpcPersona,
+  type CustomNpcPersonaRow,
+} from "../lib/customNpcPersonas";
 import { NPC_PERSONAS, getNpcPersona } from "../data/npcs";
-import { generatePromotionAnnouncement } from "../lib/aiClient";
+import { generatePromotionAnnouncement, generateNpcPersonaIdea } from "../lib/aiClient";
 import { TemplatePickerModal } from "../components/TemplatePickerModal";
 import { TemplateBuilder } from "../components/TemplateBuilder";
 import { AssignTaskModal, type AssignTaskDetails } from "../components/AssignTaskModal";
@@ -68,19 +78,35 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   const [npcs, setNpcs] = useState<CompanyNpcRow[]>([]);
   const [showHire, setShowHire] = useState(false);
   const [hiring, setHiring] = useState(false);
+  const [customNpcPersonas, setCustomNpcPersonas] = useState<CustomNpcPersonaRow[]>([]);
+  const [showCreateNpc, setShowCreateNpc] = useState(false);
+  const [npcDraftName, setNpcDraftName] = useState("");
+  const [npcDraftAvatar, setNpcDraftAvatar] = useState("🤖");
+  const [npcDraftTitle, setNpcDraftTitle] = useState("Coworker");
+  const [npcDraftLevel, setNpcDraftLevel] = useState(2);
+  const [npcDraftCost, setNpcDraftCost] = useState(50);
+  const [npcDraftPersonality, setNpcDraftPersonality] = useState("");
+  const [npcAiHint, setNpcAiHint] = useState("");
+  const [npcAiBusy, setNpcAiBusy] = useState(false);
+  const [creatingNpcPersona, setCreatingNpcPersona] = useState(false);
+  const [startingDay, setStartingDay] = useState(false);
+  const [endingDay, setEndingDay] = useState(false);
+  const [togglingCareerMode, setTogglingCareerMode] = useState(false);
   const { addCustomTemplate } = useCustomTemplates(profile.company_id, profile.id);
 
   const load = useCallback(async () => {
     if (!profile.company_id) return;
     setLoading(true);
-    const [c, m, n] = await Promise.all([
+    const [c, m, n, cp] = await Promise.all([
       fetchCompany(profile.company_id),
       fetchCompanyMembers(profile.company_id),
       fetchCompanyNpcs(profile.company_id),
+      fetchCustomNpcPersonas(profile.company_id),
     ]);
     setCompany(c);
     setMembers(m);
     setNpcs(n);
+    setCustomNpcPersonas(cp);
     setLoading(false);
   }, [profile.company_id]);
 
@@ -220,9 +246,11 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     }
   }
 
-  async function handleHireNpc(personaKey: string) {
+  async function handleHireNpc(personaKey: string, customPersonaId?: string) {
     if (!company) return;
-    const persona = getNpcPersona(personaKey);
+    const persona = customPersonaId
+      ? customPersonaToNpcPersona(customNpcPersonas.find((p) => p.id === customPersonaId)!)
+      : getNpcPersona(personaKey);
     if (!persona) return;
     if (profile.money < persona.hireCost) {
       setStatusMessage(`You need $${persona.hireCost.toFixed(2)} to hire ${persona.name}.`);
@@ -232,7 +260,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     setHiring(true);
     try {
       await awardMoney(profile.id, -persona.hireCost);
-      await hireNpc({ companyId: company.id, hiredBy: profile.id, persona });
+      await hireNpc({ companyId: company.id, hiredBy: profile.id, persona, customPersonaId });
       setStatusMessage(`Hired ${persona.name} as ${persona.suggestedTitle}!`);
       setTimeout(() => setStatusMessage(null), 4000);
       setShowHire(false);
@@ -247,9 +275,126 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   }
 
   async function handleFireNpc(npc: CompanyNpcRow) {
-    if (!window.confirm(`Let ${getNpcPersona(npc.persona_key)?.name ?? "this coworker"} go?`)) return;
+    const persona = resolveNpcPersona(npc, customNpcPersonas);
+    if (!window.confirm(`Let ${persona?.name ?? "this coworker"} go?`)) return;
     await fireNpc(npc.id);
     await load();
+  }
+
+  async function handleGenerateNpcIdea() {
+    setNpcAiBusy(true);
+    try {
+      const idea = await generateNpcPersonaIdea(npcAiHint, llmConfig);
+      setNpcDraftName(idea.name);
+      setNpcDraftAvatar(idea.avatar);
+      setNpcDraftTitle(idea.jobTitle);
+      setNpcDraftPersonality(idea.personality);
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't reach the AI.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    } finally {
+      setNpcAiBusy(false);
+    }
+  }
+
+  async function handleCreateNpcPersona() {
+    if (!company || !npcDraftName.trim()) return;
+    setCreatingNpcPersona(true);
+    try {
+      await createCustomNpcPersona({
+        companyId: company.id,
+        createdBy: profile.id,
+        name: npcDraftName.trim(),
+        avatar: npcDraftAvatar.trim() || "🤖",
+        personality: npcDraftPersonality.trim(),
+        jobTitle: npcDraftTitle.trim() || "Coworker",
+        level: Math.max(1, npcDraftLevel),
+        hireCost: Math.max(0, npcDraftCost),
+      });
+      setShowCreateNpc(false);
+      setNpcDraftName("");
+      setNpcDraftAvatar("🤖");
+      setNpcDraftTitle("Coworker");
+      setNpcDraftLevel(2);
+      setNpcDraftCost(50);
+      setNpcDraftPersonality("");
+      setNpcAiHint("");
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't create that persona.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    } finally {
+      setCreatingNpcPersona(false);
+    }
+  }
+
+  async function handleDeleteNpcPersona(id: string) {
+    if (!window.confirm("Delete this custom coworker persona? Anyone already hired stays hired.")) return;
+    await deleteCustomNpcPersona(id);
+    await load();
+  }
+
+  async function handleStartDay() {
+    if (!company) return;
+    setStartingDay(true);
+    try {
+      await startCompanyDay(company);
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't start the day.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    } finally {
+      setStartingDay(false);
+    }
+  }
+
+  async function handleEndDay() {
+    if (!company || !company.day_started_at) return;
+    setEndingDay(true);
+    try {
+      const docs = await fetchCompanyDocuments(company.id);
+      const since = new Date(company.day_started_at).getTime();
+      const completedToday = docs.filter(
+        (d) => d.status === "completed" && d.completed_at && new Date(d.completed_at).getTime() >= since,
+      );
+      const moneyEarned = completedToday.reduce(
+        (sum, d) => sum + payoutFor(d, d.template_snapshot as unknown as DocumentTemplate),
+        0,
+      );
+      const counts = new Map<string, number>();
+      for (const d of completedToday) {
+        if (d.assigned_to) counts.set(d.assigned_to, (counts.get(d.assigned_to) ?? 0) + 1);
+      }
+      const topId = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+      const topName = topId ? members.find((m) => m.id === topId)?.display_name : null;
+      await endCompanyDay(company.id);
+      await postCorporateUpdate({
+        companyId: company.id,
+        title: `📅 Day ${company.current_day} Wrap-Up`,
+        body: `${completedToday.length} task${completedToday.length === 1 ? "" : "s"} completed today, $${moneyEarned.toFixed(2)} earned company-wide.${topName ? ` Top performer: ${topName}.` : ""}`,
+        postedBy: profile.id,
+      });
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't end the day.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    } finally {
+      setEndingDay(false);
+    }
+  }
+
+  async function handleToggleCareerMode() {
+    if (!company) return;
+    setTogglingCareerMode(true);
+    try {
+      await setCareerMode(company.id, !company.career_mode);
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't update Career Mode.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    } finally {
+      setTogglingCareerMode(false);
+    }
   }
 
   async function handlePromote(m: Profile) {
@@ -417,8 +562,67 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                 new one.
               </p>
             </div>
+            <div className="flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 p-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-stone-400">🎯 Career Mode</p>
+                <p className="mt-0.5 text-xs text-stone-500">
+                  Adds an optional milestone track with one-off rewards — built for solo play, but works for
+                  any company.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleCareerMode}
+                disabled={togglingCareerMode}
+                className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${
+                  company.career_mode
+                    ? "bg-emerald-700 text-white hover:bg-emerald-800"
+                    : "border border-stone-300 text-stone-600 hover:bg-stone-100"
+                }`}
+              >
+                {company.career_mode ? "On" : "Off"}
+              </button>
+            </div>
           </div>
         )}
+
+        <div className="flex flex-col gap-2 rounded-lg border border-sky-200 bg-sky-50/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-sky-700">
+              📅 Day {company.current_day}
+            </h2>
+            <p className="text-xs text-sky-600">
+              {company.day_status === "active"
+                ? "The workday is underway."
+                : company.day_status === "ended"
+                  ? "Today has wrapped up — start the next day when you're ready."
+                  : "The office hasn't opened yet today."}
+            </p>
+          </div>
+          {isOwner && (
+            <div className="flex shrink-0 gap-2">
+              {company.day_status !== "active" ? (
+                <button
+                  type="button"
+                  onClick={handleStartDay}
+                  disabled={startingDay}
+                  className="rounded-md bg-sky-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-800 disabled:opacity-50"
+                >
+                  {startingDay ? "Starting…" : "▶ Start Day"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleEndDay}
+                  disabled={endingDay}
+                  className="rounded-md border border-sky-300 bg-white px-3 py-1.5 text-xs font-medium text-sky-700 hover:bg-sky-100 disabled:opacity-50"
+                >
+                  {endingDay ? "Wrapping up…" : "⏹ End Day"}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
 
         {statusMessage && (
           <div className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-800">{statusMessage}</div>
@@ -668,7 +872,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
           ) : (
             <div className="flex flex-col gap-1.5">
               {npcs.map((npc) => {
-                const persona = getNpcPersona(npc.persona_key);
+                const persona = resolveNpcPersona(npc, customNpcPersonas);
                 return (
                   <div
                     key={npc.id}
@@ -727,6 +931,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
               : `🧩 Build a Custom Task for ${members.find((m) => m.id === assignTargetId)?.display_name}`
           }
           primaryLabel={assignTargetId === profile.id ? "Request for Myself" : "Assign This Task"}
+          llmConfig={llmConfig}
           onClose={() => {
             setAssignTargetId(null);
             setShowBuilder(false);
@@ -785,10 +990,148 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                   </button>
                 </div>
               ))}
-              {NPC_PERSONAS.every((p) => npcs.some((n) => n.persona_key === p.key)) && (
-                <p className="text-sm text-stone-400">You've hired everyone available!</p>
-              )}
+              {customNpcPersonas
+                .filter((p) => !npcs.some((n) => n.custom_persona_id === p.id))
+                .map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between gap-3 rounded-md border border-violet-200 bg-violet-50/40 p-3"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-stone-800">
+                        {p.avatar} {p.name} — {p.job_title}{" "}
+                        <span className="rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
+                          custom
+                        </span>
+                      </p>
+                      <p className="text-xs text-stone-500">{p.personality}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleHireNpc("", p.id)}
+                        disabled={hiring}
+                        className="rounded-md bg-violet-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-800 disabled:opacity-50"
+                      >
+                        Hire (${p.hire_cost})
+                      </button>
+                      {(p.created_by === profile.id || isOwner) && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteNpcPersona(p.id)}
+                          className="text-xs text-stone-400 hover:text-red-600"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              {NPC_PERSONAS.every((p) => npcs.some((n) => n.persona_key === p.key)) &&
+                customNpcPersonas.every((p) => npcs.some((n) => n.custom_persona_id === p.id)) && (
+                  <p className="text-sm text-stone-400">You've hired everyone available!</p>
+                )}
             </div>
+
+            {!showCreateNpc ? (
+              <button
+                type="button"
+                onClick={() => setShowCreateNpc(true)}
+                className="mt-3 self-start text-xs font-medium text-violet-700 hover:text-violet-900"
+              >
+                🎨 Create Custom Coworker
+              </button>
+            ) : (
+              <div className="mt-3 flex flex-col gap-2 rounded-md border border-violet-200 bg-violet-50/40 p-3">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={npcAiHint}
+                    onChange={(e) => setNpcAiHint(e.target.value)}
+                    placeholder="Optional idea/hint for the AI…"
+                    className="flex-1 rounded-md border border-violet-300 px-2 py-1.5 text-xs focus:border-violet-500 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleGenerateNpcIdea}
+                    disabled={npcAiBusy}
+                    className="shrink-0 rounded-md bg-violet-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-800 disabled:opacity-50"
+                  >
+                    {npcAiBusy ? "Thinking…" : "✨ AI Suggest"}
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={npcDraftAvatar}
+                    onChange={(e) => setNpcDraftAvatar(e.target.value)}
+                    placeholder="🙂"
+                    className="w-14 rounded-md border border-stone-300 px-2 py-1.5 text-center text-sm"
+                  />
+                  <input
+                    type="text"
+                    value={npcDraftName}
+                    onChange={(e) => setNpcDraftName(e.target.value)}
+                    placeholder="Name"
+                    className="flex-1 rounded-md border border-stone-300 px-2 py-1.5 text-sm"
+                  />
+                </div>
+                <input
+                  type="text"
+                  value={npcDraftTitle}
+                  onChange={(e) => setNpcDraftTitle(e.target.value)}
+                  placeholder="Job title"
+                  className="rounded-md border border-stone-300 px-2 py-1.5 text-sm"
+                />
+                <textarea
+                  value={npcDraftPersonality}
+                  onChange={(e) => setNpcDraftPersonality(e.target.value)}
+                  placeholder="Personality / how they write…"
+                  rows={2}
+                  className="rounded-md border border-stone-300 px-2 py-1.5 text-sm"
+                />
+                <div className="flex gap-2">
+                  <label className="flex flex-1 items-center gap-1 text-xs text-stone-500">
+                    Level
+                    <input
+                      type="number"
+                      min={1}
+                      value={npcDraftLevel}
+                      onChange={(e) => setNpcDraftLevel(Number(e.target.value))}
+                      className="w-16 rounded border border-stone-300 px-2 py-1 text-xs"
+                    />
+                  </label>
+                  <label className="flex flex-1 items-center gap-1 text-xs text-stone-500">
+                    Hire cost $
+                    <input
+                      type="number"
+                      min={0}
+                      value={npcDraftCost}
+                      onChange={(e) => setNpcDraftCost(Number(e.target.value))}
+                      className="w-20 rounded border border-stone-300 px-2 py-1 text-xs"
+                    />
+                  </label>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateNpc(false)}
+                    className="rounded-md px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-white"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreateNpcPersona}
+                    disabled={creatingNpcPersona || !npcDraftName.trim()}
+                    className="rounded-md bg-violet-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-800 disabled:opacity-50"
+                  >
+                    {creatingNpcPersona ? "Creating…" : "Create Persona"}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <button
               type="button"
               onClick={() => setShowHire(false)}

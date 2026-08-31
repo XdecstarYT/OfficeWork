@@ -175,6 +175,35 @@ with real coworkers.
   new level and title, then sends them an AI-generated congratulatory
   email announcing the promotion (falling back to a canned message if the
   AI is unreachable).
+- **Custom AI Coworkers**: the "Hire an AI Coworker" modal isn't limited to
+  the 6 built-in personas — "🎨 Create Custom Coworker" lets anyone design
+  their own (name, avatar emoji, job title, level, hire cost, personality),
+  with an "✨ AI Suggest" button that brainstorms a full persona idea from
+  an optional one-line hint you can then edit before saving. Once created
+  it's shared company-wide in the hire list, just like a stock persona —
+  and behaves identically everywhere (email replies, "Ask to Draft") once
+  hired. The creator or the Owner can delete an unhired custom persona.
+- **Custom AI Clients**: the Owner can add a company-shared custom client
+  from the AI Clients tab ("🎨 Add Custom Client") — name, company, avatar,
+  personality, category affinity, and payout range, also with an "✨ AI
+  Suggest" brainstorming helper. A custom client hands out fully AI-generated
+  requests and supports negotiation exactly like the 8 built-in ones.
+- **AI Task Generator**: the drag-and-drop template builder (used for both
+  custom company tasks and personal templates) has a "✨ Generate with AI"
+  option — describe the document in one line and the AI drafts the whole
+  thing (title, fields, and body) into the builder for you to review, tweak,
+  and save or assign like any hand-built template.
+- **Actual Days**: every company tracks an in-game Day counter. The Owner
+  can "▶ Start Day" and "⏹ End Day" from the Company tab; ending a day
+  automatically posts a Corporate Update recap (tasks completed, money
+  earned company-wide, and the day's top performer) before the next day can
+  start.
+- **Career Mode**: an optional milestone track (toggle it on from Company
+  Settings — built with solo play in mind, but works for any company) that
+  appears on the Dashboard once enabled. Ten milestones (first task, task
+  count and Money thresholds, Career Level thresholds, hiring your first AI
+  coworker, reaching Day 5, posting your first Corporate Update) each unlock
+  a one-time Money/XP reward you claim with a button once you've reached it.
 
 Not yet built: an avatar/office world, cosmetics.
 

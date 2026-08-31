@@ -212,3 +212,36 @@ export async function leaveCompany(userId: string) {
     .eq("id", userId);
   if (error) throw error;
 }
+
+/** Starts (or resumes into a new numbered) in-game day. Coming from "ended"
+ * advances current_day; coming from "not_started" (the very first day)
+ * keeps it at 1. */
+export async function startCompanyDay(company: Company) {
+  const nextDay = company.day_status === "ended" ? company.current_day + 1 : company.current_day;
+  const { error } = await supabase
+    .from("companies")
+    .update({ day_status: "active", day_started_at: new Date().toISOString(), current_day: nextDay })
+    .eq("id", company.id);
+  if (error) throw error;
+}
+
+export async function endCompanyDay(companyId: string) {
+  const { error } = await supabase.from("companies").update({ day_status: "ended" }).eq("id", companyId);
+  if (error) throw error;
+}
+
+export async function setCareerMode(companyId: string, enabled: boolean) {
+  const { error } = await supabase.from("companies").update({ career_mode: enabled }).eq("id", companyId);
+  if (error) throw error;
+}
+
+/** Records a career milestone as claimed for this profile (idempotent - a
+ * milestone already in the array is left alone). */
+export async function claimMilestone(profile: Profile, milestoneId: string) {
+  if (profile.claimed_milestones.includes(milestoneId)) return;
+  const { error } = await supabase
+    .from("profiles")
+    .update({ claimed_milestones: [...profile.claimed_milestones, milestoneId] })
+    .eq("id", profile.id);
+  if (error) throw error;
+}

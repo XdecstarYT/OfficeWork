@@ -14,14 +14,16 @@ import { fetchCompanyMembers } from "../lib/company";
 import { assignWork } from "../lib/documents";
 import type { Database } from "../types/database";
 import type { DocumentTemplate } from "../types/template";
+import type { LlmConfig } from "../lib/llmConfig";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 interface FilingCabinetProps {
   profile: Profile;
+  llmConfig: LlmConfig;
 }
 
-export function FilingCabinet({ profile }: FilingCabinetProps) {
+export function FilingCabinet({ profile, llmConfig }: FilingCabinetProps) {
   const [selection, setSelection] = useState<CategorySelection>({
     categoryId: null,
     subcategoryId: null,
@@ -275,6 +277,7 @@ export function FilingCabinet({ profile }: FilingCabinetProps) {
 
       {showBuilder && (
         <TemplateBuilder
+          llmConfig={llmConfig}
           onClose={() => setShowBuilder(false)}
           onSaveTemplate={(t) => {
             addCustomTemplate(t);

@@ -23,6 +23,10 @@ export interface Database {
           invite_code: string;
           owner_id: string;
           started: boolean;
+          current_day: number;
+          day_status: "not_started" | "active" | "ended";
+          day_started_at: string | null;
+          career_mode: boolean;
           created_at: string;
         };
         Insert: {
@@ -31,6 +35,10 @@ export interface Database {
           invite_code: string;
           owner_id: string;
           started?: boolean;
+          current_day?: number;
+          day_status?: "not_started" | "active" | "ended";
+          day_started_at?: string | null;
+          career_mode?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["companies"]["Insert"]>;
@@ -72,6 +80,7 @@ export interface Database {
           join_code: string | null;
           email_handle: string | null;
           department: string | null;
+          claimed_milestones: string[];
           created_at: string;
         };
         Insert: {
@@ -85,6 +94,7 @@ export interface Database {
           join_code?: string | null;
           email_handle?: string | null;
           department?: string | null;
+          claimed_milestones?: string[];
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
@@ -190,7 +200,8 @@ export interface Database {
         Row: {
           id: string;
           company_id: string;
-          persona_key: string;
+          persona_key: string | null;
+          custom_persona_id: string | null;
           job_title: string;
           level: number;
           hired_by: string;
@@ -199,13 +210,72 @@ export interface Database {
         Insert: {
           id?: string;
           company_id: string;
-          persona_key: string;
+          persona_key?: string | null;
+          custom_persona_id?: string | null;
           job_title: string;
           level?: number;
           hired_by: string;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["company_npcs"]["Insert"]>;
+        Relationships: [];
+      };
+      custom_npc_personas: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          avatar: string;
+          personality: string;
+          job_title: string;
+          level: number;
+          hire_cost: number;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          avatar?: string;
+          personality?: string;
+          job_title?: string;
+          level?: number;
+          hire_cost?: number;
+          created_by: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["custom_npc_personas"]["Insert"]>;
+        Relationships: [];
+      };
+      custom_ai_clients: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          company_name: string;
+          avatar: string;
+          personality: string;
+          category_affinity: string[];
+          payout_min: number;
+          payout_max: number;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          company_name?: string;
+          avatar?: string;
+          personality?: string;
+          category_affinity?: string[];
+          payout_min?: number;
+          payout_max?: number;
+          created_by: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["custom_ai_clients"]["Insert"]>;
         Relationships: [];
       };
       board_meetings: {

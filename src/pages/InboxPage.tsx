@@ -10,9 +10,9 @@ import {
   type EmailRow,
 } from "../lib/emails";
 import { fetchCompanyMembers } from "../lib/company";
-import { fetchCompanyNpcs, type CompanyNpcRow } from "../lib/npcs";
+import { fetchCompanyNpcs, resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
+import { fetchCustomNpcPersonas, type CustomNpcPersonaRow } from "../lib/customNpcPersonas";
 import { CLIENTS, getClient } from "../data/clients";
-import { getNpcPersona } from "../data/npcs";
 import {
   generateClientEmailReply,
   staticClientEmailReply,
@@ -42,6 +42,7 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
   const [emails, setEmails] = useState<EmailRow[]>([]);
   const [members, setMembers] = useState<Profile[]>([]);
   const [npcs, setNpcs] = useState<CompanyNpcRow[]>([]);
+  const [customNpcPersonas, setCustomNpcPersonas] = useState<CustomNpcPersonaRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [openEmail, setOpenEmail] = useState<EmailRow | null>(null);
   const [showCompose, setShowCompose] = useState(false);
@@ -56,14 +57,16 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [inbox, companyMembers, companyNpcs] = await Promise.all([
+    const [inbox, companyMembers, companyNpcs, customPersonas] = await Promise.all([
       fetchInbox(profile.id),
       profile.company_id ? fetchCompanyMembers(profile.company_id) : Promise.resolve([]),
       profile.company_id ? fetchCompanyNpcs(profile.company_id) : Promise.resolve([]),
+      profile.company_id ? fetchCustomNpcPersonas(profile.company_id) : Promise.resolve([]),
     ]);
     setEmails(inbox);
     setMembers(companyMembers);
     setNpcs(companyNpcs);
+    setCustomNpcPersonas(customPersonas);
     setLoading(false);
   }, [profile.id, profile.company_id]);
 
@@ -89,7 +92,7 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
   function npcName(npcId: string | null): string | null {
     if (!npcId) return null;
     const npc = npcs.find((n) => n.id === npcId);
-    return npc ? (getNpcPersona(npc.persona_key)?.name ?? "AI Coworker") : "AI Coworker";
+    return npc ? (resolveNpcPersona(npc, customNpcPersonas)?.name ?? "AI Coworker") : "AI Coworker";
   }
 
   function senderLabel(email: EmailRow): string {
@@ -129,7 +132,7 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
         });
       } else if (recipient.type === "npc") {
         const npc = npcs.find((n) => n.id === recipient.id)!;
-        const persona = getNpcPersona(npc.persona_key)!;
+        const persona = resolveNpcPersona(npc, customNpcPersonas)!;
         await sendEmailToNpc({
           companyId: profile.company_id,
           senderId: profile.id,
@@ -188,7 +191,7 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
   async function handleAskToDraft(template: DocumentTemplate) {
     if (!profile.company_id || !draftNpcId) return;
     const npc = npcs.find((n) => n.id === draftNpcId);
-    const persona = npc ? getNpcPersona(npc.persona_key) : null;
+    const persona = npc ? resolveNpcPersona(npc, customNpcPersonas) : null;
     if (!npc || !persona) return;
     setShowDraftTemplatePicker(false);
     setDrafting(true);
@@ -343,7 +346,7 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
               {npcs.length > 0 && (
                 <optgroup label="AI Coworkers">
                   {npcs.map((npc) => {
-                    const persona = getNpcPersona(npc.persona_key);
+                    const persona = resolveNpcPersona(npc, customNpcPersonas);
                     return (
                       <option key={npc.id} value={`npc:${npc.id}`}>
                         {persona?.name ?? "AI Coworker"} ({npc.job_title})
@@ -412,7 +415,7 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
             <h2 className="text-lg font-semibold text-stone-900">Who should draft it?</h2>
             <div className="mt-3 flex flex-col gap-1.5">
               {npcs.map((npc) => {
-                const persona = getNpcPersona(npc.persona_key);
+                const persona = resolveNpcPersona(npc, customNpcPersonas);
                 return (
                   <button
                     key={npc.id}

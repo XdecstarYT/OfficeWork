@@ -225,9 +225,10 @@ function App() {
               company={company}
               notifications={notifications}
               onNavigate={setTab}
+              onProfileChanged={refreshProfile}
             />
           )}
-          {tab === "cabinet" && <FilingCabinet profile={profile} />}
+          {tab === "cabinet" && <FilingCabinet profile={profile} llmConfig={DEFAULT_LLM_CONFIG} />}
           {tab === "work" && (
             <WorkPage profile={profile} onProfileChanged={refreshProfile} llmConfig={DEFAULT_LLM_CONFIG} />
           )}
@@ -241,7 +242,12 @@ function App() {
           {tab === "leaderboard" && <LeaderboardPage profile={profile} />}
           {tab === "archive" && <ArchivePage profile={profile} />}
           {tab === "clients" && (
-            <AiClients llmConfig={DEFAULT_LLM_CONFIG} onCompleteRequest={handleCompleteRequest} />
+            <AiClients
+              profile={profile}
+              isOwner={company.owner_id === profile.id}
+              llmConfig={DEFAULT_LLM_CONFIG}
+              onCompleteRequest={handleCompleteRequest}
+            />
           )}
         </Suspense>
       </div>

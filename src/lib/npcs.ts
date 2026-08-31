@@ -1,6 +1,7 @@
 import { supabase } from "./supabaseClient";
 import type { Database } from "../types/database";
-import type { NpcPersona } from "../data/npcs";
+import { getNpcPersona, type NpcPersona } from "../data/npcs";
+import { customPersonaToNpcPersona, type CustomNpcPersonaRow } from "./customNpcPersonas";
 
 export type CompanyNpcRow = Database["public"]["Tables"]["company_npcs"]["Row"];
 
@@ -18,13 +19,15 @@ export async function hireNpc(params: {
   companyId: string;
   hiredBy: string;
   persona: NpcPersona;
+  customPersonaId?: string;
 }): Promise<CompanyNpcRow> {
-  const { companyId, hiredBy, persona } = params;
+  const { companyId, hiredBy, persona, customPersonaId } = params;
   const { data, error } = await supabase
     .from("company_npcs")
     .insert({
       company_id: companyId,
-      persona_key: persona.key,
+      persona_key: customPersonaId ? null : persona.key,
+      custom_persona_id: customPersonaId ?? null,
       job_title: persona.suggestedTitle,
       level: persona.suggestedLevel,
       hired_by: hiredBy,
@@ -38,4 +41,16 @@ export async function hireNpc(params: {
 export async function fireNpc(id: string) {
   const { error } = await supabase.from("company_npcs").delete().eq("id", id);
   if (error) throw error;
+}
+
+/** A hired NPC references either a stock persona_key or a company-shared
+ * custom_persona_id - resolve either back to the common NpcPersona shape
+ * that email/draft/display code already speaks. */
+export function resolveNpcPersona(
+  npc: CompanyNpcRow,
+  customPersonas: CustomNpcPersonaRow[],
+): NpcPersona | undefined {
+  if (npc.persona_key) return getNpcPersona(npc.persona_key);
+  const custom = customPersonas.find((p) => p.id === npc.custom_persona_id);
+  return custom ? customPersonaToNpcPersona(custom) : undefined;
 }
