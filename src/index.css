@@ -21,3 +21,20 @@ body {
 .font-doc-mono {
   font-family: ui-monospace, "Courier New", Courier, monospace;
 }
+
+/* Used by the Archive page's "Print / Save as PDF" button - hides
+   everything except the document preview being printed. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+  }
+}

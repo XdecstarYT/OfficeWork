@@ -1,9 +1,6 @@
-import type { DocumentTemplate } from "../types/template";
-
 const FAVORITES_KEY = "officequest.favorites";
 const RECENT_KEY = "officequest.recent";
 const RECENT_LIMIT = 12;
-const CUSTOM_TEMPLATES_KEY = "officequest.customTemplates";
 
 export function loadFavorites(): Set<string> {
   try {
@@ -55,23 +52,6 @@ export function loadClientRelationships(): Record<string, number> {
 export function saveClientRelationships(relationships: Record<string, number>) {
   try {
     localStorage.setItem(CLIENT_RELATIONSHIPS_KEY, JSON.stringify(relationships));
-  } catch {
-    // ignore storage failures
-  }
-}
-
-export function loadCustomTemplates(): DocumentTemplate[] {
-  try {
-    const raw = localStorage.getItem(CUSTOM_TEMPLATES_KEY);
-    return raw ? (JSON.parse(raw) as DocumentTemplate[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function saveCustomTemplates(templates: DocumentTemplate[]) {
-  try {
-    localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(templates));
   } catch {
     // ignore storage failures
   }

@@ -10,7 +10,8 @@ import {
   renameCompany,
   regenerateInviteCode,
 } from "../lib/company";
-import { assignWork } from "../lib/documents";
+import { assignWork, fetchCompanyDocuments } from "../lib/documents";
+import { postCorporateUpdate } from "../lib/corporateUpdates";
 import { TemplatePickerModal } from "../components/TemplatePickerModal";
 import { TemplateBuilder } from "../components/TemplateBuilder";
 import { AssignTaskModal, type AssignTaskDetails } from "../components/AssignTaskModal";
@@ -44,7 +45,9 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [regenerating, setRegenerating] = useState(false);
-  const { addCustomTemplate } = useCustomTemplates();
+  const [awardingEotm, setAwardingEotm] = useState(false);
+  const EOTM_BONUS = 100;
+  const { addCustomTemplate } = useCustomTemplates(profile.company_id, profile.id);
 
   const load = useCallback(async () => {
     if (!profile.company_id) return;
@@ -155,6 +158,42 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
       setTimeout(() => setStatusMessage(null), 4000);
     } finally {
       setRegenerating(false);
+    }
+  }
+
+  async function handleAwardEmployeeOfMonth() {
+    if (!company) return;
+    setAwardingEotm(true);
+    try {
+      const docs = await fetchCompanyDocuments(company.id);
+      const completedCounts = new Map<string, number>();
+      for (const d of docs) {
+        if (d.status === "completed" && d.assigned_to && d.assigned_to !== profile.id) {
+          completedCounts.set(d.assigned_to, (completedCounts.get(d.assigned_to) ?? 0) + 1);
+        }
+      }
+      const winnerId = [...completedCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+      if (!winnerId) {
+        setStatusMessage("Nobody else has completed a task yet - nothing to award.");
+        setTimeout(() => setStatusMessage(null), 4000);
+        return;
+      }
+      const winner = members.find((m) => m.id === winnerId);
+      await awardMoney(winnerId, EOTM_BONUS);
+      await postCorporateUpdate({
+        companyId: company.id,
+        title: "🏅 Employee of the Month",
+        body: `Congratulations to ${winner?.display_name ?? "our top performer"} for completing the most work this month! A $${EOTM_BONUS.toFixed(2)} bonus is on its way.`,
+        postedBy: profile.id,
+      });
+      setStatusMessage(`Awarded Employee of the Month to ${winner?.display_name} and posted the news.`);
+      setTimeout(() => setStatusMessage(null), 4000);
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't award Employee of the Month.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    } finally {
+      setAwardingEotm(false);
     }
   }
 
@@ -315,6 +354,16 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
                   className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100"
                 >
                   💰 Bonus Everyone
+                </button>
+              )}
+              {isOwner && members.length > 1 && (
+                <button
+                  type="button"
+                  onClick={handleAwardEmployeeOfMonth}
+                  disabled={awardingEotm}
+                  className="rounded-md border border-yellow-300 bg-yellow-50 px-3 py-1.5 text-xs font-medium text-yellow-800 hover:bg-yellow-100 disabled:opacity-50"
+                >
+                  {awardingEotm ? "Awarding…" : "🏅 Employee of the Month"}
                 </button>
               )}
             </div>
@@ -488,6 +537,7 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
               ? "Request work for yourself"
               : `Assign work to ${members.find((m) => m.id === assignTargetId)?.display_name}`
           }
+          companyId={profile.company_id}
           onPick={reviewTaskDetails}
           onClose={() => setAssignTargetId(null)}
         />

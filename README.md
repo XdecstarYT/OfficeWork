@@ -21,8 +21,9 @@ with real coworkers.
   touch devices don't fire drag events at all — reordering by drag or ▲▼
   buttons, and editing each field's label/placeholder/required/options
   inline, with a live preview alongside. Fill it out immediately or save
-  it to "My Custom Templates" (stored in your browser) to reuse or assign
-  to coworkers later.
+  it as a **shared company template** — it's stored in Supabase, not your
+  browser, so the moment you save it your whole team can see and use it
+  from their own Filing Cabinet too, not just you.
 - **Mobile-friendly**: the Filing Cabinet's category sidebar collapses
   into a tap-to-expand accordion below `md`, the template builder's field
   palette becomes a horizontally-scrolling strip, and every modal with a
@@ -34,6 +35,10 @@ with real coworkers.
   involved) that logs you back into the same account on any device.
 - **No email/password** — the join code above is the whole login, no
   password to remember.
+- **Notifications**: a 🔔 bell in the header (badge count = total across
+  all categories) opens a dropdown of what needs your attention — work
+  awaiting your approval, unread emails, and your own overdue work — each
+  row jumping straight to the right tab when clicked.
 - **Single-player mode**: "Play Solo" (from the entry screen, or the
   "🧍 Solo" tab if you're a returning player between companies) creates a
   company that's already started — no waiting room, no invite code to
@@ -53,6 +58,9 @@ with real coworkers.
 - **Company Settings**: the Owner can rename the company and regenerate the
   main invite code (invalidating the old one) from a "⚙️ Settings" panel on
   the Company tab.
+- **Employee of the Month**: a one-click Owner action that finds whoever's
+  completed the most work (excluding the Owner), awards them a $100 bonus,
+  and automatically posts a Corporate Update announcing it.
 - **Pre-start lobby**: a new game doesn't drop you straight into the office.
   The Owner lands in a waiting room showing the company's Main Code and the
   players who've joined so far, and only enters the game (for everyone) by
@@ -116,7 +124,9 @@ with real coworkers.
   needed.
 - **Document Archive**: the full company-wide history of completed
   documents, searchable by title and filterable by who did the work (the
-  Work tab only ever shows your last 10).
+  Work tab only ever shows your last 10). Click any entry to open it and
+  hit **"🖨 Print / Save as PDF"** for a print-friendly view of just the
+  rendered document — a real, keepable artifact out of the game.
 - **AI Clients**: a roster of 8 recurring client personas that hand out
   live, dynamically generated paperwork requests and support a negotiation
   chat (the client can counter-offer payout/deadline). Powered by a hosted

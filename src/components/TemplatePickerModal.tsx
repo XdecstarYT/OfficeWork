@@ -5,13 +5,14 @@ import type { DocumentTemplate } from "../types/template";
 
 interface TemplatePickerModalProps {
   title: string;
+  companyId: string | null;
   onPick: (template: DocumentTemplate) => void;
   onClose: () => void;
 }
 
-export function TemplatePickerModal({ title, onPick, onClose }: TemplatePickerModalProps) {
+export function TemplatePickerModal({ title, companyId, onPick, onClose }: TemplatePickerModalProps) {
   const [query, setQuery] = useState("");
-  const { customTemplates } = useCustomTemplates();
+  const { customTemplates } = useCustomTemplates(companyId, null);
   const allTemplates = useMemo(
     () => [...customTemplates, ...ALL_TEMPLATES],
     [customTemplates],

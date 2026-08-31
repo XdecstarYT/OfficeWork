@@ -8,6 +8,7 @@ import { careerProgress } from "./lib/careerLevel";
 import { useSession } from "./hooks/useSession";
 import { useProfile } from "./hooks/useProfile";
 import { useCompany } from "./hooks/useCompany";
+import { useNotifications } from "./hooks/useNotifications";
 import { signOut } from "./lib/auth";
 import type { ClientRequest } from "./types/template";
 
@@ -49,7 +50,9 @@ function App() {
   const { session, user, loading: sessionLoading } = useSession();
   const { profile, loading: profileLoading, refresh: refreshProfile } = useProfile(user?.id ?? null);
   const { company, loading: companyLoading, refresh: refreshCompany } = useCompany(profile?.company_id ?? null);
+  const notifications = useNotifications(profile);
   const [tab, setTab] = useState<Tab>("cabinet");
+  const [showNotifications, setShowNotifications] = useState(false);
 
   async function handleCompleteRequest(request: ClientRequest) {
     if (!user) return;
@@ -89,6 +92,7 @@ function App() {
   }
 
   const careerXp = careerProgress(profile.xp);
+  const notificationTotal = notifications.pendingApproval + notifications.unreadEmail + notifications.overdue;
 
   return (
     <div className="flex h-screen flex-col bg-white">
@@ -111,6 +115,58 @@ function App() {
             <span className="text-xs text-stone-400">
               {profile.job_title} · Rank {profile.level}
             </span>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowNotifications((s) => !s)}
+                className="relative rounded-md p-1.5 text-stone-500 hover:bg-stone-100"
+                aria-label="Notifications"
+              >
+                🔔
+                {notificationTotal > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
+                    {notificationTotal > 9 ? "9+" : notificationTotal}
+                  </span>
+                )}
+              </button>
+              {showNotifications && (
+                <div
+                  className="absolute right-0 top-full z-50 mt-2 w-64 rounded-lg border border-stone-200 bg-white p-2 shadow-lg"
+                  onMouseLeave={() => setShowNotifications(false)}
+                >
+                  <NotificationRow
+                    emoji="✅"
+                    label="Needs your approval"
+                    count={notifications.pendingApproval}
+                    onClick={() => {
+                      setTab("work");
+                      setShowNotifications(false);
+                    }}
+                  />
+                  <NotificationRow
+                    emoji="✉️"
+                    label="Unread emails"
+                    count={notifications.unreadEmail}
+                    onClick={() => {
+                      setTab("inbox");
+                      setShowNotifications(false);
+                    }}
+                  />
+                  <NotificationRow
+                    emoji="⏰"
+                    label="Overdue work"
+                    count={notifications.overdue}
+                    onClick={() => {
+                      setTab("work");
+                      setShowNotifications(false);
+                    }}
+                  />
+                  {notificationTotal === 0 && (
+                    <p className="p-2 text-center text-xs text-stone-400">You're all caught up.</p>
+                  )}
+                </div>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => signOut()}
@@ -175,6 +231,32 @@ function App() {
         </Suspense>
       </div>
     </div>
+  );
+}
+
+function NotificationRow({
+  emoji,
+  label,
+  count,
+  onClick,
+}: {
+  emoji: string;
+  label: string;
+  count: number;
+  onClick: () => void;
+}) {
+  if (count === 0) return null;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-stone-50"
+    >
+      <span className="text-stone-700">
+        {emoji} {label}
+      </span>
+      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">{count}</span>
+    </button>
   );
 }
 

@@ -240,6 +240,24 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["corporate_updates"]["Insert"]>;
         Relationships: [];
       };
+      custom_templates: {
+        Row: {
+          id: string;
+          company_id: string;
+          created_by: string;
+          template: unknown;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          created_by: string;
+          template: unknown;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["custom_templates"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {

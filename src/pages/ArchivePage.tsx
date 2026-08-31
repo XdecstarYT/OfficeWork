@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchCompanyDocuments, payoutFor, type DocumentRow } from "../lib/documents";
 import { fetchCompanyMembers } from "../lib/company";
 import { supabase } from "../lib/supabaseClient";
+import { DocumentPreview } from "../components/DocumentPreview";
 import type { Database } from "../types/database";
 import type { DocumentTemplate } from "../types/template";
 
@@ -21,6 +22,7 @@ export function ArchivePage({ profile }: ArchivePageProps) {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [personFilter, setPersonFilter] = useState("");
+  const [openDoc, setOpenDoc] = useState<DocumentRow | null>(null);
 
   const load = useCallback(async () => {
     if (!profile.company_id) return;
@@ -106,9 +108,11 @@ export function ArchivePage({ profile }: ArchivePageProps) {
         ) : (
           <div className="flex flex-col gap-1">
             {filtered.map((d) => (
-              <div
+              <button
                 key={d.id}
-                className="flex items-center justify-between rounded-md border border-stone-100 px-3 py-2"
+                type="button"
+                onClick={() => setOpenDoc(d)}
+                className="flex items-center justify-between rounded-md border border-stone-100 px-3 py-2 text-left hover:bg-stone-50"
               >
                 <div>
                   <p className="text-sm font-medium text-stone-800">{d.title}</p>
@@ -118,11 +122,54 @@ export function ArchivePage({ profile }: ArchivePageProps) {
                     {d.completed_at ? new Date(d.completed_at).toLocaleDateString() : "—"}
                   </p>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
       </div>
+
+      {openDoc && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+          onClick={() => setOpenDoc(null)}
+        >
+          <div
+            className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-stone-900">{openDoc.title}</h2>
+                <p className="text-xs text-stone-400">
+                  {members.find((m) => m.id === openDoc.assigned_to)?.display_name ?? "Unknown"} ·{" "}
+                  {openDoc.completed_at ? new Date(openDoc.completed_at).toLocaleDateString() : "—"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="shrink-0 rounded-md bg-stone-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-900"
+              >
+                🖨 Print / Save as PDF
+              </button>
+            </div>
+            <div className="print-area mt-3">
+              <DocumentPreview
+                title={openDoc.title}
+                bodyTemplate={asTemplate(openDoc).bodyTemplate}
+                values={(openDoc.field_values as Record<string, string>) ?? {}}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setOpenDoc(null)}
+              className="mt-3 self-end rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

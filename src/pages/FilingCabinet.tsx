@@ -35,7 +35,10 @@ export function FilingCabinet({ profile }: FilingCabinetProps) {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const { favorites, toggleFavorite } = useFavorites();
   const { recentIds } = useRecent();
-  const { customTemplates, addCustomTemplate, removeCustomTemplate } = useCustomTemplates();
+  const { customTemplates, addCustomTemplate, removeCustomTemplate } = useCustomTemplates(
+    profile.company_id,
+    profile.id,
+  );
 
   useEffect(() => {
     if (profile.company_id) {
@@ -162,8 +165,8 @@ export function FilingCabinet({ profile }: FilingCabinetProps) {
           {isBrowsingRoot && (
             <>
               <Section
-                title="🧩 My Custom Templates"
-                emptyLabel="Build one with the drag-and-drop template builder, top-left."
+                title="🧩 Custom Templates (shared with your team)"
+                emptyLabel="Build one with the drag-and-drop template builder, top-left — anyone on your team can use it."
               >
                 {customTemplates.map((t) => (
                   <TemplateCard
