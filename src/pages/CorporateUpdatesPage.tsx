@@ -5,7 +5,8 @@ import {
   deleteCorporateUpdate,
   type CorporateUpdateRow,
 } from "../lib/corporateUpdates";
-import { fetchCompanyMembers } from "../lib/company";
+import { fetchCompanyMembers, awardMoney, awardXp } from "../lib/company";
+import { rollCorporateEvent } from "../data/corporateEvents";
 import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../types/database";
 
@@ -26,6 +27,7 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
   const [body, setBody] = useState("");
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rolling, setRolling] = useState(false);
 
   const isOwner = profile.id === company.owner_id;
 
@@ -81,6 +83,37 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
     }
   }
 
+  async function handleRollEvent() {
+    setRolling(true);
+    setError(null);
+    try {
+      const event = rollCorporateEvent();
+      await Promise.all(
+        members.flatMap((m) => [
+          event.moneyPerMember !== 0 ? awardMoney(m.id, event.moneyPerMember) : null,
+          event.xpPerMember !== 0 ? awardXp(m.id, event.xpPerMember) : null,
+        ]),
+      );
+      const effectLine =
+        event.moneyPerMember !== 0 || event.xpPerMember !== 0
+          ? `\n\n(Company-wide: ${event.moneyPerMember !== 0 ? `${event.moneyPerMember > 0 ? "+" : ""}$${event.moneyPerMember} money` : ""}${
+              event.moneyPerMember !== 0 && event.xpPerMember !== 0 ? ", " : ""
+            }${event.xpPerMember !== 0 ? `${event.xpPerMember > 0 ? "+" : ""}${event.xpPerMember} XP` : ""} per person.)`
+          : "";
+      await postCorporateUpdate({
+        companyId: company.id,
+        title: `${event.emoji} ${event.headline}`,
+        body: `${event.body}${effectLine}`,
+        postedBy: profile.id,
+      });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't trigger an event.");
+    } finally {
+      setRolling(false);
+    }
+  }
+
   async function handleDelete(id: string) {
     if (!window.confirm("Delete this update? This can't be undone.")) return;
     try {
@@ -104,15 +137,27 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
             <p className="text-sm text-stone-500">Company-wide news and announcements.</p>
           </div>
           {isOwner && (
-            <button
-              type="button"
-              onClick={() => setShowCompose(true)}
-              className="shrink-0 rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800"
-            >
-              📢 Post Update
-            </button>
+            <div className="flex shrink-0 gap-2">
+              <button
+                type="button"
+                onClick={handleRollEvent}
+                disabled={rolling}
+                className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+              >
+                {rolling ? "Rolling…" : "🎲 Trigger Event"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCompose(true)}
+                className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800"
+              >
+                📢 Post Update
+              </button>
+            </div>
           )}
         </div>
+
+        {error && !showCompose && <p className="text-sm text-red-600">{error}</p>}
 
         {updates.length === 0 ? (
           <p className="rounded-lg border border-dashed border-stone-200 bg-stone-50 p-6 text-center text-sm text-stone-400">

@@ -11,23 +11,40 @@ import {
   regenerateInviteCode,
 } from "../lib/company";
 import { assignWork, fetchCompanyDocuments } from "../lib/documents";
+import { sendEmailToCoworker } from "../lib/emails";
 import { postCorporateUpdate } from "../lib/corporateUpdates";
+import { fetchCompanyNpcs, hireNpc, fireNpc, type CompanyNpcRow } from "../lib/npcs";
+import { NPC_PERSONAS, getNpcPersona } from "../data/npcs";
+import { generatePromotionAnnouncement } from "../lib/aiClient";
 import { TemplatePickerModal } from "../components/TemplatePickerModal";
 import { TemplateBuilder } from "../components/TemplateBuilder";
 import { AssignTaskModal, type AssignTaskDetails } from "../components/AssignTaskModal";
 import { useCustomTemplates } from "../hooks/useCustomTemplates";
 import type { Database } from "../types/database";
 import type { DocumentTemplate } from "../types/template";
+import type { LlmConfig } from "../lib/llmConfig";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
+const DEPARTMENTS = [
+  "Executive",
+  "Sales & Marketing",
+  "Finance & Accounting",
+  "Human Resources",
+  "IT & Technical",
+  "Operations",
+  "Customer Service",
+  "Legal & Compliance",
+];
+
 interface CompanyPageProps {
   profile: Profile;
   onProfileChanged: () => void;
+  llmConfig: LlmConfig;
 }
 
-export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
+export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPageProps) {
   const [company, setCompany] = useState<Company | null>(null);
   const [members, setMembers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +55,7 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editLevel, setEditLevel] = useState(1);
+  const [editDepartment, setEditDepartment] = useState("");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [bonusTargetId, setBonusTargetId] = useState<string | null>(null);
   const [bonusAmount, setBonusAmount] = useState(50);
@@ -47,17 +65,22 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
   const [regenerating, setRegenerating] = useState(false);
   const [awardingEotm, setAwardingEotm] = useState(false);
   const EOTM_BONUS = 100;
+  const [npcs, setNpcs] = useState<CompanyNpcRow[]>([]);
+  const [showHire, setShowHire] = useState(false);
+  const [hiring, setHiring] = useState(false);
   const { addCustomTemplate } = useCustomTemplates(profile.company_id, profile.id);
 
   const load = useCallback(async () => {
     if (!profile.company_id) return;
     setLoading(true);
-    const [c, m] = await Promise.all([
+    const [c, m, n] = await Promise.all([
       fetchCompany(profile.company_id),
       fetchCompanyMembers(profile.company_id),
+      fetchCompanyNpcs(profile.company_id),
     ]);
     setCompany(c);
     setMembers(m);
+    setNpcs(n);
     setLoading(false);
   }, [profile.company_id]);
 
@@ -197,6 +220,78 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
     }
   }
 
+  async function handleHireNpc(personaKey: string) {
+    if (!company) return;
+    const persona = getNpcPersona(personaKey);
+    if (!persona) return;
+    if (profile.money < persona.hireCost) {
+      setStatusMessage(`You need $${persona.hireCost.toFixed(2)} to hire ${persona.name}.`);
+      setTimeout(() => setStatusMessage(null), 4000);
+      return;
+    }
+    setHiring(true);
+    try {
+      await awardMoney(profile.id, -persona.hireCost);
+      await hireNpc({ companyId: company.id, hiredBy: profile.id, persona });
+      setStatusMessage(`Hired ${persona.name} as ${persona.suggestedTitle}!`);
+      setTimeout(() => setStatusMessage(null), 4000);
+      setShowHire(false);
+      onProfileChanged();
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't hire that coworker.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    } finally {
+      setHiring(false);
+    }
+  }
+
+  async function handleFireNpc(npc: CompanyNpcRow) {
+    if (!window.confirm(`Let ${getNpcPersona(npc.persona_key)?.name ?? "this coworker"} go?`)) return;
+    await fireNpc(npc.id);
+    await load();
+  }
+
+  async function handlePromote(m: Profile) {
+    const newLevelRaw = window.prompt(
+      `Promote ${m.display_name} to what level? (currently ${m.level}, must stay below yours: ${profile.level})`,
+      String(Math.min(m.level + 1, profile.level - 1)),
+    );
+    if (newLevelRaw === null) return;
+    const newLevel = Math.max(m.level + 1, Math.min(Number(newLevelRaw), profile.level - 1));
+    if (!Number.isFinite(newLevel) || newLevel <= m.level) {
+      setStatusMessage("Enter a level higher than their current one.");
+      setTimeout(() => setStatusMessage(null), 4000);
+      return;
+    }
+    const newTitle = window.prompt("New job title? (leave as-is to keep current)", m.job_title) || m.job_title;
+    try {
+      await updateMemberRank(m.id, { job_title: newTitle, level: newLevel });
+      const announcement = await generatePromotionAnnouncement({
+        promoterName: profile.display_name,
+        memberName: m.display_name,
+        newTitle,
+        newLevel,
+        config: llmConfig,
+      });
+      if (company) {
+        await sendEmailToCoworker({
+          companyId: company.id,
+          senderId: profile.id,
+          recipientId: m.id,
+          subject: "🎉 You've been promoted!",
+          body: announcement,
+        });
+      }
+      setStatusMessage(`Promoted ${m.display_name} to ${newTitle} and sent them the news.`);
+      setTimeout(() => setStatusMessage(null), 4000);
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't promote that member.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    }
+  }
+
   function openBuilderFor(targetId: string) {
     setAssignTargetId(targetId);
     setShowBuilder(true);
@@ -206,6 +301,7 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
     setEditingId(m.id);
     setEditTitle(m.job_title);
     setEditLevel(m.level);
+    setEditDepartment(m.department ?? "");
   }
 
   async function saveEdit(memberId: string) {
@@ -213,7 +309,11 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
     // (RLS), but clamp here too so the UI never fires a request we know will fail.
     const clampedLevel = Math.max(0, Math.min(editLevel, profile.level - 1));
     try {
-      await updateMemberRank(memberId, { job_title: editTitle.trim() || "Employee", level: clampedLevel });
+      await updateMemberRank(memberId, {
+        job_title: editTitle.trim() || "Employee",
+        level: clampedLevel,
+        department: editDepartment || null,
+      });
       setEditingId(null);
       await load();
     } catch (err) {
@@ -383,7 +483,7 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
                     {m.display_name} {isMe && <span className="text-stone-400">(you)</span>}
                   </p>
                   {isEditing ? (
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
                       <input
                         type="text"
                         value={editTitle}
@@ -398,6 +498,18 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
                         onChange={(e) => setEditLevel(Number(e.target.value))}
                         className="w-16 rounded border border-stone-300 px-2 py-1 text-xs"
                       />
+                      <select
+                        value={editDepartment}
+                        onChange={(e) => setEditDepartment(e.target.value)}
+                        className="rounded border border-stone-300 px-2 py-1 text-xs"
+                      >
+                        <option value="">No department</option>
+                        {DEPARTMENTS.map((d) => (
+                          <option key={d} value={d}>
+                            {d}
+                          </option>
+                        ))}
+                      </select>
                       <button
                         type="button"
                         onClick={() => saveEdit(m.id)}
@@ -416,6 +528,11 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
                   ) : (
                     <p className="text-xs text-stone-400">
                       {m.job_title} · level {m.level} · ${m.money.toFixed(2)}
+                      {m.department && (
+                        <span className="ml-1.5 rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-600">
+                          {m.department}
+                        </span>
+                      )}
                     </p>
                   )}
                   {bonusTargetId === m.id && (
@@ -475,6 +592,15 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
                         >
                           Edit Rank
                         </button>
+                        {profile.level - 1 > m.level && (
+                          <button
+                            type="button"
+                            onClick={() => handlePromote(m)}
+                            className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+                          >
+                            🎉 Promote
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => setAssignTargetId(m.id)}
@@ -516,6 +642,56 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
               </div>
             );
           })}
+        </div>
+
+        <div className="flex flex-col gap-2 rounded-lg border border-violet-200 bg-violet-50/40 p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-violet-700">
+                🤖 AI Coworkers
+              </h2>
+              <p className="text-xs text-violet-500">
+                Hire an AI-powered teammate — email them, or ask them to draft paperwork for you.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowHire(true)}
+              className="shrink-0 rounded-md bg-violet-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-800"
+            >
+              + Hire Coworker
+            </button>
+          </div>
+
+          {npcs.length === 0 ? (
+            <p className="text-xs text-violet-400">No AI coworkers hired yet.</p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {npcs.map((npc) => {
+                const persona = getNpcPersona(npc.persona_key);
+                return (
+                  <div
+                    key={npc.id}
+                    className="flex items-center justify-between rounded-md border border-violet-100 bg-white px-3 py-2"
+                  >
+                    <span className="text-sm text-stone-800">
+                      {persona?.avatar ?? "🤖"} <strong>{persona?.name ?? "Unknown"}</strong>{" "}
+                      <span className="text-xs text-stone-400">
+                        {npc.job_title} · level {npc.level}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleFireNpc(npc)}
+                      className="text-xs text-stone-400 hover:text-red-600"
+                    >
+                      Let go
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <button
@@ -572,6 +748,56 @@ export function CompanyPage({ profile, onProfileChanged }: CompanyPageProps) {
           onClose={() => setPendingTemplate(null)}
           onConfirm={handleConfirmAssign}
         />
+      )}
+
+      {showHire && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+          onClick={() => setShowHire(false)}
+        >
+          <div
+            className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-stone-900">🤖 Hire an AI Coworker</h2>
+            <p className="mt-1 text-sm text-stone-500">
+              You have ${profile.money.toFixed(2)}. Hiring deducts the cost from your own balance.
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              {NPC_PERSONAS.filter((p) => !npcs.some((n) => n.persona_key === p.key)).map((persona) => (
+                <div
+                  key={persona.key}
+                  className="flex items-center justify-between gap-3 rounded-md border border-stone-200 p-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-stone-800">
+                      {persona.avatar} {persona.name} — {persona.suggestedTitle}
+                    </p>
+                    <p className="text-xs text-stone-500">{persona.personality}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleHireNpc(persona.key)}
+                    disabled={hiring}
+                    className="shrink-0 rounded-md bg-violet-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-800 disabled:opacity-50"
+                  >
+                    Hire (${persona.hireCost})
+                  </button>
+                </div>
+              ))}
+              {NPC_PERSONAS.every((p) => npcs.some((n) => n.persona_key === p.key)) && (
+                <p className="text-sm text-stone-400">You've hired everyone available!</p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowHire(false)}
+              className="mt-4 self-end rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -64,6 +64,40 @@ export async function recordClientReply(params: {
   if (error) throw error;
 }
 
+export async function sendEmailToNpc(params: {
+  companyId: string;
+  senderId: string;
+  npcId: string;
+  subject: string;
+  body: string;
+}) {
+  const { error } = await supabase.from("emails").insert({
+    company_id: params.companyId,
+    sender_id: params.senderId,
+    recipient_npc_id: params.npcId,
+    subject: params.subject,
+    body: params.body,
+  });
+  if (error) throw error;
+}
+
+export async function recordNpcReply(params: {
+  companyId: string;
+  recipientId: string;
+  npcId: string;
+  subject: string;
+  body: string;
+}) {
+  const { error } = await supabase.from("emails").insert({
+    company_id: params.companyId,
+    sender_npc_id: params.npcId,
+    recipient_id: params.recipientId,
+    subject: params.subject,
+    body: params.body,
+  });
+  if (error) throw error;
+}
+
 export async function markRead(emailId: string) {
   const { error } = await supabase
     .from("emails")

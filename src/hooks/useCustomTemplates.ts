@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import {
   fetchCustomTemplates,
   saveCustomTemplate,
@@ -13,6 +13,13 @@ import type { DocumentTemplate } from "../types/template";
  * visible in the browser that built it. */
 export function useCustomTemplates(companyId: string | null, userId: string | null) {
   const [rows, setRows] = useState<CustomTemplateRow[]>([]);
+  // Supabase reuses a cached channel object for an identical topic name, so
+  // two concurrently-mounted instances of this hook (e.g. CompanyPage and
+  // the TemplatePickerModal it renders) sharing one companyId-based topic
+  // would have the second instance's .on() calls land on the first
+  // instance's already-subscribed channel and throw. A per-mount id keeps
+  // every instance's topic unique.
+  const instanceId = useId();
 
   const load = useCallback(async () => {
     if (!companyId) {
@@ -29,7 +36,7 @@ export function useCustomTemplates(companyId: string | null, userId: string | nu
   useEffect(() => {
     if (!companyId) return;
     const channel = supabase
-      .channel(`custom-templates-${companyId}`)
+      .channel(`custom-templates-${companyId}-${instanceId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "custom_templates", filter: `company_id=eq.${companyId}` },
@@ -39,7 +46,7 @@ export function useCustomTemplates(companyId: string | null, userId: string | nu
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [companyId, load]);
+  }, [companyId, instanceId, load]);
 
   const customTemplates = useMemo(
     () => rows.map((r) => r.template as unknown as DocumentTemplate),

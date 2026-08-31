@@ -4,15 +4,27 @@ import {
   sendEmailToCoworker,
   sendEmailToClient,
   recordClientReply,
+  sendEmailToNpc,
+  recordNpcReply,
   markRead,
   type EmailRow,
 } from "../lib/emails";
 import { fetchCompanyMembers } from "../lib/company";
+import { fetchCompanyNpcs, type CompanyNpcRow } from "../lib/npcs";
 import { CLIENTS, getClient } from "../data/clients";
-import { generateClientEmailReply, staticClientEmailReply } from "../lib/aiClient";
+import { getNpcPersona } from "../data/npcs";
+import {
+  generateClientEmailReply,
+  staticClientEmailReply,
+  generateNpcEmailReply,
+  staticNpcEmailReply,
+  draftDocumentAsNpc,
+} from "../lib/aiClient";
+import { TemplatePickerModal } from "../components/TemplatePickerModal";
 import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../types/database";
 import type { LlmConfig } from "../lib/llmConfig";
+import type { DocumentTemplate } from "../types/template";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
@@ -21,11 +33,15 @@ interface InboxPageProps {
   llmConfig: LlmConfig;
 }
 
-type RecipientChoice = { type: "coworker"; id: string } | { type: "client"; id: string };
+type RecipientChoice =
+  | { type: "coworker"; id: string }
+  | { type: "client"; id: string }
+  | { type: "npc"; id: string };
 
 export function InboxPage({ profile, llmConfig }: InboxPageProps) {
   const [emails, setEmails] = useState<EmailRow[]>([]);
   const [members, setMembers] = useState<Profile[]>([]);
+  const [npcs, setNpcs] = useState<CompanyNpcRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [openEmail, setOpenEmail] = useState<EmailRow | null>(null);
   const [showCompose, setShowCompose] = useState(false);
@@ -34,15 +50,20 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draftNpcId, setDraftNpcId] = useState<string | null>(null);
+  const [showDraftTemplatePicker, setShowDraftTemplatePicker] = useState(false);
+  const [drafting, setDrafting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [inbox, companyMembers] = await Promise.all([
+    const [inbox, companyMembers, companyNpcs] = await Promise.all([
       fetchInbox(profile.id),
       profile.company_id ? fetchCompanyMembers(profile.company_id) : Promise.resolve([]),
+      profile.company_id ? fetchCompanyNpcs(profile.company_id) : Promise.resolve([]),
     ]);
     setEmails(inbox);
     setMembers(companyMembers);
+    setNpcs(companyNpcs);
     setLoading(false);
   }, [profile.id, profile.company_id]);
 
@@ -65,15 +86,23 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
     };
   }, [profile.company_id, load]);
 
+  function npcName(npcId: string | null): string | null {
+    if (!npcId) return null;
+    const npc = npcs.find((n) => n.id === npcId);
+    return npc ? (getNpcPersona(npc.persona_key)?.name ?? "AI Coworker") : "AI Coworker";
+  }
+
   function senderLabel(email: EmailRow): string {
     if (email.sender_id === profile.id) return "You";
     if (email.sender_client_id) return getClient(email.sender_client_id)?.name ?? "Unknown Client";
+    if (email.sender_npc_id) return npcName(email.sender_npc_id) ?? "AI Coworker";
     return members.find((m) => m.id === email.sender_id)?.display_name ?? "Unknown";
   }
 
   function recipientLabel(email: EmailRow): string {
     if (email.recipient_id === profile.id) return "You";
     if (email.recipient_client_id) return getClient(email.recipient_client_id)?.name ?? "Unknown Client";
+    if (email.recipient_npc_id) return npcName(email.recipient_npc_id) ?? "AI Coworker";
     return members.find((m) => m.id === email.recipient_id)?.display_name ?? "Unknown";
   }
 
@@ -97,6 +126,29 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
           recipientId: recipient.id,
           subject: subject.trim(),
           body: body.trim(),
+        });
+      } else if (recipient.type === "npc") {
+        const npc = npcs.find((n) => n.id === recipient.id)!;
+        const persona = getNpcPersona(npc.persona_key)!;
+        await sendEmailToNpc({
+          companyId: profile.company_id,
+          senderId: profile.id,
+          npcId: npc.id,
+          subject: subject.trim(),
+          body: body.trim(),
+        });
+        const reply = await generateNpcEmailReply(
+          persona,
+          subject.trim(),
+          body.trim(),
+          llmConfig,
+        ).catch(() => staticNpcEmailReply(persona, subject.trim()));
+        await recordNpcReply({
+          companyId: profile.company_id,
+          recipientId: profile.id,
+          npcId: npc.id,
+          subject: reply.subject,
+          body: reply.body,
         });
       } else {
         const client = getClient(recipient.id)!;
@@ -133,6 +185,31 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
     }
   }
 
+  async function handleAskToDraft(template: DocumentTemplate) {
+    if (!profile.company_id || !draftNpcId) return;
+    const npc = npcs.find((n) => n.id === draftNpcId);
+    const persona = npc ? getNpcPersona(npc.persona_key) : null;
+    if (!npc || !persona) return;
+    setShowDraftTemplatePicker(false);
+    setDrafting(true);
+    try {
+      const rendered = await draftDocumentAsNpc(persona, template, llmConfig);
+      await recordNpcReply({
+        companyId: profile.company_id,
+        recipientId: profile.id,
+        npcId: npc.id,
+        subject: `Draft: ${template.title}`,
+        body: `Here's a first draft of "${template.title}" like you asked — take a look and adjust as needed.\n\n${rendered}\n\n— ${persona.name}`,
+      });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't get a draft.");
+    } finally {
+      setDrafting(false);
+      setDraftNpcId(null);
+    }
+  }
+
   if (loading) {
     return <div className="flex-1 p-6 text-sm text-stone-400">Loading inbox…</div>;
   }
@@ -147,14 +224,30 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
               <p className="text-xs text-stone-400">{profile.email_handle}@officequest.mail</p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => setShowCompose(true)}
-            className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800"
-          >
-            ✉️ Compose
-          </button>
+          <div className="flex shrink-0 gap-2">
+            {npcs.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setDraftNpcId("__pick__")}
+                disabled={drafting}
+                className="rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-100 disabled:opacity-50"
+              >
+                {drafting ? "Drafting…" : "🤖 Ask to Draft"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowCompose(true)}
+              className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800"
+            >
+              ✉️ Compose
+            </button>
+          </div>
         </div>
+
+        {error && !showCompose && (
+          <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>
+        )}
 
         {emails.length === 0 ? (
           <p className="rounded-lg border border-dashed border-stone-200 bg-stone-50 p-6 text-center text-sm text-stone-400">
@@ -233,7 +326,7 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
               value={recipient ? `${recipient.type}:${recipient.id}` : ""}
               onChange={(e) => {
                 const [type, id] = e.target.value.split(":");
-                setRecipient(type ? { type: type as "coworker" | "client", id } : null);
+                setRecipient(type ? { type: type as "coworker" | "client" | "npc", id } : null);
               }}
               className="mt-1 rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             >
@@ -247,6 +340,18 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
                     </option>
                   ))}
               </optgroup>
+              {npcs.length > 0 && (
+                <optgroup label="AI Coworkers">
+                  {npcs.map((npc) => {
+                    const persona = getNpcPersona(npc.persona_key);
+                    return (
+                      <option key={npc.id} value={`npc:${npc.id}`}>
+                        {persona?.name ?? "AI Coworker"} ({npc.job_title})
+                      </option>
+                    );
+                  })}
+                </optgroup>
+              )}
               <optgroup label="Clients">
                 {CLIENTS.map((c) => (
                   <option key={c.id} value={`client:${c.id}`}>
@@ -293,6 +398,58 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {draftNpcId === "__pick__" && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+          onClick={() => setDraftNpcId(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-stone-900">Who should draft it?</h2>
+            <div className="mt-3 flex flex-col gap-1.5">
+              {npcs.map((npc) => {
+                const persona = getNpcPersona(npc.persona_key);
+                return (
+                  <button
+                    key={npc.id}
+                    type="button"
+                    onClick={() => {
+                      setDraftNpcId(npc.id);
+                      setShowDraftTemplatePicker(true);
+                    }}
+                    className="rounded-md border border-stone-200 px-3 py-2 text-left text-sm hover:bg-stone-50"
+                  >
+                    {persona?.avatar ?? "🤖"} {persona?.name ?? "AI Coworker"}{" "}
+                    <span className="text-xs text-stone-400">({npc.job_title})</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => setDraftNpcId(null)}
+              className="mt-4 self-end rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showDraftTemplatePicker && draftNpcId && draftNpcId !== "__pick__" && (
+        <TemplatePickerModal
+          title="What should they draft?"
+          companyId={profile.company_id}
+          onPick={handleAskToDraft}
+          onClose={() => {
+            setShowDraftTemplatePicker(false);
+            setDraftNpcId(null);
+          }}
+        />
       )}
     </div>
   );

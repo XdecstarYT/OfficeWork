@@ -1,9 +1,11 @@
 import { TAXONOMY } from "../data/taxonomy";
 import type { ClientPersona } from "../data/clients";
-import type { ChatMessage, ClientRequest, FieldType, TemplateField } from "../types/template";
+import type { NpcPersona } from "../data/npcs";
+import type { ChatMessage, ClientRequest, DocumentTemplate, FieldType, TemplateField } from "../types/template";
 import { llmChatCompletion, parseToolArguments, type LlmTool } from "./localLlmClient";
 import type { LlmConfig } from "./llmConfig";
 import type { ReferenceRow } from "./documents";
+import { renderBody } from "./renderTemplate";
 
 const FIELD_TYPES: FieldType[] = [
   "text",
@@ -320,4 +322,88 @@ Respond only by calling the fill_fields tool.`;
   if (!call) return {};
   const input = parseToolArguments<{ values: Record<string, string> }>(call);
   return input.values ?? {};
+}
+
+/** Drafts a short congratulatory promotion announcement email body. Falls back to a canned message if the AI is unreachable. */
+export async function generatePromotionAnnouncement(params: {
+  promoterName: string;
+  memberName: string;
+  newTitle: string;
+  newLevel: number;
+  config: LlmConfig;
+}): Promise<string> {
+  const { promoterName, memberName, newTitle, newLevel, config } = params;
+  const fallback = `Congratulations on your promotion to ${newTitle}! Well deserved — keep up the great work.\n\n— ${promoterName}`;
+  try {
+    const system = `You are writing a short, warm company announcement email congratulating a coworker on a \
+promotion, in a cozy office-life simulation game. Keep it 2-4 sentences, professional but genuinely warm, \
+addressed directly to them, no markdown, sign off as the promoter.`;
+    const user = `${promoterName} is promoting ${memberName} to ${newTitle} (level ${newLevel}). Write the \
+congratulatory email body.`;
+    const result = await llmChatCompletion({
+      config,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      maxTokens: 300,
+    });
+    return result.content ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/** Canned fallback for an NPC coworker email reply when the hosted AI is unreachable. */
+export function staticNpcEmailReply(npc: NpcPersona, subject: string): EmailReply {
+  return {
+    subject: subject.toLowerCase().startsWith("re:") ? subject : `Re: ${subject}`,
+    body: `Got your message - I'll take a look and get back to you.\n\n${npc.name}\n${npc.suggestedTitle}\n\n(Couldn't reach the AI for a real reply just now.)`,
+  };
+}
+
+export async function generateNpcEmailReply(
+  npc: NpcPersona,
+  subject: string,
+  body: string,
+  config: LlmConfig,
+): Promise<EmailReply> {
+  const system = `You are ${npc.name}, a ${npc.suggestedTitle} at the player's company in a cozy office-life \
+simulation game. Personality: ${npc.personality}
+You just received an email from a coworker (your boss or teammate). Write a short, natural, office-appropriate \
+email reply (2-5 sentences) as this character. Plain email prose only, no markdown.`;
+
+  const result = await llmChatCompletion({
+    config,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: `Subject: ${subject}\n\n${body}` },
+    ],
+    maxTokens: 400,
+  });
+
+  return {
+    subject: subject.toLowerCase().startsWith("re:") ? subject : `Re: ${subject}`,
+    body: result.content ?? staticNpcEmailReply(npc, subject).body,
+  };
+}
+
+/**
+ * Asks an NPC coworker to do a piece of paperwork for you: the AI drafts
+ * every field, and this returns the fully rendered document text ready to
+ * drop into an email body - there's no document row involved at all, this
+ * is pure flavor/convenience rather than a tracked, payable task.
+ */
+export async function draftDocumentAsNpc(
+  npc: NpcPersona,
+  template: DocumentTemplate,
+  config: LlmConfig,
+): Promise<string> {
+  const values = await draftDocumentFields({
+    title: `${template.title} (drafted by ${npc.name}, ${npc.suggestedTitle})`,
+    fields: template.fields,
+    filledValues: {},
+    config,
+  });
+  return renderBody(template.bodyTemplate, values);
 }

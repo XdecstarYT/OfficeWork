@@ -71,6 +71,7 @@ export interface Database {
           xp: number;
           join_code: string | null;
           email_handle: string | null;
+          department: string | null;
           created_at: string;
         };
         Insert: {
@@ -83,6 +84,7 @@ export interface Database {
           xp?: number;
           join_code?: string | null;
           email_handle?: string | null;
+          department?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
@@ -158,8 +160,10 @@ export interface Database {
           company_id: string;
           sender_id: string | null;
           sender_client_id: string | null;
+          sender_npc_id: string | null;
           recipient_id: string | null;
           recipient_client_id: string | null;
+          recipient_npc_id: string | null;
           subject: string;
           body: string;
           read_at: string | null;
@@ -170,14 +174,38 @@ export interface Database {
           company_id: string;
           sender_id?: string | null;
           sender_client_id?: string | null;
+          sender_npc_id?: string | null;
           recipient_id?: string | null;
           recipient_client_id?: string | null;
+          recipient_npc_id?: string | null;
           subject: string;
           body: string;
           read_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["emails"]["Insert"]>;
+        Relationships: [];
+      };
+      company_npcs: {
+        Row: {
+          id: string;
+          company_id: string;
+          persona_key: string;
+          job_title: string;
+          level: number;
+          hired_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          persona_key: string;
+          job_title: string;
+          level?: number;
+          hired_by: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["company_npcs"]["Insert"]>;
         Relationships: [];
       };
       board_meetings: {

@@ -15,6 +15,7 @@ import type { ClientRequest } from "./types/template";
 // Each tab is its own chunk, downloaded only when opened - with 10 tabs and a
 // 1000+-template library, shipping every page's code upfront on first load
 // (a single >2MB bundle) was the main contributor to a slow/laggy startup.
+const DashboardPage = lazy(() => import("./pages/DashboardPage").then((m) => ({ default: m.DashboardPage })));
 const FilingCabinet = lazy(() => import("./pages/FilingCabinet").then((m) => ({ default: m.FilingCabinet })));
 const AiClients = lazy(() => import("./pages/AiClients").then((m) => ({ default: m.AiClients })));
 const CompanyPage = lazy(() => import("./pages/CompanyPage").then((m) => ({ default: m.CompanyPage })));
@@ -35,6 +36,7 @@ const LeaderboardPage = lazy(() =>
 const ArchivePage = lazy(() => import("./pages/ArchivePage").then((m) => ({ default: m.ArchivePage })));
 
 type Tab =
+  | "dashboard"
   | "cabinet"
   | "clients"
   | "company"
@@ -51,7 +53,7 @@ function App() {
   const { profile, loading: profileLoading, refresh: refreshProfile } = useProfile(user?.id ?? null);
   const { company, loading: companyLoading, refresh: refreshCompany } = useCompany(profile?.company_id ?? null);
   const notifications = useNotifications(profile);
-  const [tab, setTab] = useState<Tab>("cabinet");
+  const [tab, setTab] = useState<Tab>("dashboard");
   const [showNotifications, setShowNotifications] = useState(false);
 
   async function handleCompleteRequest(request: ClientRequest) {
@@ -177,6 +179,9 @@ function App() {
           </div>
         </div>
         <nav className="flex gap-1 overflow-x-auto border-t border-stone-100 px-6 py-2">
+          <TabButton active={tab === "dashboard"} onClick={() => setTab("dashboard")}>
+            🏠 Dashboard
+          </TabButton>
           <TabButton active={tab === "cabinet"} onClick={() => setTab("cabinet")}>
             📁 Filing Cabinet
           </TabButton>
@@ -214,12 +219,22 @@ function App() {
         <Suspense
           fallback={<div className="flex-1 p-6 text-sm text-stone-400">Loading…</div>}
         >
+          {tab === "dashboard" && (
+            <DashboardPage
+              profile={profile}
+              company={company}
+              notifications={notifications}
+              onNavigate={setTab}
+            />
+          )}
           {tab === "cabinet" && <FilingCabinet profile={profile} />}
           {tab === "work" && (
             <WorkPage profile={profile} onProfileChanged={refreshProfile} llmConfig={DEFAULT_LLM_CONFIG} />
           )}
           {tab === "inbox" && <InboxPage profile={profile} llmConfig={DEFAULT_LLM_CONFIG} />}
-          {tab === "company" && <CompanyPage profile={profile} onProfileChanged={refreshProfile} />}
+          {tab === "company" && (
+            <CompanyPage profile={profile} onProfileChanged={refreshProfile} llmConfig={DEFAULT_LLM_CONFIG} />
+          )}
           {tab === "meetings" && <BoardMeetingsPage profile={profile} />}
           {tab === "updates" && <CorporateUpdatesPage profile={profile} company={company} />}
           {tab === "activity" && <ActivityFeedPage profile={profile} />}

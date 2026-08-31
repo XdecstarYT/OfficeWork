@@ -140,7 +140,7 @@ export async function fetchCompanyMembers(companyId: string): Promise<Profile[]>
 
 export async function updateMemberRank(
   memberId: string,
-  updates: { job_title?: string; level?: number },
+  updates: { job_title?: string; level?: number; department?: string | null },
 ) {
   const { error } = await supabase.from("profiles").update(updates).eq("id", memberId);
   if (error) throw error;

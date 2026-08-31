@@ -143,9 +143,40 @@ with real coworkers.
   in yet, using the document's title and any manager-provided reference
   data as context. It never overwrites a field you've already typed
   into — only fills the gaps.
+- **Dashboard**: the new default landing tab — a home base tying the rest
+  of the game together at a glance: stat tiles (Money, Career Level, Team
+  Size, Tasks Completed), a "🔔 Needs Your Attention" section mirroring the
+  notification bell, Quick Actions to jump straight into the Filing
+  Cabinet/AI Clients/My Work/Leaderboard, the latest Corporate Update, and
+  your 5 most recent Activity Feed entries.
+- **AI Coworkers**: hire an AI-personality NPC teammate onto your Company
+  tab roster (6 personas to choose from, each with its own job title,
+  starting level, personality, and one-time hire cost deducted from your
+  Money). Email one from the Inbox like any other coworker and get a real
+  AI-written reply in their voice (falling back to a canned reply if the
+  AI is unreachable, same as clients). From the Inbox, "🤖 Ask to Draft"
+  lets you pick a hired coworker and a template, and they'll draft it and
+  send you their take by email — a flavor/inspiration draft, not a
+  document assigned to them (NPCs don't do real paperwork). A manager can
+  let one go from the Company tab at any time.
+- **Random Corporate Events**: the Owner can hit "🎲 Trigger Event" on the
+  Corporate Updates tab to roll one of ten flavor events (a mix of
+  good, bad, and neutral) that applies a small Money/XP delta to every
+  member and posts the result as a Corporate Update — a bit of unpredictable
+  company-wide flavor, deliberately not skewed positive so it isn't a
+  reliable way to farm Money.
+- **Departments**: tag any member with a department (Executive, Sales &
+  Marketing, Finance & Accounting, Human Resources, IT & Technical,
+  Operations, Customer Service, Legal & Compliance, or none) from the same
+  "Edit Rank" panel used for job title/level — shown as a pill next to
+  their name on the Company roster and the Leaderboard.
+- **Promotions**: a distinct "🎉 Promote" button appears next to any member
+  you outrank by more than one level. It walks you through picking their
+  new level and title, then sends them an AI-generated congratulatory
+  email announcing the promotion (falling back to a canned message if the
+  AI is unreachable).
 
-Not yet built: an avatar/office world, XP/leveling, cosmetics, a full
-document archive.
+Not yet built: an avatar/office world, cosmetics.
 
 ## Getting started
 

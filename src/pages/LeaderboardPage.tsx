@@ -178,6 +178,11 @@ export function LeaderboardPage({ profile }: LeaderboardPageProps) {
                   <span className={m.id === profile.id ? "font-semibold text-emerald-800" : "text-stone-700"}>
                     {m.display_name} {m.id === profile.id && "(you)"}
                   </span>
+                  {m.department && (
+                    <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-500">
+                      {m.department}
+                    </span>
+                  )}
                   {earned.length === 0 ? (
                     <span className="text-xs text-stone-400">No badges yet.</span>
                   ) : (
