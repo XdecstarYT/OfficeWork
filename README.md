@@ -169,7 +169,10 @@ with real coworkers.
   Marketing, Finance & Accounting, Human Resources, IT & Technical,
   Operations, Customer Service, Legal & Compliance, or none) from the same
   "Edit Rank" panel used for job title/level — shown as a pill next to
-  their name on the Company roster and the Leaderboard.
+  their name on the Company roster and the Leaderboard. Beyond the built-in
+  list, the Owner can add **Custom Departments** from Company Settings —
+  they show up everywhere the built-in ones do and can be removed later
+  (members already tagged with a removed department just keep the label).
 - **Promotions**: a distinct "🎉 Promote" button appears next to any member
   you outrank by more than one level. It walks you through picking their
   new level and title, then sends them an AI-generated congratulatory
@@ -224,6 +227,58 @@ with real coworkers.
   upcoming-meeting preview, an "N" keyboard shortcut for notifications, and
   confirmation prompts before destructive actions (sign out, leave company,
   delete a custom template).
+
+- **Assign work from the Filing Cabinet to AI Coworkers**: the "🤖 Assign to
+  AI Coworker" action isn't limited to the Company tab — any template's
+  detail modal in the Filing Cabinet (built-in or a company custom
+  template) offers it too, going straight into the same hired-coworker
+  picker and draft-and-complete flow.
+- **Payroll**: set a per-level salary rate from Company Settings ("💵
+  Payroll"). Ending the day pays every member `level × rate` out of thin
+  air (not deducted from anyone), folded into that day's Corporate Update
+  recap alongside the existing tasks-completed/money-earned/top-performer
+  summary.
+- **Performance Reviews**: anyone can leave a 1–5 star review with written
+  comments for someone they outrank ("📝 Review" on the Company roster), with
+  an "✨ AI Draft" button that writes comments matching the star rating from
+  the employee's actual stats (tasks completed, money earned). Reviews are
+  permanent — no editing or deleting — and a review-count badge on each
+  member opens their full history.
+- **Time Off**: request a date range with a reason ("🌴 Request Time Off" on
+  the Company tab); anyone who outranks you can Approve or Deny it. Approved
+  requests show a "🌴 On Leave" badge on the member's roster row for as long
+  as today falls in that range.
+- **AI Client Contracts**: an owner can offer a client a multi-task contract
+  (a title, a task count, and a bonus payout) from their AI Clients card —
+  a visible progress bar tracks completions, and whoever finishes the task
+  that completes the contract collects the bonus automatically.
+- **Office Shop**: spend company Money on one-time equipment (☕ Espresso
+  Machine, 💺 Ergonomic Chairs, 🪑 Standing Desks, 🖨️ Fast Printers, 🖥️ Dual
+  Monitors, 🖧 Server Upgrade) from a new "🛒 Office Shop" section on the
+  Company tab — each item adds a permanent payout-bonus percentage that
+  stacks with every other item owned and applies to every task completed
+  company-wide from then on.
+- **Random Employee Events**: the Owner can hit "🎲 Random Employee Event" on
+  the Company tab to roll a flavor event (a mix of good, bad, and neutral)
+  for one random team member — a small Money/XP delta plus an in-game email
+  explaining what happened, distinct from the company-wide Random Corporate
+  Events on the Corporate Updates tab.
+- **Smart Assign**: from any template's detail modal in the Filing Cabinet, a
+  manager can hit "🪄 Smart Assign" to let the AI pick the best-fit human
+  teammate or hired AI coworker for that task — weighing job title and
+  personality fit against who's currently least loaded with open work — and
+  assign it immediately. If the AI is unreachable it still assigns, falling
+  back to whoever has the fewest open tasks rather than failing outright.
+- **Company Achievements**: completing enough documents company-wide
+  unlocks a badge (🌱 Startup at 5, 📈 Growing Concern at 25, 🏢 Established
+  Firm at 75, 🚀 Powerhouse at 150, 👑 Legendary at 300) — shown as a row of
+  earned/locked pills at the top of the Company tab, distinct from the
+  per-member badges on the Leaderboard. Each newly-earned badge is also
+  announced as a Corporate Update.
+- **Company Calendar**: a new "🗓 Calendar" tab aggregates everything with a
+  date on it — upcoming Board Meetings, documents with an approaching due
+  date, and approved time off — into a single day-grouped agenda, so
+  there's one place to see what's coming up instead of checking three tabs.
 
 Not yet built: an avatar/office world, cosmetics.
 
