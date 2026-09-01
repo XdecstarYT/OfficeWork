@@ -18,11 +18,18 @@ export async function postCorporateUpdate(params: {
   title: string;
   body: string;
   postedBy: string;
+  category?: CorporateUpdateRow["category"];
 }): Promise<CorporateUpdateRow> {
-  const { companyId, title, body, postedBy } = params;
+  const { companyId, title, body, postedBy, category } = params;
   const { data, error } = await supabase
     .from("corporate_updates")
-    .insert({ company_id: companyId, title, body, posted_by: postedBy })
+    .insert({
+      company_id: companyId,
+      title,
+      body,
+      posted_by: postedBy,
+      ...(category ? { category } : {}),
+    })
     .select()
     .single();
   if (error) throw error;

@@ -16,8 +16,15 @@ import {
   updateCompanyBranding,
   setSalaryPerLevel,
   paySalaries,
+  incrementTotalPayrollPaid,
   checkCompanyBadges,
+  updateMyBio,
 } from "../lib/company";
+import { fetchMemberMoods, setMyMood } from "../lib/memberMoods";
+import { CompanyShoutbox } from "../components/CompanyShoutbox";
+import { OrgChart } from "../components/OrgChart";
+
+const MOOD_EMOJIS = ["😊", "😐", "😫", "🔥", "☕", "🎉"];
 import {
   fetchCompanyDepartments,
   addCompanyDepartment,
@@ -137,6 +144,15 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   const [newDeptName, setNewDeptName] = useState("");
   const [savingDept, setSavingDept] = useState(false);
   const [memberCompletedCounts, setMemberCompletedCounts] = useState<Record<string, number>>({});
+  const [memberOverdueCounts, setMemberOverdueCounts] = useState<Record<string, number>>({});
+  const [totalCompletedDocs, setTotalCompletedDocs] = useState(0);
+  const [memberMoods, setMemberMoods] = useState<Record<string, string>>({});
+  const [savingMood, setSavingMood] = useState(false);
+  const [viewingBioFor, setViewingBioFor] = useState<string | null>(null);
+  const [editingBio, setEditingBio] = useState(false);
+  const [bioDraft, setBioDraft] = useState("");
+  const [savingBio, setSavingBio] = useState(false);
+  const [showOrgChart, setShowOrgChart] = useState(false);
   const [allReviews, setAllReviews] = useState<PerformanceReviewRow[]>([]);
   const [reviewingMember, setReviewingMember] = useState<Profile | null>(null);
   const [reviewRating, setReviewRating] = useState(3);
@@ -164,7 +180,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   const load = useCallback(async () => {
     if (!profile.company_id) return;
     setLoading(true);
-    const [c, m, docs, depts, reviews, timeOff, equip] = await Promise.all([
+    const [c, m, docs, depts, reviews, timeOff, equip, moods] = await Promise.all([
       fetchCompany(profile.company_id),
       fetchCompanyMembers(profile.company_id),
       fetchCompanyDocuments(profile.company_id),
@@ -172,6 +188,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       fetchCompanyReviews(profile.company_id),
       fetchTimeOffRequests(profile.company_id),
       fetchCompanyEquipment(profile.company_id),
+      fetchMemberMoods(profile.company_id),
     ]);
     setCompany(c);
     setMembers(m);
@@ -179,18 +196,26 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     setAllReviews(reviews);
     setTimeOffRequests(timeOff);
     setEquipment(equip);
+    setMemberMoods(Object.fromEntries(moods.map((mo) => [mo.member_id, mo.emoji])));
     const npcCounts: Record<string, number> = {};
     const memberCounts: Record<string, number> = {};
+    const overdueCounts: Record<string, number> = {};
+    const now = new Date().toISOString();
     for (const d of docs) {
-      if (d.status !== "completed") continue;
-      if (d.assigned_to_npc_id) {
-        npcCounts[d.assigned_to_npc_id] = (npcCounts[d.assigned_to_npc_id] ?? 0) + 1;
-      } else if (d.assigned_to) {
-        memberCounts[d.assigned_to] = (memberCounts[d.assigned_to] ?? 0) + 1;
+      if (d.status === "completed") {
+        if (d.assigned_to_npc_id) {
+          npcCounts[d.assigned_to_npc_id] = (npcCounts[d.assigned_to_npc_id] ?? 0) + 1;
+        } else if (d.assigned_to) {
+          memberCounts[d.assigned_to] = (memberCounts[d.assigned_to] ?? 0) + 1;
+        }
+      } else if (d.assigned_to && d.due_at && d.due_at < now) {
+        overdueCounts[d.assigned_to] = (overdueCounts[d.assigned_to] ?? 0) + 1;
       }
     }
     setNpcCompletedCounts(npcCounts);
     setMemberCompletedCounts(memberCounts);
+    setMemberOverdueCounts(overdueCounts);
+    setTotalCompletedDocs(docs.filter((d) => d.status === "completed").length);
     setLoading(false);
   }, [profile.company_id]);
 
@@ -690,6 +715,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       const topId = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
       const topName = topId ? members.find((m) => m.id === topId)?.display_name : null;
       const payroll = await paySalaries(members, company.salary_per_level);
+      if (payroll > 0) await incrementTotalPayrollPaid(company.id, payroll, company.total_payroll_paid);
       await endCompanyDay(company.id);
       await postCorporateUpdate({
         companyId: company.id,
@@ -697,6 +723,35 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
         body: `${completedToday.length} task${completedToday.length === 1 ? "" : "s"} completed today, $${moneyEarned.toFixed(2)} earned company-wide.${topName ? ` Top performer: ${topName}.` : ""}${payroll > 0 ? ` 💵 $${payroll.toFixed(2)} in salaries paid out.` : ""}`,
         postedBy: profile.id,
       });
+
+      // A bonus "week in review" post every 7th Day, aggregating real-world
+      // last-7-days activity rather than in-game days (the latter can span
+      // very different amounts of real time depending on how often the
+      // company plays).
+      if (company.current_day % 7 === 0) {
+        const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        const completedThisWeek = docs.filter(
+          (d) => d.status === "completed" && d.completed_at && new Date(d.completed_at).getTime() >= weekAgo,
+        );
+        const weekMoney = completedThisWeek.reduce(
+          (sum, d) => sum + payoutFor(d, d.template_snapshot as unknown as DocumentTemplate),
+          0,
+        );
+        const weekCounts = new Map<string, number>();
+        for (const d of completedThisWeek) {
+          if (d.assigned_to) weekCounts.set(d.assigned_to, (weekCounts.get(d.assigned_to) ?? 0) + 1);
+        }
+        const weekTopId = [...weekCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+        const weekTopName = weekTopId ? members.find((m) => m.id === weekTopId)?.display_name : null;
+        await postCorporateUpdate({
+          companyId: company.id,
+          title: `🗓 Week in Review — Day ${company.current_day - 6}–${company.current_day}`,
+          body: `${completedThisWeek.length} task${completedThisWeek.length === 1 ? "" : "s"} completed this week, $${weekMoney.toFixed(2)} earned company-wide.${weekTopName ? ` This week's top performer: ${weekTopName}.` : ""}`,
+          postedBy: profile.id,
+          category: "announcement",
+        });
+      }
+
       onProfileChanged();
       await load();
     } catch (err) {
@@ -761,6 +816,49 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       await load();
     } catch (err) {
       showStatus(err instanceof Error ? err.message : "Couldn't promote that member.", 4000);
+    }
+  }
+
+  async function handleNudge(m: Profile) {
+    if (!company) return;
+    const count = memberOverdueCounts[m.id] ?? 0;
+    try {
+      await sendEmailToCoworker({
+        companyId: company.id,
+        senderId: profile.id,
+        recipientId: m.id,
+        subject: "👋 Friendly nudge",
+        body: `Hey ${m.display_name} — just a heads up, you've got ${count} overdue task${count === 1 ? "" : "s"} waiting in My Work. No pressure, just didn't want it to slip through the cracks!\n\n— ${profile.display_name}`,
+      });
+      showStatus(`Nudged ${m.display_name} about their overdue work.`, 4000);
+    } catch (err) {
+      showStatus(err instanceof Error ? err.message : "Couldn't send that nudge.", 4000);
+    }
+  }
+
+  async function handleSetMood(emoji: string) {
+    if (!profile.company_id) return;
+    setSavingMood(true);
+    try {
+      await setMyMood(profile.id, profile.company_id, emoji);
+      setMemberMoods((prev) => ({ ...prev, [profile.id]: emoji }));
+    } catch (err) {
+      showStatus(err instanceof Error ? err.message : "Couldn't set your mood.", 4000);
+    } finally {
+      setSavingMood(false);
+    }
+  }
+
+  async function handleSaveBio() {
+    setSavingBio(true);
+    try {
+      await updateMyBio(profile.id, bioDraft);
+      setEditingBio(false);
+      await load();
+    } catch (err) {
+      showStatus(err instanceof Error ? err.message : "Couldn't save your bio.", 4000);
+    } finally {
+      setSavingBio(false);
     }
   }
 
@@ -873,6 +971,29 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
             ))}
         </div>
 
+        {(() => {
+          const nextBadge = COMPANY_BADGES.filter((b) => !company.company_badges_claimed.includes(b.key)).sort(
+            (a, b) => a.threshold - b.threshold,
+          )[0];
+          if (!nextBadge) return null;
+          const pct = Math.min(100, Math.round((totalCompletedDocs / nextBadge.threshold) * 100));
+          return (
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between text-xs text-stone-400">
+                <span>
+                  Progress to {nextBadge.emoji} {nextBadge.name}
+                </span>
+                <span>
+                  {totalCompletedDocs} / {nextBadge.threshold} documents
+                </span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-stone-100">
+                <div className="h-full rounded-full bg-amber-400" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          );
+        })()}
+
         {showSettings && isOwner && (
           <div className="flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-400">
@@ -983,6 +1104,9 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
               </div>
               <p className="mt-1 text-xs text-stone-400">
                 $0 turns payroll off. A level-5 member earns 5× this per Day ended.
+                {company.total_payroll_paid > 0 && (
+                  <> All-time payroll paid: <strong>${company.total_payroll_paid.toFixed(2)}</strong>.</>
+                )}
               </p>
             </div>
             <div>
@@ -1155,8 +1279,40 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                   {rollingEmployeeEvent ? "Rolling…" : "🎲 Random Employee Event"}
                 </button>
               )}
+              {members.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setShowOrgChart((s) => !s)}
+                  className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+                >
+                  🗂 {showOrgChart ? "Hide" : "Show"} Org Chart
+                </button>
+              )}
             </div>
           </div>
+
+          <div className="flex items-center gap-1.5 text-xs text-stone-500">
+            <span>Today's mood:</span>
+            {MOOD_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => handleSetMood(emoji)}
+                disabled={savingMood}
+                className={`rounded-full px-1.5 py-0.5 text-sm hover:bg-stone-100 ${
+                  memberMoods[profile.id] === emoji ? "bg-stone-200" : ""
+                }`}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+
+          {showOrgChart && (
+            <div className="rounded-md border border-stone-100 bg-stone-50 p-4">
+              <OrgChart members={members} ownerId={company.owner_id} />
+            </div>
+          )}
 
           {members.length > 4 && (
             <div className="flex flex-wrap items-center gap-2 pb-1">
@@ -1221,6 +1377,24 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                         🌴 On Leave
                       </span>
                     )}
+                    {memberMoods[m.id] && (
+                      <span className="ml-1.5" title="Today's mood">
+                        {memberMoods[m.id]}
+                      </span>
+                    )}
+                    {(memberOverdueCounts[m.id] ?? 0) > 0 && (
+                      <span className="ml-1.5 rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-700">
+                        ⏰ {memberOverdueCounts[m.id]} overdue
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setViewingBioFor(m.id)}
+                      title="View bio"
+                      className="ml-1.5 text-[10px] text-stone-300 hover:text-stone-500"
+                    >
+                      ℹ️
+                    </button>
                   </p>
                   {isEditing ? (
                     <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -1382,6 +1556,15 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                         >
                           📝 Review
                         </button>
+                        {(memberOverdueCounts[m.id] ?? 0) > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleNudge(m)}
+                            className="rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
+                          >
+                            👋 Nudge
+                          </button>
+                        )}
                       </>
                     )}
                     {allReviews.some((r) => r.member_id === m.id) && (
@@ -1400,6 +1583,8 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
             );
           })}
         </div>
+
+        {company && <CompanyShoutbox companyId={company.id} profile={profile} members={members} />}
 
         <div className="flex flex-col gap-2 rounded-lg border border-violet-200 bg-violet-50/40 p-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1807,6 +1992,87 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
           </div>
         </div>
       )}
+
+      {viewingBioFor &&
+        (() => {
+          const bioMember = members.find((m) => m.id === viewingBioFor);
+          if (!bioMember) return null;
+          const isMe = bioMember.id === profile.id;
+          return (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+              onClick={() => {
+                setViewingBioFor(null);
+                setEditingBio(false);
+              }}
+            >
+              <div
+                className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2 className="text-lg font-semibold text-stone-900">
+                  ℹ️ About {bioMember.display_name}
+                </h2>
+                {editingBio ? (
+                  <>
+                    <textarea
+                      rows={4}
+                      value={bioDraft}
+                      onChange={(e) => setBioDraft(e.target.value)}
+                      maxLength={280}
+                      placeholder="A sentence or two about yourself…"
+                      className="mt-3 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                    <div className="mt-3 flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingBio(false)}
+                        className="rounded-md px-3 py-1.5 text-sm font-medium text-stone-600 hover:bg-stone-100"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveBio}
+                        disabled={savingBio}
+                        className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+                      >
+                        {savingBio ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-3 text-sm text-stone-600">
+                      {bioMember.bio || (isMe ? "You haven't written a bio yet." : "No bio yet.")}
+                    </p>
+                    <div className="mt-4 flex justify-end gap-2">
+                      {isMe && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBioDraft(bioMember.bio ?? "");
+                            setEditingBio(true);
+                          }}
+                          className="rounded-md border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-600 hover:bg-stone-100"
+                        >
+                          Edit
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setViewingBioFor(null)}
+                        className="rounded-md px-3 py-1.5 text-sm font-medium text-stone-600 hover:bg-stone-100"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
       {showHire && (
         <div

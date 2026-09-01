@@ -151,6 +151,14 @@ export async function updateMemberRank(
   if (error) throw error;
 }
 
+export async function updateMyBio(userId: string, bio: string) {
+  const { error } = await supabase
+    .from("profiles")
+    .update({ bio: bio.trim() || null })
+    .eq("id", userId);
+  if (error) throw error;
+}
+
 /**
  * Credits `amount` to userId's money. Allowed by RLS when userId is the
  * caller themselves (self-serve completion) or a coworker the caller
@@ -283,4 +291,17 @@ export async function paySalaries(members: Profile[], salaryPerLevel: number): P
     }),
   );
   return total;
+}
+
+/** Adds to the company's all-time payroll-paid running total, shown as a
+ * stat in Company Settings. Read-then-write like the rest of this file's
+ * counters - the End Day button that drives this can't be pressed twice at
+ * once by the same owner, so the race window is negligible. */
+export async function incrementTotalPayrollPaid(companyId: string, amount: number, currentTotal: number) {
+  if (amount <= 0) return;
+  const { error } = await supabase
+    .from("companies")
+    .update({ total_payroll_paid: currentTotal + amount })
+    .eq("id", companyId);
+  if (error) throw error;
 }
