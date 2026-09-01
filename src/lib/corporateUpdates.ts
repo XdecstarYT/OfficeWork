@@ -45,3 +45,34 @@ export async function setCorporateUpdatePinned(id: string, pinned: boolean) {
   const { error } = await supabase.from("corporate_updates").update({ pinned }).eq("id", id);
   if (error) throw error;
 }
+
+export type UpdateReactionRow = Database["public"]["Tables"]["corporate_update_reactions"]["Row"];
+
+export async function fetchReactionsForUpdates(updateIds: string[]): Promise<UpdateReactionRow[]> {
+  if (updateIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("corporate_update_reactions")
+    .select("*")
+    .in("update_id", updateIds);
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Toggles the caller's own reaction of this emoji on this update - adds it
+ * if they haven't reacted with it yet, removes it if they have. */
+export async function toggleReaction(updateId: string, memberId: string, emoji: string, currentlyReacted: boolean) {
+  if (currentlyReacted) {
+    const { error } = await supabase
+      .from("corporate_update_reactions")
+      .delete()
+      .eq("update_id", updateId)
+      .eq("member_id", memberId)
+      .eq("emoji", emoji);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from("corporate_update_reactions")
+      .insert({ update_id: updateId, member_id: memberId, emoji });
+    if (error) throw error;
+  }
+}

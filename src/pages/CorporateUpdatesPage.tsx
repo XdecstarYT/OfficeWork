@@ -4,7 +4,10 @@ import {
   postCorporateUpdate,
   deleteCorporateUpdate,
   setCorporateUpdatePinned,
+  fetchReactionsForUpdates,
+  toggleReaction,
   type CorporateUpdateRow,
+  type UpdateReactionRow,
 } from "../lib/corporateUpdates";
 import { fetchCompanyMembers, awardMoney, awardXp } from "../lib/company";
 import { rollCorporateEvent } from "../data/corporateEvents";
@@ -13,6 +16,15 @@ import type { Database } from "../types/database";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Company = Database["public"]["Tables"]["companies"]["Row"];
+type UpdateCategory = CorporateUpdateRow["category"];
+
+const CATEGORY_LABELS: Record<UpdateCategory, string> = {
+  announcement: "📢 Announcement",
+  policy: "📋 Policy",
+  celebration: "🎉 Celebration",
+  other: "📄 Other",
+};
+const REACTION_EMOJIS = ["👍", "🎉", "❤️", "😂"];
 
 interface CorporateUpdatesPageProps {
   profile: Profile;
@@ -31,6 +43,9 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
   const [rolling, setRolling] = useState(false);
   const [query, setQuery] = useState("");
   const [authorFilter, setAuthorFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<UpdateCategory | "">("");
+  const [postCategory, setPostCategory] = useState<UpdateCategory>("announcement");
+  const [reactions, setReactions] = useState<UpdateReactionRow[]>([]);
 
   const isOwner = profile.id === company.owner_id;
 
@@ -42,6 +57,7 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
     ]);
     setUpdates(rows);
     setMembers(m);
+    setReactions(await fetchReactionsForUpdates(rows.map((r) => r.id)));
     setLoading(false);
   }, [company.id]);
 
@@ -57,6 +73,7 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
         { event: "*", schema: "public", table: "corporate_updates", filter: `company_id=eq.${company.id}` },
         () => load(),
       )
+      .on("postgres_changes", { event: "*", schema: "public", table: "corporate_update_reactions" }, () => load())
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
@@ -74,10 +91,12 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
         title: title.trim(),
         body: body.trim(),
         postedBy: profile.id,
+        category: postCategory,
       });
       setShowCompose(false);
       setTitle("");
       setBody("");
+      setPostCategory("announcement");
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't post that update.");
@@ -133,6 +152,22 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't pin that update.");
+    }
+  }
+
+  async function handleToggleReaction(updateId: string, emoji: string) {
+    const alreadyReacted = reactions.some(
+      (r) => r.update_id === updateId && r.member_id === profile.id && r.emoji === emoji,
+    );
+    try {
+      await toggleReaction(updateId, profile.id, emoji, alreadyReacted);
+      setReactions((prev) =>
+        alreadyReacted
+          ? prev.filter((r) => !(r.update_id === updateId && r.member_id === profile.id && r.emoji === emoji))
+          : [...prev, { id: `optimistic-${Date.now()}`, update_id: updateId, member_id: profile.id, emoji, created_at: new Date().toISOString() }],
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't react to that update.");
     }
   }
 
@@ -192,6 +227,18 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
                 </option>
               ))}
             </select>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value as UpdateCategory | "")}
+              className="rounded-md border border-stone-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none"
+            >
+              <option value="">All Categories</option>
+              {(Object.keys(CATEGORY_LABELS) as UpdateCategory[]).map((c) => (
+                <option key={c} value={c}>
+                  {CATEGORY_LABELS[c]}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
@@ -205,6 +252,7 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
           <div className="flex flex-col gap-4">
             {updates
               .filter((u) => !authorFilter || u.posted_by === authorFilter)
+              .filter((u) => !categoryFilter || u.category === categoryFilter)
               .filter((u) => {
                 const q = query.trim().toLowerCase();
                 return !q || u.title.toLowerCase().includes(q) || u.body.toLowerCase().includes(q);
@@ -221,7 +269,7 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
                 <div className="flex items-center justify-between gap-2">
                   <span className="flex items-center gap-1.5">
                     <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
-                      Company-Wide
+                      {CATEGORY_LABELS[u.category]}
                     </span>
                     {u.pinned && <span className="text-xs" title="Pinned">📌</span>}
                   </span>
@@ -233,6 +281,38 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-stone-700">
                   {u.body}
                 </p>
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  {REACTION_EMOJIS.map((emoji) => {
+                    const count = reactions.filter((r) => r.update_id === u.id && r.emoji === emoji).length;
+                    const mine = reactions.some(
+                      (r) => r.update_id === u.id && r.member_id === profile.id && r.emoji === emoji,
+                    );
+                    if (count === 0 && !mine) {
+                      return (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => handleToggleReaction(u.id, emoji)}
+                          className="rounded-full border border-stone-200 px-1.5 py-0.5 text-xs opacity-40 hover:opacity-100"
+                        >
+                          {emoji}
+                        </button>
+                      );
+                    }
+                    return (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => handleToggleReaction(u.id, emoji)}
+                        className={`rounded-full border px-1.5 py-0.5 text-xs ${
+                          mine ? "border-emerald-400 bg-emerald-50" : "border-stone-200 hover:bg-stone-100"
+                        }`}
+                      >
+                        {emoji} {count}
+                      </button>
+                    );
+                  })}
+                </div>
                 <div className="mt-3 flex items-center justify-between">
                   <p className="text-xs font-medium text-stone-400">
                     — {members.find((m) => m.id === u.posted_by)?.display_name ?? "Leadership"}
@@ -276,6 +356,17 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
           >
             <h2 className="text-lg font-semibold text-stone-900">Post a Corporate Update</h2>
             <p className="text-xs text-stone-500">Every member of the company will see this.</p>
+            <select
+              value={postCategory}
+              onChange={(e) => setPostCategory(e.target.value as UpdateCategory)}
+              className="rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            >
+              {(Object.keys(CATEGORY_LABELS) as UpdateCategory[]).map((c) => (
+                <option key={c} value={c}>
+                  {CATEGORY_LABELS[c]}
+                </option>
+              ))}
+            </select>
             <input
               type="text"
               placeholder="Headline (e.g. Q3 Results, New Office Policy...)"
