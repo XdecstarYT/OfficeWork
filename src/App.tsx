@@ -34,6 +34,9 @@ const LeaderboardPage = lazy(() =>
   import("./pages/LeaderboardPage").then((m) => ({ default: m.LeaderboardPage })),
 );
 const ArchivePage = lazy(() => import("./pages/ArchivePage").then((m) => ({ default: m.ArchivePage })));
+const CompanyCalendarPage = lazy(() =>
+  import("./pages/CompanyCalendarPage").then((m) => ({ default: m.CompanyCalendarPage })),
+);
 
 type Tab =
   | "dashboard"
@@ -46,7 +49,8 @@ type Tab =
   | "updates"
   | "activity"
   | "leaderboard"
-  | "archive";
+  | "archive"
+  | "calendar";
 
 function App() {
   const { session, user, loading: sessionLoading } = useSession();
@@ -208,6 +212,9 @@ function App() {
           <TabButton active={tab === "company"} onClick={() => setTab("company")}>
             🏛 Company
           </TabButton>
+          <TabButton active={tab === "calendar"} onClick={() => setTab("calendar")}>
+            🗓 Calendar
+          </TabButton>
           <TabButton active={tab === "meetings"} onClick={() => setTab("meetings")}>
             📅 Board Meetings
           </TabButton>
@@ -256,6 +263,7 @@ function App() {
           {tab === "company" && (
             <CompanyPage profile={profile} onProfileChanged={refreshProfile} llmConfig={DEFAULT_LLM_CONFIG} />
           )}
+          {tab === "calendar" && <CompanyCalendarPage profile={profile} />}
           {tab === "meetings" && <BoardMeetingsPage profile={profile} />}
           {tab === "updates" && <CorporateUpdatesPage profile={profile} company={company} />}
           {tab === "activity" && <ActivityFeedPage profile={profile} />}

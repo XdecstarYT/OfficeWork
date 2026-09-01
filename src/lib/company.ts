@@ -252,6 +252,17 @@ export async function claimMilestone(milestoneId: string): Promise<boolean> {
   return data ?? false;
 }
 
+/** Atomically checks completed-document thresholds server-side and appends
+ * any newly-crossed company badges to companies.company_badges_claimed,
+ * returning just the newly-earned badge keys (empty if none) - so calling
+ * this repeatedly (e.g. every CompanyPage load) never re-announces the
+ * same badge twice. */
+export async function checkCompanyBadges(): Promise<string[]> {
+  const { data, error } = await supabase.rpc("check_company_badges");
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function setSalaryPerLevel(companyId: string, amount: number) {
   const { error } = await supabase.from("companies").update({ salary_per_level: amount }).eq("id", companyId);
   if (error) throw error;

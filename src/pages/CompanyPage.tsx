@@ -16,6 +16,7 @@ import {
   updateCompanyBranding,
   setSalaryPerLevel,
   paySalaries,
+  checkCompanyBadges,
 } from "../lib/company";
 import {
   fetchCompanyDepartments,
@@ -39,6 +40,7 @@ import { assignWork, fetchCompanyDocuments, payoutFor } from "../lib/documents";
 import { fetchCompanyEquipment, purchaseEquipment, type CompanyEquipmentRow } from "../lib/equipment";
 import { EQUIPMENT_CATALOG, totalPayoutBonusPercent } from "../data/equipment";
 import { rollEmployeeEvent } from "../data/employeeEvents";
+import { COMPANY_BADGES, getCompanyBadge } from "../data/companyBadges";
 import { sendEmailToCoworker } from "../lib/emails";
 import { postCorporateUpdate } from "../lib/corporateUpdates";
 import { hireNpc, fireNpc, resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
@@ -186,6 +188,37 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   useEffect(() => {
     load();
   }, [load]);
+
+  // Checked once per visit to this page (rather than on every load()/realtime
+  // refresh) since it's purely a "did we cross a new threshold since last
+  // time" check - the RPC is atomic so a second concurrent call from another
+  // member's browser just comes back empty, never double-announces a badge.
+  useEffect(() => {
+    if (!profile.company_id) return;
+    checkCompanyBadges()
+      .then(async (newBadges) => {
+        if (newBadges.length === 0) return;
+        for (const key of newBadges) {
+          const badge = getCompanyBadge(key);
+          if (!badge) continue;
+          await postCorporateUpdate({
+            companyId: profile.company_id!,
+            title: `${badge.emoji} Achievement Unlocked: ${badge.name}`,
+            body: `The company just earned the "${badge.name}" badge — ${badge.description}`,
+            postedBy: profile.id,
+          });
+        }
+        setStatusMessage(
+          `🏅 New achievement${newBadges.length > 1 ? "s" : ""} unlocked: ${newBadges
+            .map((k) => getCompanyBadge(k)?.name ?? k)
+            .join(", ")}!`,
+        );
+        setTimeout(() => setStatusMessage(null), 6000);
+        await load();
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.company_id]);
 
   // This page is the primary source for company-shared state (day/career
   // mode/branding, the roster, hired AI coworkers, custom personas) but was
@@ -845,6 +878,31 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
               </button>
             )}
           </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+            {company.company_badges_claimed.map((key) => {
+              const badge = getCompanyBadge(key);
+              if (!badge) return null;
+              return (
+                <span
+                  key={key}
+                  title={badge.description}
+                  className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700"
+                >
+                  {badge.emoji} {badge.name}
+                </span>
+              );
+            })}
+            {COMPANY_BADGES.filter((b) => !company.company_badges_claimed.includes(b.key)).map((badge) => (
+              <span
+                key={badge.key}
+                title={`Locked — ${badge.description}`}
+                className="flex items-center gap-1 rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs text-stone-400"
+              >
+                🔒 {badge.name}
+              </span>
+            ))}
         </div>
 
         {showSettings && isOwner && (
