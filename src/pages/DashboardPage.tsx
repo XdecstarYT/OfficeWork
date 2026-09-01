@@ -82,9 +82,14 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
   async function handleClaimMilestone(milestoneId: string, rewardMoney: number, rewardXp: number) {
     setClaimingId(milestoneId);
     try {
-      await claimMilestone(profile, milestoneId);
-      if (rewardMoney > 0) await awardMoney(profile.id, rewardMoney);
-      if (rewardXp > 0) await awardXp(profile.id, rewardXp);
+      // The RPC is atomic and only reports true for the call that actually
+      // claimed it, so a second click (or a race with another claim in
+      // flight) never pays out the reward twice.
+      const newlyClaimed = await claimMilestone(milestoneId);
+      if (newlyClaimed) {
+        if (rewardMoney > 0) await awardMoney(profile.id, rewardMoney);
+        if (rewardXp > 0) await awardXp(profile.id, rewardXp);
+      }
       onProfileChanged();
     } finally {
       setClaimingId(null);
@@ -208,7 +213,7 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
                       <button
                         type="button"
                         onClick={() => handleClaimMilestone(milestone.id, milestone.rewardMoney, milestone.rewardXp)}
-                        disabled={claimingId === milestone.id}
+                        disabled={claimingId !== null}
                         className="shrink-0 rounded-md bg-indigo-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-800 disabled:opacity-50"
                       >
                         {claimingId === milestone.id ? "Claiming…" : "🎁 Claim"}

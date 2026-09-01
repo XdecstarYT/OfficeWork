@@ -228,7 +228,13 @@ function App() {
               onProfileChanged={refreshProfile}
             />
           )}
-          {tab === "cabinet" && <FilingCabinet profile={profile} llmConfig={DEFAULT_LLM_CONFIG} />}
+          {tab === "cabinet" && (
+            <FilingCabinet
+              profile={profile}
+              llmConfig={DEFAULT_LLM_CONFIG}
+              isOwner={company.owner_id === profile.id}
+            />
+          )}
           {tab === "work" && (
             <WorkPage profile={profile} onProfileChanged={refreshProfile} llmConfig={DEFAULT_LLM_CONFIG} />
           )}

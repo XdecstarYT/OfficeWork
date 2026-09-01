@@ -113,6 +113,62 @@ export async function assignWork(params: {
   return data;
 }
 
+/** Hands a template to a hired AI coworker instead of a human. The document
+ * is created already "in_progress" (an NPC never sits in someone's queue),
+ * and the caller is expected to immediately fill it in via
+ * completeNpcWork() once the AI has drafted the fields. No payout is set -
+ * NPCs are salaried by their one-time hire cost, not per task, so this
+ * can't be used to farm Money the way an infinitely-repeatable paid task
+ * could. */
+export async function assignWorkToNpc(params: {
+  companyId: string;
+  template: DocumentTemplate;
+  createdBy: string;
+  npcId: string;
+  referenceData?: ReferenceRow[];
+}): Promise<DocumentRow> {
+  const { companyId, template, createdBy, npcId, referenceData } = params;
+  const { data, error } = await supabase
+    .from("documents")
+    .insert({
+      company_id: companyId,
+      template_id: template.id,
+      template_snapshot: template as unknown as Database["public"]["Tables"]["documents"]["Row"]["template_snapshot"],
+      title: template.title,
+      status: "in_progress",
+      requires_approval: false,
+      created_by: createdBy,
+      assigned_to_npc_id: npcId,
+      payout_override: 0,
+      ...(referenceData && referenceData.length > 0
+        ? { reference_data: referenceData as unknown as Database["public"]["Tables"]["documents"]["Row"]["reference_data"] }
+        : {}),
+    })
+    .select()
+    .single();
+  if (error) throw error;
+
+  await logEvent(data.id, createdBy, "assigned", "Assigned to AI coworker");
+  return data;
+}
+
+export async function completeNpcWork(
+  documentId: string,
+  actorId: string,
+  fieldValues: Record<string, string>,
+) {
+  const { error } = await supabase
+    .from("documents")
+    .update({
+      field_values: fieldValues,
+      status: "completed",
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", documentId);
+  if (error) throw error;
+  await logEvent(documentId, actorId, "completed", "Completed by AI coworker");
+}
+
 export async function fetchMyDocuments(userId: string): Promise<DocumentRow[]> {
   const { data, error } = await supabase
     .from("documents")

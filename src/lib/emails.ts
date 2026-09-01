@@ -105,3 +105,12 @@ export async function markRead(emailId: string) {
     .eq("id", emailId);
   if (error) throw error;
 }
+
+export async function markAllRead(emailIds: string[]) {
+  if (emailIds.length === 0) return;
+  const { error } = await supabase
+    .from("emails")
+    .update({ read_at: new Date().toISOString() })
+    .in("id", emailIds);
+  if (error) throw error;
+}

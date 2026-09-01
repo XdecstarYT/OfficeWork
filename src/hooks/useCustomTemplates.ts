@@ -75,5 +75,16 @@ export function useCustomTemplates(companyId: string | null, userId: string | nu
     [rows, load],
   );
 
-  return { customTemplates, addCustomTemplate, removeCustomTemplate };
+  /** The delete button should only be offered to whoever built the template
+   * or the company owner - RLS enforces the same rule server-side, but the
+   * UI should never show a control that's guaranteed to fail. */
+  const canRemoveTemplate = useCallback(
+    (templateId: string, isOwner: boolean) => {
+      const row = rows.find((r) => (r.template as unknown as DocumentTemplate).id === templateId);
+      return !!row && (row.created_by === userId || isOwner);
+    },
+    [rows, userId],
+  );
+
+  return { customTemplates, addCustomTemplate, removeCustomTemplate, canRemoveTemplate };
 }

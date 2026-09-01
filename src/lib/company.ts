@@ -69,6 +69,11 @@ export async function renameCompany(companyId: string, name: string) {
   if (error) throw error;
 }
 
+export async function updateCompanyBranding(companyId: string, updates: { emoji?: string; motto?: string | null }) {
+  const { error } = await supabase.from("companies").update(updates).eq("id", companyId);
+  if (error) throw error;
+}
+
 export async function regenerateInviteCode(companyId: string): Promise<string> {
   const invite_code = generateInviteCode();
   const { error } = await supabase.from("companies").update({ invite_code }).eq("id", companyId);
@@ -235,13 +240,14 @@ export async function setCareerMode(companyId: string, enabled: boolean) {
   if (error) throw error;
 }
 
-/** Records a career milestone as claimed for this profile (idempotent - a
- * milestone already in the array is left alone). */
-export async function claimMilestone(profile: Profile, milestoneId: string) {
-  if (profile.claimed_milestones.includes(milestoneId)) return;
-  const { error } = await supabase
-    .from("profiles")
-    .update({ claimed_milestones: [...profile.claimed_milestones, milestoneId] })
-    .eq("id", profile.id);
+/** Records a career milestone as claimed for the calling user via an atomic
+ * server-side RPC (rather than a client-side read-modify-write of the
+ * claimed_milestones array, which two rapid claims could race and lose one
+ * of). Returns whether this call is the one that actually claimed it - the
+ * caller should only award the reward when this is true, so a retried or
+ * duplicate claim never pays out twice. */
+export async function claimMilestone(milestoneId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("claim_milestone", { p_milestone_id: milestoneId });
   if (error) throw error;
+  return data ?? false;
 }

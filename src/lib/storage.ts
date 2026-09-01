@@ -38,6 +38,25 @@ export function pushRecentId(id: string) {
   }
 }
 
+const FAVORITE_CLIENTS_KEY = "officequest.favoriteClients";
+
+export function loadFavoriteClients(): Set<string> {
+  try {
+    const raw = localStorage.getItem(FAVORITE_CLIENTS_KEY);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function saveFavoriteClients(favorites: Set<string>) {
+  try {
+    localStorage.setItem(FAVORITE_CLIENTS_KEY, JSON.stringify([...favorites]));
+  } catch {
+    // ignore storage failures (private browsing, quota, etc.)
+  }
+}
+
 const CLIENT_RELATIONSHIPS_KEY = "officequest.clientRelationships";
 
 export function loadClientRelationships(): Record<string, number> {

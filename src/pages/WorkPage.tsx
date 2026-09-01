@@ -54,6 +54,7 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
   const [showRejectFor, setShowRejectFor] = useState<string | null>(null);
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
+  const [overdueOnly, setOverdueOnly] = useState(false);
 
   const memberLevel = (id: string | null) => members.find((m) => m.id === id)?.level ?? 0;
 
@@ -173,9 +174,16 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
     load();
   }
 
-  const myOpenWork = documents.filter(
-    (d) => d.assigned_to === profile.id && ["requested", "assigned"].includes(d.status),
-  );
+  const myOpenWork = documents
+    .filter((d) => d.assigned_to === profile.id && ["requested", "assigned"].includes(d.status))
+    .filter((d) => !overdueOnly || isOverdue(d))
+    .slice()
+    .sort((a, b) => {
+      if (!a.due_at && !b.due_at) return 0;
+      if (!a.due_at) return 1;
+      if (!b.due_at) return -1;
+      return a.due_at.localeCompare(b.due_at);
+    });
   const needsMyApproval = documents.filter(
     (d) => d.status === "pending_approval" && profile.level > memberLevel(d.assigned_to),
   );
@@ -192,12 +200,18 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
-        <h1 className="text-lg font-semibold text-stone-900">
+        <h1 className="flex flex-wrap items-center gap-2 text-lg font-semibold text-stone-900">
           My Work
           {overdueCount > 0 && (
-            <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
-              ⏰ {overdueCount} overdue
-            </span>
+            <button
+              type="button"
+              onClick={() => setOverdueOnly((v) => !v)}
+              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                overdueOnly ? "bg-red-600 text-white" : "bg-red-100 text-red-700 hover:bg-red-200"
+              }`}
+            >
+              ⏰ {overdueCount} overdue{overdueOnly ? " · showing only" : ""}
+            </button>
           )}
         </h1>
 

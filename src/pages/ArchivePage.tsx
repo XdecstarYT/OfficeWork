@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchCompanyDocuments, payoutFor, type DocumentRow } from "../lib/documents";
 import { fetchCompanyMembers } from "../lib/company";
+import { fetchCompanyNpcs, resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
+import { fetchCustomNpcPersonas, type CustomNpcPersonaRow } from "../lib/customNpcPersonas";
 import { supabase } from "../lib/supabaseClient";
 import { DocumentPreview } from "../components/DocumentPreview";
 import type { Database } from "../types/database";
@@ -19,6 +21,8 @@ function asTemplate(row: DocumentRow): DocumentTemplate {
 export function ArchivePage({ profile }: ArchivePageProps) {
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [members, setMembers] = useState<Profile[]>([]);
+  const [npcs, setNpcs] = useState<CompanyNpcRow[]>([]);
+  const [customNpcPersonas, setCustomNpcPersonas] = useState<CustomNpcPersonaRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [personFilter, setPersonFilter] = useState("");
@@ -27,14 +31,27 @@ export function ArchivePage({ profile }: ArchivePageProps) {
   const load = useCallback(async () => {
     if (!profile.company_id) return;
     setLoading(true);
-    const [docs, m] = await Promise.all([
+    const [docs, m, n, cp] = await Promise.all([
       fetchCompanyDocuments(profile.company_id),
       fetchCompanyMembers(profile.company_id),
+      fetchCompanyNpcs(profile.company_id),
+      fetchCustomNpcPersonas(profile.company_id),
     ]);
     setDocuments(docs.filter((d) => d.status === "completed"));
     setMembers(m);
+    setNpcs(n);
+    setCustomNpcPersonas(cp);
     setLoading(false);
   }, [profile.company_id]);
+
+  function completedByLabel(d: DocumentRow): string {
+    if (d.assigned_to_npc_id) {
+      const npc = npcs.find((n) => n.id === d.assigned_to_npc_id);
+      const persona = npc ? resolveNpcPersona(npc, customNpcPersonas) : undefined;
+      return `🤖 ${persona?.name ?? "AI Coworker"}`;
+    }
+    return members.find((m) => m.id === d.assigned_to)?.display_name ?? "Unknown";
+  }
 
   useEffect(() => {
     load();
@@ -117,8 +134,8 @@ export function ArchivePage({ profile }: ArchivePageProps) {
                 <div>
                   <p className="text-sm font-medium text-stone-800">{d.title}</p>
                   <p className="text-xs text-stone-400">
-                    {members.find((m) => m.id === d.assigned_to)?.display_name ?? "Unknown"} · 💵 $
-                    {payoutFor(d, asTemplate(d))} ·{" "}
+                    {completedByLabel(d)}
+                    {!d.assigned_to_npc_id && ` · 💵 $${payoutFor(d, asTemplate(d))}`} ·{" "}
                     {d.completed_at ? new Date(d.completed_at).toLocaleDateString() : "—"}
                   </p>
                 </div>
@@ -141,7 +158,7 @@ export function ArchivePage({ profile }: ArchivePageProps) {
               <div>
                 <h2 className="text-lg font-semibold text-stone-900">{openDoc.title}</h2>
                 <p className="text-xs text-stone-400">
-                  {members.find((m) => m.id === openDoc.assigned_to)?.display_name ?? "Unknown"} ·{" "}
+                  {completedByLabel(openDoc)} ·{" "}
                   {openDoc.completed_at ? new Date(openDoc.completed_at).toLocaleDateString() : "—"}
                 </p>
               </div>

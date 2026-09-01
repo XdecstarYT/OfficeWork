@@ -39,7 +39,9 @@ export async function hireNpc(params: {
 }
 
 export async function fireNpc(id: string) {
-  const { error } = await supabase.from("company_npcs").delete().eq("id", id);
+  // .select().single() so an RLS-blocked delete (not the hirer or the
+  // owner) throws instead of silently affecting 0 rows.
+  const { error } = await supabase.from("company_npcs").delete().eq("id", id).select().single();
   if (error) throw error;
 }
 

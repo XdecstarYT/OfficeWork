@@ -12,6 +12,7 @@ import {
 import { TAXONOMY } from "../data/taxonomy";
 import { useClientRequests } from "../hooks/useClientRequests";
 import { useClientRelationships } from "../hooks/useClientRelationships";
+import { useFavoriteClients } from "../hooks/useFavoriteClients";
 import { ClientRequestModal } from "../components/ClientRequestModal";
 import { supabase } from "../lib/supabaseClient";
 import type { LlmConfig } from "../lib/llmConfig";
@@ -42,6 +43,8 @@ const EMPTY_CATEGORY_TEXT = TAXONOMY.map((c) => c.id).slice(0, 2).join(", ");
 export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: AiClientsProps) {
   const { requests, setRequest, clearRequest } = useClientRequests();
   const { relationships, recordCompletion } = useClientRelationships();
+  const { favoriteClients, toggleFavoriteClient } = useFavoriteClients();
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [loadingClientId, setLoadingClientId] = useState<string | null>(null);
   const [errorByClient, setErrorByClient] = useState<Record<string, string>>({});
   const [openClientId, setOpenClientId] = useState<string | null>(null);
@@ -85,6 +88,10 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
   }, [companyId, loadCustomClients]);
 
   const allClients: ClientPersona[] = [...CLIENTS, ...customClients.map(customRowToClientPersona)];
+  const visibleClients = allClients
+    .filter((c) => categoryFilter === "all" || c.categoryAffinity.includes(categoryFilter))
+    .slice()
+    .sort((a, b) => Number(favoriteClients.has(b.id)) - Number(favoriteClients.has(a.id)));
 
   async function handleGenerateClientIdea() {
     setClientAiBusy(true);
@@ -197,8 +204,24 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
           )}
         </div>
 
+        <label className="flex w-fit items-center gap-1.5 text-xs text-stone-500">
+          Category
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="rounded-md border border-stone-300 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+          >
+            <option value="all">All</option>
+            {TAXONOMY.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {allClients.map((c) => {
+          {visibleClients.map((c) => {
             const activeRequest = requests[c.id];
             const isLoading = loadingClientId === c.id;
             const customRow = customClients.find((row) => `custom:${row.id}` === c.id);
@@ -222,6 +245,16 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
                       <p className="text-xs text-stone-400">{c.company}</p>
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleFavoriteClient(c.id)}
+                    aria-label={favoriteClients.has(c.id) ? "Unpin" : "Pin to top"}
+                    className={`shrink-0 text-lg leading-none ${
+                      favoriteClients.has(c.id) ? "text-amber-500" : "text-stone-200 hover:text-amber-400"
+                    }`}
+                  >
+                    ★
+                  </button>
                   {customRow && (customRow.created_by === profile.id || isOwner) && (
                     <button
                       type="button"

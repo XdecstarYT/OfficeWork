@@ -280,11 +280,20 @@ function MeetingList({
           const meetingRsvps = rsvps.filter((r) => r.meeting_id === meeting.id);
           const myRsvp = meetingRsvps.find((r) => r.user_id === profile.id);
           const attendingCount = meetingRsvps.filter((r) => r.status === "attending").length;
+          const declinedCount = meetingRsvps.filter((r) => r.status === "declined").length;
           const canCancel = meeting.created_by === profile.id || profile.level >= 100;
+          const isToday = new Date(meeting.scheduled_at).toDateString() === new Date().toDateString();
           return (
             <div key={meeting.id} className="rounded-md border border-stone-100 p-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-stone-800">{meeting.title}</p>
+                <p className="flex items-center gap-1.5 text-sm font-medium text-stone-800">
+                  {meeting.title}
+                  {isToday && (
+                    <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700">
+                      Today
+                    </span>
+                  )}
+                </p>
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-stone-400">
                     {new Date(meeting.scheduled_at).toLocaleString()}
@@ -302,7 +311,7 @@ function MeetingList({
               </div>
               {meeting.agenda && <p className="mt-1 text-xs text-stone-500">{meeting.agenda}</p>}
               <p className="mt-1 text-xs text-stone-400">
-                {attendingCount}/{members.length} attending · organized by{" "}
+                ✅ {attendingCount} attending · ❌ {declinedCount} declined · organized by{" "}
                 {members.find((m) => m.id === meeting.created_by)?.display_name}
               </p>
               <div className="mt-2 flex flex-wrap gap-2">

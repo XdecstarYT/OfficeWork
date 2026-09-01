@@ -27,6 +27,8 @@ export interface Database {
           day_status: "not_started" | "active" | "ended";
           day_started_at: string | null;
           career_mode: boolean;
+          emoji: string;
+          motto: string | null;
           created_at: string;
         };
         Insert: {
@@ -39,6 +41,8 @@ export interface Database {
           day_status?: "not_started" | "active" | "ended";
           day_started_at?: string | null;
           career_mode?: boolean;
+          emoji?: string;
+          motto?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["companies"]["Insert"]>;
@@ -112,6 +116,7 @@ export interface Database {
           requires_approval: boolean;
           created_by: string;
           assigned_to: string | null;
+          assigned_to_npc_id: string | null;
           approver_id: string | null;
           approval_note: string | null;
           due_at: string | null;
@@ -132,6 +137,7 @@ export interface Database {
           requires_approval?: boolean;
           created_by: string;
           assigned_to?: string | null;
+          assigned_to_npc_id?: string | null;
           approver_id?: string | null;
           approval_note?: string | null;
           due_at?: string | null;
@@ -366,6 +372,10 @@ export interface Database {
       kick_member: {
         Args: { p_member_id: string };
         Returns: void;
+      };
+      claim_milestone: {
+        Args: { p_milestone_id: string };
+        Returns: boolean;
       };
     };
     Enums: Record<string, never>;

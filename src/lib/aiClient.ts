@@ -613,3 +613,23 @@ document template from a short idea. Design realistic, fillable form fields and 
     bodyTemplate: input.bodyTemplate,
   };
 }
+
+/** Brainstorms a short company motto/tagline. Falls back to a generic one if the AI is unreachable. */
+export async function generateCompanyMotto(companyName: string, config: LlmConfig): Promise<string> {
+  const fallback = `${companyName}: Getting the paperwork done.`;
+  try {
+    const system = `You write short, punchy corporate mottos/taglines for a cozy office-life simulation game. \
+One sentence, under 12 words, a little tongue-in-cheek but plausible as real corporate messaging. No quotes.`;
+    const result = await llmChatCompletion({
+      config,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: `Company name: ${companyName}` },
+      ],
+      maxTokens: 60,
+    });
+    return result.content?.trim() || fallback;
+  } catch {
+    return fallback;
+  }
+}

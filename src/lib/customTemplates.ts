@@ -34,6 +34,8 @@ export async function saveCustomTemplate(params: {
 }
 
 export async function deleteCustomTemplate(id: string) {
-  const { error } = await supabase.from("custom_templates").delete().eq("id", id);
+  // .select().single() so an RLS-blocked delete (not the creator or the
+  // owner) throws instead of silently affecting 0 rows.
+  const { error } = await supabase.from("custom_templates").delete().eq("id", id).select().single();
   if (error) throw error;
 }

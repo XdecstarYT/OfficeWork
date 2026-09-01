@@ -7,6 +7,7 @@ import {
   sendEmailToNpc,
   recordNpcReply,
   markRead,
+  markAllRead,
   type EmailRow,
 } from "../lib/emails";
 import { fetchCompanyMembers } from "../lib/company";
@@ -54,6 +55,8 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
   const [draftNpcId, setDraftNpcId] = useState<string | null>(null);
   const [showDraftTemplatePicker, setShowDraftTemplatePicker] = useState(false);
   const [drafting, setDrafting] = useState(false);
+  const [emailQuery, setEmailQuery] = useState("");
+  const [unreadOnly, setUnreadOnly] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -132,7 +135,18 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
         });
       } else if (recipient.type === "npc") {
         const npc = npcs.find((n) => n.id === recipient.id)!;
-        const persona = resolveNpcPersona(npc, customNpcPersonas)!;
+        // The custom persona backing this hire can be deleted after the fact
+        // (hired coworkers stay hired) - fall back to a generic persona
+        // rather than crashing the send.
+        const persona = resolveNpcPersona(npc, customNpcPersonas) ?? {
+          key: npc.id,
+          name: "AI Coworker",
+          avatar: "🤖",
+          suggestedTitle: npc.job_title,
+          suggestedLevel: npc.level,
+          personality: "A helpful AI coworker.",
+          hireCost: 0,
+        };
         await sendEmailToNpc({
           companyId: profile.company_id,
           senderId: profile.id,
@@ -213,6 +227,27 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
     }
   }
 
+  async function handleMarkAllRead() {
+    const unreadIds = emails
+      .filter((e) => e.recipient_id === profile.id && !e.read_at)
+      .map((e) => e.id);
+    await markAllRead(unreadIds);
+    load();
+  }
+
+  const visibleEmails = emails
+    .filter((e) => !unreadOnly || (e.recipient_id === profile.id && !e.read_at))
+    .filter((e) => {
+      const q = emailQuery.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        e.subject.toLowerCase().includes(q) ||
+        senderLabel(e).toLowerCase().includes(q) ||
+        recipientLabel(e).toLowerCase().includes(q)
+      );
+    });
+  const unreadCount = emails.filter((e) => e.recipient_id === profile.id && !e.read_at).length;
+
   if (loading) {
     return <div className="flex-1 p-6 text-sm text-stone-400">Loading inbox…</div>;
   }
@@ -252,13 +287,47 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
           <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>
         )}
 
+        {emails.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="search"
+              value={emailQuery}
+              onChange={(e) => setEmailQuery(e.target.value)}
+              placeholder="Search subject or sender…"
+              className="min-w-0 flex-1 rounded-md border border-stone-300 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <button
+              type="button"
+              onClick={() => setUnreadOnly((v) => !v)}
+              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
+                unreadOnly ? "bg-stone-800 text-white" : "border border-stone-300 text-stone-500 hover:bg-stone-100"
+              }`}
+            >
+              Unread only
+            </button>
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={handleMarkAllRead}
+                className="shrink-0 text-xs font-medium text-emerald-700 hover:text-emerald-800"
+              >
+                Mark all read ({unreadCount})
+              </button>
+            )}
+          </div>
+        )}
+
         {emails.length === 0 ? (
           <p className="rounded-lg border border-dashed border-stone-200 bg-stone-50 p-6 text-center text-sm text-stone-400">
             No emails yet. Send one to a coworker or a client.
           </p>
+        ) : visibleEmails.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-stone-200 bg-stone-50 p-6 text-center text-sm text-stone-400">
+            No emails match that search/filter.
+          </p>
         ) : (
           <div className="flex flex-col gap-1">
-            {emails.map((email) => {
+            {visibleEmails.map((email) => {
               const isUnread = email.recipient_id === profile.id && !email.read_at;
               return (
                 <button

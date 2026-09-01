@@ -13,17 +13,21 @@ import { BLANK_PAGE_TEMPLATE } from "../data/blankPage";
 import { fetchCompanyMembers } from "../lib/company";
 import { assignWork } from "../lib/documents";
 import type { Database } from "../types/database";
-import type { DocumentTemplate } from "../types/template";
+import type { Difficulty, DocumentTemplate } from "../types/template";
 import type { LlmConfig } from "../lib/llmConfig";
+
+type SortMode = "relevance" | "name" | "time" | "difficulty";
+const DIFFICULTY_ORDER: Record<Difficulty, number> = { quick: 0, standard: 1, detailed: 2 };
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 interface FilingCabinetProps {
   profile: Profile;
   llmConfig: LlmConfig;
+  isOwner: boolean;
 }
 
-export function FilingCabinet({ profile, llmConfig }: FilingCabinetProps) {
+export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProps) {
   const [selection, setSelection] = useState<CategorySelection>({
     categoryId: null,
     subcategoryId: null,
@@ -35,9 +39,11 @@ export function FilingCabinet({ profile, llmConfig }: FilingCabinetProps) {
   const [assignTargetId, setAssignTargetId] = useState<string>(profile.id);
   const [members, setMembers] = useState<Profile[]>([]);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>("relevance");
+  const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | "all">("all");
   const { favorites, toggleFavorite } = useFavorites();
   const { recentIds } = useRecent();
-  const { customTemplates, addCustomTemplate, removeCustomTemplate } = useCustomTemplates(
+  const { customTemplates, addCustomTemplate, removeCustomTemplate, canRemoveTemplate } = useCustomTemplates(
     profile.company_id,
     profile.id,
   );
@@ -95,10 +101,22 @@ export function FilingCabinet({ profile, llmConfig }: FilingCabinetProps) {
     } else if (selection.categoryId) {
       templates = templates.filter((t) => t.categoryId === selection.categoryId);
     }
+    if (difficultyFilter !== "all") {
+      templates = templates.filter((t) => t.difficulty === difficultyFilter);
+    }
     return templates;
-  }, [selection]);
+  }, [selection, difficultyFilter]);
 
-  const filtered = useMemo(() => searchTemplates(scoped, query), [scoped, query]);
+  const filtered = useMemo(() => {
+    const results = searchTemplates(scoped, query);
+    if (sortMode === "relevance") return results;
+    const sorted = [...results];
+    if (sortMode === "name") sorted.sort((a, b) => a.title.localeCompare(b.title));
+    else if (sortMode === "time") sorted.sort((a, b) => a.estimatedMinutes - b.estimatedMinutes);
+    else if (sortMode === "difficulty")
+      sorted.sort((a, b) => DIFFICULTY_ORDER[a.difficulty] - DIFFICULTY_ORDER[b.difficulty]);
+    return sorted;
+  }, [scoped, query, sortMode]);
 
   // Rendering 1000+ cards at once is what actually makes browsing feel
   // laggy (huge DOM, hover/focus style recalculation on every one). Page it.
@@ -163,6 +181,38 @@ export function FilingCabinet({ profile, llmConfig }: FilingCabinetProps) {
       <main className="min-h-0 flex-1 overflow-y-auto p-6">
         <div className="mx-auto flex max-w-5xl flex-col gap-6">
           <SearchBar value={query} onChange={setQuery} />
+
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              {(["all", "quick", "standard", "detailed"] as const).map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDifficultyFilter(d)}
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${
+                    difficultyFilter === d
+                      ? "bg-stone-800 text-white"
+                      : "border border-stone-300 text-stone-500 hover:bg-stone-100"
+                  }`}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+            <label className="ml-auto flex items-center gap-1.5 text-xs text-stone-500">
+              Sort
+              <select
+                value={sortMode}
+                onChange={(e) => setSortMode(e.target.value as SortMode)}
+                className="rounded-md border border-stone-300 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+              >
+                <option value="relevance">Relevance</option>
+                <option value="name">Name (A-Z)</option>
+                <option value="time">Est. Time</option>
+                <option value="difficulty">Difficulty</option>
+              </select>
+            </label>
+          </div>
 
           {isBrowsingRoot && (
             <>
@@ -265,8 +315,9 @@ export function FilingCabinet({ profile, llmConfig }: FilingCabinetProps) {
             handleStart(t);
           }}
           onDelete={
-            activeTemplate.categoryId === "custom"
+            activeTemplate.categoryId === "custom" && canRemoveTemplate(activeTemplate.id, isOwner)
               ? (t) => {
+                  if (!window.confirm(`Delete "${t.title}"? This can't be undone.`)) return;
                   removeCustomTemplate(t.id);
                   setActiveTemplate(null);
                 }

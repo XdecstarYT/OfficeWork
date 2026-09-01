@@ -12,8 +12,9 @@ import {
   startCompanyDay,
   endCompanyDay,
   setCareerMode,
+  updateCompanyBranding,
 } from "../lib/company";
-import { assignWork, fetchCompanyDocuments, payoutFor } from "../lib/documents";
+import { assignWork, assignWorkToNpc, completeNpcWork, fetchCompanyDocuments, payoutFor } from "../lib/documents";
 import { sendEmailToCoworker } from "../lib/emails";
 import { postCorporateUpdate } from "../lib/corporateUpdates";
 import { fetchCompanyNpcs, hireNpc, fireNpc, resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
@@ -24,12 +25,18 @@ import {
   customPersonaToNpcPersona,
   type CustomNpcPersonaRow,
 } from "../lib/customNpcPersonas";
-import { NPC_PERSONAS, getNpcPersona } from "../data/npcs";
-import { generatePromotionAnnouncement, generateNpcPersonaIdea } from "../lib/aiClient";
+import { NPC_PERSONAS, getNpcPersona, type NpcPersona } from "../data/npcs";
+import {
+  generatePromotionAnnouncement,
+  generateNpcPersonaIdea,
+  draftDocumentFields,
+  generateCompanyMotto,
+} from "../lib/aiClient";
 import { TemplatePickerModal } from "../components/TemplatePickerModal";
 import { TemplateBuilder } from "../components/TemplateBuilder";
 import { AssignTaskModal, type AssignTaskDetails } from "../components/AssignTaskModal";
 import { useCustomTemplates } from "../hooks/useCustomTemplates";
+import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../types/database";
 import type { DocumentTemplate } from "../types/template";
 import type { LlmConfig } from "../lib/llmConfig";
@@ -92,27 +99,83 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   const [startingDay, setStartingDay] = useState(false);
   const [endingDay, setEndingDay] = useState(false);
   const [togglingCareerMode, setTogglingCareerMode] = useState(false);
+  const [assigningNpc, setAssigningNpc] = useState<CompanyNpcRow | null>(null);
+  const [npcWorking, setNpcWorking] = useState(false);
+  const [emojiDraft, setEmojiDraft] = useState("🏢");
+  const [mottoDraft, setMottoDraft] = useState("");
+  const [savingBranding, setSavingBranding] = useState(false);
+  const [generatingMotto, setGeneratingMotto] = useState(false);
+  const [memberQuery, setMemberQuery] = useState("");
+  const [memberSort, setMemberSort] = useState<"level" | "name" | "money" | "department">("level");
+  const [npcCompletedCounts, setNpcCompletedCounts] = useState<Record<string, number>>({});
   const { addCustomTemplate } = useCustomTemplates(profile.company_id, profile.id);
 
   const load = useCallback(async () => {
     if (!profile.company_id) return;
     setLoading(true);
-    const [c, m, n, cp] = await Promise.all([
+    const [c, m, n, cp, docs] = await Promise.all([
       fetchCompany(profile.company_id),
       fetchCompanyMembers(profile.company_id),
       fetchCompanyNpcs(profile.company_id),
       fetchCustomNpcPersonas(profile.company_id),
+      fetchCompanyDocuments(profile.company_id),
     ]);
     setCompany(c);
     setMembers(m);
     setNpcs(n);
     setCustomNpcPersonas(cp);
+    const counts: Record<string, number> = {};
+    for (const d of docs) {
+      if (d.status === "completed" && d.assigned_to_npc_id) {
+        counts[d.assigned_to_npc_id] = (counts[d.assigned_to_npc_id] ?? 0) + 1;
+      }
+    }
+    setNpcCompletedCounts(counts);
     setLoading(false);
   }, [profile.company_id]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // This page is the primary source for company-shared state (day/career
+  // mode/branding, the roster, hired AI coworkers, custom personas) but was
+  // never live-subscribed - another member's changes only appeared once you
+  // navigated away and back and load() re-ran. Every table load() reads.
+  useEffect(() => {
+    if (!profile.company_id) return;
+    const channel = supabase
+      .channel(`company-page-${profile.company_id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "companies", filter: `id=eq.${profile.company_id}` },
+        () => load(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles", filter: `company_id=eq.${profile.company_id}` },
+        () => load(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "company_npcs", filter: `company_id=eq.${profile.company_id}` },
+        () => load(),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "custom_npc_personas",
+          filter: `company_id=eq.${profile.company_id}`,
+        },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile.company_id, load]);
 
   function reviewTaskDetails(template: DocumentTemplate) {
     setPendingTemplate(template);
@@ -195,6 +258,33 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     }
   }
 
+  async function handleSaveBranding() {
+    if (!company) return;
+    setSavingBranding(true);
+    try {
+      await updateCompanyBranding(company.id, {
+        emoji: emojiDraft.trim() || "🏢",
+        motto: mottoDraft.trim() || null,
+      });
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't save company branding.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    } finally {
+      setSavingBranding(false);
+    }
+  }
+
+  async function handleGenerateMotto() {
+    if (!company) return;
+    setGeneratingMotto(true);
+    try {
+      setMottoDraft(await generateCompanyMotto(company.name, llmConfig));
+    } finally {
+      setGeneratingMotto(false);
+    }
+  }
+
   async function handleRegenerateCode() {
     if (!company) return;
     if (!window.confirm("Regenerate the main invite code? The old code will stop working.")) return;
@@ -248,9 +338,18 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
 
   async function handleHireNpc(personaKey: string, customPersonaId?: string) {
     if (!company) return;
-    const persona = customPersonaId
-      ? customPersonaToNpcPersona(customNpcPersonas.find((p) => p.id === customPersonaId)!)
-      : getNpcPersona(personaKey);
+    let persona: NpcPersona | undefined;
+    if (customPersonaId) {
+      const customRow = customNpcPersonas.find((p) => p.id === customPersonaId);
+      if (!customRow) {
+        setStatusMessage("That custom persona was just removed - pick another one.");
+        setTimeout(() => setStatusMessage(null), 4000);
+        return;
+      }
+      persona = customPersonaToNpcPersona(customRow);
+    } else {
+      persona = getNpcPersona(personaKey);
+    }
     if (!persona) return;
     if (profile.money < persona.hireCost) {
       setStatusMessage(`You need $${persona.hireCost.toFixed(2)} to hire ${persona.name}.`);
@@ -277,8 +376,13 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   async function handleFireNpc(npc: CompanyNpcRow) {
     const persona = resolveNpcPersona(npc, customNpcPersonas);
     if (!window.confirm(`Let ${persona?.name ?? "this coworker"} go?`)) return;
-    await fireNpc(npc.id);
-    await load();
+    try {
+      await fireNpc(npc.id);
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't let that coworker go.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    }
   }
 
   async function handleGenerateNpcIdea() {
@@ -383,6 +487,50 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     }
   }
 
+  async function handleAssignNpcWork(template: DocumentTemplate) {
+    if (!company || !assigningNpc) return;
+    const persona = resolveNpcPersona(assigningNpc, customNpcPersonas);
+    if (!persona) {
+      setAssigningNpc(null);
+      return;
+    }
+    setNpcWorking(true);
+    try {
+      const doc = await assignWorkToNpc({
+        companyId: company.id,
+        template,
+        createdBy: profile.id,
+        npcId: assigningNpc.id,
+      });
+      // The document row already exists at this point (status "in_progress") -
+      // if drafting fails, still complete it with blank fields instead of
+      // leaving a permanently orphaned row nothing ever surfaces again.
+      try {
+        const values = await draftDocumentFields({
+          title: `${template.title} (drafted by ${persona.name}, ${persona.suggestedTitle})`,
+          fields: template.fields,
+          filledValues: {},
+          config: llmConfig,
+        });
+        await completeNpcWork(doc.id, profile.id, values);
+        setStatusMessage(`${persona.name} finished "${template.title}" — check the Archive to review it.`);
+        setTimeout(() => setStatusMessage(null), 5000);
+      } catch {
+        await completeNpcWork(doc.id, profile.id, {});
+        setStatusMessage(
+          `${persona.name} couldn't reach the AI to draft "${template.title}" — it's in the Archive blank, needs a manual fill-in.`,
+        );
+        setTimeout(() => setStatusMessage(null), 6000);
+      }
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't get that work done.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    } finally {
+      setNpcWorking(false);
+      setAssigningNpc(null);
+    }
+  }
+
   async function handleToggleCareerMode() {
     if (!company) return;
     setTogglingCareerMode(true);
@@ -482,7 +630,10 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold text-stone-900">{company.name}</h1>
+            <h1 className="text-lg font-semibold text-stone-900">
+              {company.emoji} {company.name}
+            </h1>
+            {company.motto && <p className="text-xs italic text-stone-400">"{company.motto}"</p>}
             <p className="text-sm text-stone-500">
               {members.length} member{members.length === 1 ? "" : "s"} · You are{" "}
               <strong>{profile.job_title}</strong> (level {profile.level})
@@ -505,6 +656,8 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                 type="button"
                 onClick={() => {
                   setNameDraft(company.name);
+                  setEmojiDraft(company.emoji);
+                  setMottoDraft(company.motto ?? "");
                   setShowSettings((s) => !s);
                 }}
                 className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
@@ -537,6 +690,45 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                   className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
                 >
                   Save
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium uppercase tracking-wide text-stone-400">
+                Emoji &amp; Motto
+              </label>
+              <div className="mt-1 flex gap-2">
+                <input
+                  type="text"
+                  value={emojiDraft}
+                  onChange={(e) => setEmojiDraft(e.target.value)}
+                  placeholder="🏢"
+                  className="w-14 rounded-md border border-stone-300 px-2 py-2 text-center text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <input
+                  type="text"
+                  value={mottoDraft}
+                  onChange={(e) => setMottoDraft(e.target.value)}
+                  placeholder="Your company's motto…"
+                  className="flex-1 rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleGenerateMotto}
+                  disabled={generatingMotto}
+                  className="rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-100 disabled:opacity-50"
+                >
+                  {generatingMotto ? "Thinking…" : "✨ Generate Motto"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveBranding}
+                  disabled={savingBranding}
+                  className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+                >
+                  {savingBranding ? "Saving…" : "Save"}
                 </button>
               </div>
             </div>
@@ -673,7 +865,38 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
             </div>
           </div>
 
-          {members.map((m) => {
+          {members.length > 4 && (
+            <div className="flex flex-wrap items-center gap-2 pb-1">
+              <input
+                type="search"
+                value={memberQuery}
+                onChange={(e) => setMemberQuery(e.target.value)}
+                placeholder="Search team…"
+                className="min-w-0 flex-1 rounded-md border border-stone-300 px-2.5 py-1.5 text-xs focus:border-emerald-500 focus:outline-none"
+              />
+              <select
+                value={memberSort}
+                onChange={(e) => setMemberSort(e.target.value as typeof memberSort)}
+                className="shrink-0 rounded-md border border-stone-300 px-2 py-1.5 text-xs focus:border-emerald-500 focus:outline-none"
+              >
+                <option value="level">Sort: Level</option>
+                <option value="name">Sort: Name</option>
+                <option value="money">Sort: Money</option>
+                <option value="department">Sort: Department</option>
+              </select>
+            </div>
+          )}
+
+          {members
+            .filter((m) => m.display_name.toLowerCase().includes(memberQuery.trim().toLowerCase()))
+            .slice()
+            .sort((a, b) => {
+              if (memberSort === "name") return a.display_name.localeCompare(b.display_name);
+              if (memberSort === "money") return b.money - a.money;
+              if (memberSort === "department") return (a.department ?? "").localeCompare(b.department ?? "");
+              return b.level - a.level;
+            })
+            .map((m) => {
             const isMe = m.id === profile.id;
             const iOutrank = profile.level > m.level;
             const isEditing = editingId === m.id;
@@ -882,15 +1105,28 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                       {persona?.avatar ?? "🤖"} <strong>{persona?.name ?? "Unknown"}</strong>{" "}
                       <span className="text-xs text-stone-400">
                         {npc.job_title} · level {npc.level}
+                        {npcCompletedCounts[npc.id] > 0 && ` · ✅ ${npcCompletedCounts[npc.id]} completed`}
                       </span>
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => handleFireNpc(npc)}
-                      className="text-xs text-stone-400 hover:text-red-600"
-                    >
-                      Let go
-                    </button>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setAssigningNpc(npc)}
+                        disabled={npcWorking}
+                        className="text-xs font-medium text-violet-700 hover:text-violet-900 disabled:opacity-50"
+                      >
+                        📋 Assign Work
+                      </button>
+                      {(npc.hired_by === profile.id || isOwner) && (
+                        <button
+                          type="button"
+                          onClick={() => handleFireNpc(npc)}
+                          className="text-xs text-stone-400 hover:text-red-600"
+                        >
+                          Let go
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -901,6 +1137,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
         <button
           type="button"
           onClick={async () => {
+            if (!window.confirm(`Leave ${company.name}? You'll rejoin as a base Employee elsewhere.`)) return;
             await leaveCompany(profile.id);
             onProfileChanged();
           }}
@@ -909,6 +1146,23 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
           Leave company
         </button>
       </div>
+
+      {assigningNpc && !npcWorking && (
+        <TemplatePickerModal
+          title={`What should ${resolveNpcPersona(assigningNpc, customNpcPersonas)?.name ?? "your coworker"} work on?`}
+          companyId={profile.company_id}
+          onPick={handleAssignNpcWork}
+          onClose={() => setAssigningNpc(null)}
+        />
+      )}
+
+      {npcWorking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4">
+          <div className="rounded-xl bg-white px-6 py-5 text-sm font-medium text-stone-600 shadow-xl">
+            🤖 Working on it…
+          </div>
+        </div>
+      )}
 
       {assignTargetId && !showBuilder && !pendingTemplate && (
         <TemplatePickerModal

@@ -28,6 +28,8 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rolling, setRolling] = useState(false);
+  const [query, setQuery] = useState("");
+  const [authorFilter, setAuthorFilter] = useState("");
 
   const isOwner = profile.id === company.owner_id;
 
@@ -159,6 +161,30 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
 
         {error && !showCompose && <p className="text-sm text-red-600">{error}</p>}
 
+        {updates.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search updates…"
+              className="min-w-0 flex-1 rounded-md border border-stone-300 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <select
+              value={authorFilter}
+              onChange={(e) => setAuthorFilter(e.target.value)}
+              className="rounded-md border border-stone-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none"
+            >
+              <option value="">Everyone</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.display_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {updates.length === 0 ? (
           <p className="rounded-lg border border-dashed border-stone-200 bg-stone-50 p-6 text-center text-sm text-stone-400">
             {isOwner
@@ -167,7 +193,13 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
           </p>
         ) : (
           <div className="flex flex-col gap-4">
-            {updates.map((u) => (
+            {updates
+              .filter((u) => !authorFilter || u.posted_by === authorFilter)
+              .filter((u) => {
+                const q = query.trim().toLowerCase();
+                return !q || u.title.toLowerCase().includes(q) || u.body.toLowerCase().includes(q);
+              })
+              .map((u) => (
               <article
                 key={u.id}
                 className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm"
