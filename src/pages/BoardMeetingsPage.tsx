@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchMeetings,
   fetchRsvpsForMeetings,
@@ -17,6 +17,40 @@ import type { Database } from "../types/database";
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 const BOARD_MEETING_MINUTES_TEMPLATE_ID = "meeting-minutes-08";
+const NOTIFY_PREF_KEY = "officequest.meetingNotify";
+
+function meetingToIcs(meeting: BoardMeetingRow): string {
+  const start = new Date(meeting.scheduled_at);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+  const escapeText = (s: string) => s.replace(/[\\,;]/g, (m) => `\\${m}`).replace(/\n/g, "\\n");
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Office Quest//Board Meetings//EN",
+    "BEGIN:VEVENT",
+    `UID:${meeting.id}@officequest`,
+    `DTSTAMP:${fmt(new Date())}`,
+    `DTSTART:${fmt(start)}`,
+    `DTEND:${fmt(end)}`,
+    `SUMMARY:${escapeText(meeting.title)}`,
+    ...(meeting.agenda ? [`DESCRIPTION:${escapeText(meeting.agenda)}`] : []),
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+}
+
+function downloadIcs(meeting: BoardMeetingRow) {
+  const blob = new Blob([meetingToIcs(meeting)], { type: "text/calendar" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${meeting.title.replace(/[^\w\- ]/g, "").trim() || "meeting"}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 interface BoardMeetingsPageProps {
   profile: Profile;
@@ -34,6 +68,12 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [repeatWeekly, setRepeatWeekly] = useState(false);
+  const [repeatWeeks, setRepeatWeeks] = useState(4);
+  const [notifyEnabled, setNotifyEnabled] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem(NOTIFY_PREF_KEY) === "1",
+  );
+  const notifiedIdsRef = useRef(new Set<string>());
 
   const load = useCallback(async () => {
     if (!profile.company_id) return;
@@ -73,23 +113,69 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
     if (!profile.company_id || !scheduledAt) return;
     setError(null);
     try {
-      await scheduleMeeting({
-        companyId: profile.company_id,
-        title: title.trim(),
-        agenda: agenda.trim(),
-        scheduledAt: new Date(scheduledAt).toISOString(),
-        createdBy: profile.id,
-        memberIds: members.map((m) => m.id),
-      });
+      const baseTime = new Date(scheduledAt).getTime();
+      const occurrences = repeatWeekly ? Math.max(1, Math.min(52, repeatWeeks)) : 1;
+      for (let i = 0; i < occurrences; i++) {
+        await scheduleMeeting({
+          companyId: profile.company_id,
+          title: title.trim(),
+          agenda: agenda.trim(),
+          scheduledAt: new Date(baseTime + i * 7 * 24 * 60 * 60 * 1000).toISOString(),
+          createdBy: profile.id,
+          memberIds: members.map((m) => m.id),
+        });
+      }
       setShowSchedule(false);
       setTitle("");
       setAgenda("");
       setScheduledAt("");
+      setRepeatWeekly(false);
+      setStatusMessage(
+        occurrences > 1 ? `Scheduled ${occurrences} weekly occurrences.` : "Meeting scheduled.",
+      );
+      setTimeout(() => setStatusMessage(null), 4000);
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't schedule that meeting.");
     }
   }
+
+  function handleToggleNotify() {
+    if (!notifyEnabled) {
+      if (typeof Notification !== "undefined" && Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+      setNotifyEnabled(true);
+      localStorage.setItem(NOTIFY_PREF_KEY, "1");
+    } else {
+      setNotifyEnabled(false);
+      localStorage.setItem(NOTIFY_PREF_KEY, "0");
+    }
+  }
+
+  // Polls once a minute for meetings starting within 15 minutes and fires a
+  // browser notification for each one exactly once - only works while this
+  // tab is open, which is the honest limit of a client-only reminder with no
+  // push-notification backend.
+  useEffect(() => {
+    if (!notifyEnabled || typeof Notification === "undefined") return;
+    function checkUpcoming() {
+      if (Notification.permission !== "granted") return;
+      const now = Date.now();
+      for (const m of meetings) {
+        const startsIn = new Date(m.scheduled_at).getTime() - now;
+        if (startsIn > 0 && startsIn <= 15 * 60 * 1000 && !notifiedIdsRef.current.has(m.id)) {
+          notifiedIdsRef.current.add(m.id);
+          new Notification(`📅 ${m.title} starts soon`, {
+            body: `Starting at ${new Date(m.scheduled_at).toLocaleTimeString()}`,
+          });
+        }
+      }
+    }
+    checkUpcoming();
+    const interval = setInterval(checkUpcoming, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [notifyEnabled, meetings]);
 
   async function handleRsvp(meetingId: string, status: "attending" | "declined") {
     await setRsvp(meetingId, profile.id, status);
@@ -157,13 +243,27 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
             <h1 className="text-lg font-semibold text-stone-900">Board Meetings</h1>
             <p className="text-sm text-stone-500">Schedule a meeting and see who's attending.</p>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowSchedule(true)}
-            className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800"
-          >
-            📅 Schedule Meeting
-          </button>
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={handleToggleNotify}
+              className={`rounded-md border px-3 py-1.5 text-sm font-medium ${
+                notifyEnabled
+                  ? "border-sky-300 bg-sky-50 text-sky-700"
+                  : "border-stone-300 text-stone-600 hover:bg-stone-100"
+              }`}
+              title="Browser-notify me 15 minutes before a meeting (this tab must stay open)"
+            >
+              {notifyEnabled ? "🔔 Reminders on" : "🔕 Reminders off"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowSchedule(true)}
+              className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800"
+            >
+              📅 Schedule Meeting
+            </button>
+          </div>
         </div>
 
         {statusMessage && (
@@ -237,6 +337,25 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
               onChange={(e) => setScheduledAt(e.target.value)}
               className="rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
+            <label className="flex items-center gap-2 text-sm text-stone-600">
+              <input
+                type="checkbox"
+                checked={repeatWeekly}
+                onChange={(e) => setRepeatWeekly(e.target.checked)}
+                className="h-4 w-4"
+              />
+              Repeat weekly for
+              <input
+                type="number"
+                min={2}
+                max={52}
+                value={repeatWeeks}
+                onChange={(e) => setRepeatWeeks(Number(e.target.value))}
+                disabled={!repeatWeekly}
+                className="w-16 rounded-md border border-stone-300 px-2 py-1 text-sm disabled:opacity-50"
+              />
+              weeks
+            </label>
             {error && <p className="text-xs text-red-600">{error}</p>}
             <div className="mt-2 flex justify-end gap-2">
               <button
@@ -356,6 +475,14 @@ function MeetingList({
                   className="rounded-md border border-stone-300 px-3 py-1 text-xs font-medium text-stone-600 hover:bg-stone-100"
                 >
                   📝 Generate Minutes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadIcs(meeting)}
+                  className="rounded-md border border-stone-300 px-3 py-1 text-xs font-medium text-stone-600 hover:bg-stone-100"
+                  title="Download a .ics file for your calendar app"
+                >
+                  📥 .ics
                 </button>
               </div>
             </div>
