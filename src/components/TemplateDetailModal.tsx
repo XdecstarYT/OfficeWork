@@ -18,6 +18,10 @@ interface TemplateDetailModalProps {
   /** Shown as a "🪄 Smart Assign" action when provided (owner, with at least one assignable coworker). */
   onSmartAssign?: (template: DocumentTemplate) => void;
   smartAssigning?: boolean;
+  /** Opens the builder pre-filled with a copy of this template. */
+  onDuplicate?: (template: DocumentTemplate) => void;
+  /** Clicking a tag chip filters the Filing Cabinet's search by it. */
+  onTagClick?: (tag: string) => void;
 }
 
 export function TemplateDetailModal({
@@ -30,6 +34,8 @@ export function TemplateDetailModal({
   onAssignToNpc,
   onSmartAssign,
   smartAssigning,
+  onDuplicate,
+  onTagClick,
 }: TemplateDetailModalProps) {
   return (
     <div
@@ -60,11 +66,23 @@ export function TemplateDetailModal({
         <p className="mt-3 text-sm leading-relaxed text-stone-600">{template.description}</p>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          {template.tags.map((tag) => (
-            <span key={tag} className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs text-stone-500">
-              #{tag}
-            </span>
-          ))}
+          {template.tags.map((tag) =>
+            onTagClick ? (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => onTagClick(tag)}
+                className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs text-stone-500 hover:bg-stone-200 hover:text-stone-700"
+                title={`Browse templates tagged "${tag}"`}
+              >
+                #{tag}
+              </button>
+            ) : (
+              <span key={tag} className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs text-stone-500">
+                #{tag}
+              </span>
+            ),
+          )}
         </div>
 
         <div className="mt-5 flex items-center gap-4 rounded-lg bg-stone-50 p-3 text-sm text-stone-600">
@@ -95,6 +113,15 @@ export function TemplateDetailModal({
             >
               Cancel
             </button>
+            {onDuplicate && (
+              <button
+                type="button"
+                onClick={() => onDuplicate(template)}
+                className="rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+              >
+                🧬 Duplicate
+              </button>
+            )}
             {onAssignToNpc && (
               <button
                 type="button"

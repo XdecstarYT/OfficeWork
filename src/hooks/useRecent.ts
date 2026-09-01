@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { loadRecentIds, pushRecentId } from "../lib/storage";
+import { loadRecentIds, pushRecentId, clearRecentIds } from "../lib/storage";
 
 export function useRecent() {
   const [recentIds, setRecentIds] = useState<string[]>(() => loadRecentIds());
@@ -9,5 +9,10 @@ export function useRecent() {
     setRecentIds(loadRecentIds());
   }, []);
 
-  return { recentIds, markRecent };
+  const clearRecent = useCallback(() => {
+    clearRecentIds();
+    setRecentIds([]);
+  }, []);
+
+  return { recentIds, markRecent, clearRecent };
 }

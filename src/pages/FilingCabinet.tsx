@@ -8,6 +8,7 @@ import { TemplateBuilder } from "../components/TemplateBuilder";
 import { AssignTaskModal, type AssignTaskDetails } from "../components/AssignTaskModal";
 import { useFavorites } from "../hooks/useFavorites";
 import { useRecent } from "../hooks/useRecent";
+import type { DocumentRow } from "../lib/documents";
 import { useCustomTemplates } from "../hooks/useCustomTemplates";
 import { useNpcWorkAssignment } from "../hooks/useNpcWorkAssignment";
 import { resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
@@ -38,6 +39,7 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
   const [query, setQuery] = useState("");
   const [activeTemplate, setActiveTemplate] = useState<DocumentTemplate | null>(null);
   const [showBuilder, setShowBuilder] = useState(false);
+  const [duplicateSource, setDuplicateSource] = useState<DocumentTemplate | null>(null);
   const [assigningTemplate, setAssigningTemplate] = useState<DocumentTemplate | null>(null);
   const [assignTargetId, setAssignTargetId] = useState<string>(profile.id);
   const [members, setMembers] = useState<Profile[]>([]);
@@ -51,7 +53,9 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
   const [sortMode, setSortMode] = useState<SortMode>("relevance");
   const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | "all">("all");
   const { favorites, toggleFavorite } = useFavorites();
-  const { recentIds } = useRecent();
+  const { recentIds, clearRecent } = useRecent();
+  const [companyDocsForStats, setCompanyDocsForStats] = useState<DocumentRow[]>([]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const { customTemplates, addCustomTemplate, removeCustomTemplate, canRemoveTemplate } = useCustomTemplates(
     profile.company_id,
     profile.id,
@@ -63,8 +67,21 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
   useEffect(() => {
     if (profile.company_id) {
       fetchCompanyMembers(profile.company_id).then(setMembers);
+      fetchCompanyDocuments(profile.company_id).then(setCompanyDocsForStats);
     }
   }, [profile.company_id]);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== "/") return;
+      const target = e.target as HTMLElement;
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable) return;
+      e.preventDefault();
+      searchInputRef.current?.focus();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   function handleStart(template: DocumentTemplate) {
     setActiveTemplate(null);
@@ -226,6 +243,25 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
     [recentIds],
   );
 
+  const popularTemplates = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const d of companyDocsForStats) {
+      if (d.status !== "completed" || !d.template_id) continue;
+      counts.set(d.template_id, (counts.get(d.template_id) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([id]) => getTemplate(id))
+      .filter((t): t is DocumentTemplate => !!t);
+  }, [companyDocsForStats]);
+
+  function handleSurpriseMe() {
+    const pool = filtered.length > 0 ? filtered : ALL_TEMPLATES;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    if (pick) setActiveTemplate(pick);
+  }
+
   const isBrowsingRoot = !selection.categoryId && !selection.subcategoryId && !query;
 
   const sidebarContent = (
@@ -269,7 +305,19 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
 
       <main className="min-h-0 flex-1 overflow-y-auto p-6">
         <div className="mx-auto flex max-w-5xl flex-col gap-6">
-          <SearchBar value={query} onChange={setQuery} />
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <SearchBar ref={searchInputRef} value={query} onChange={setQuery} />
+            </div>
+            <button
+              type="button"
+              onClick={handleSurpriseMe}
+              className="shrink-0 rounded-md border border-stone-300 bg-white px-3 py-2.5 text-sm font-medium text-stone-600 hover:bg-stone-100"
+              title="Open a random template"
+            >
+              🎲 Surprise Me
+            </button>
+          </div>
 
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-1.5">
@@ -335,6 +383,17 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
               <Section
                 title="🕘 Recently Used"
                 emptyLabel="Documents you complete will show up here."
+                headerExtra={
+                  recentTemplates.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={clearRecent}
+                      className="text-xs text-stone-400 hover:text-stone-600"
+                    >
+                      Clear
+                    </button>
+                  ) : undefined
+                }
               >
                 {recentTemplates.map((t) => (
                   <TemplateCard
@@ -346,6 +405,20 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
                   />
                 ))}
               </Section>
+
+              {popularTemplates.length > 0 && (
+                <Section title="🔥 Popular With Your Team" emptyLabel="">
+                  {popularTemplates.map((t) => (
+                    <TemplateCard
+                      key={t.id}
+                      template={t}
+                      isFavorite={favorites.has(t.id)}
+                      onToggleFavorite={toggleFavorite}
+                      onOpen={setActiveTemplate}
+                    />
+                  ))}
+                </Section>
+              )}
             </>
           )}
 
@@ -427,6 +500,16 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
               : undefined
           }
           smartAssigning={smartAssigning}
+          onDuplicate={(t) => {
+            setActiveTemplate(null);
+            setDuplicateSource(t);
+            setShowBuilder(true);
+          }}
+          onTagClick={(tag) => {
+            setActiveTemplate(null);
+            setSelection({ categoryId: null, subcategoryId: null });
+            setQuery(tag);
+          }}
         />
       )}
 
@@ -475,13 +558,20 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
       {showBuilder && (
         <TemplateBuilder
           llmConfig={llmConfig}
-          onClose={() => setShowBuilder(false)}
+          initialTemplate={duplicateSource ?? undefined}
+          heading={duplicateSource ? `🧬 Duplicate "${duplicateSource.title}"` : undefined}
+          onClose={() => {
+            setShowBuilder(false);
+            setDuplicateSource(null);
+          }}
           onSaveTemplate={(t) => {
             addCustomTemplate(t);
             setShowBuilder(false);
+            setDuplicateSource(null);
           }}
           onFillOutNow={(t) => {
             setShowBuilder(false);
+            setDuplicateSource(null);
             handleStart(t);
           }}
         />
@@ -524,15 +614,20 @@ function Section({
   title,
   emptyLabel,
   children,
+  headerExtra,
 }: {
   title: string;
   emptyLabel: string;
   children: React.ReactNode;
+  headerExtra?: React.ReactNode;
 }) {
   const hasChildren = Array.isArray(children) ? children.length > 0 : !!children;
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-400">{title}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-400">{title}</h2>
+        {headerExtra}
+      </div>
       {hasChildren ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{children}</div>
       ) : (

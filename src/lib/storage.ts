@@ -38,6 +38,14 @@ export function pushRecentId(id: string) {
   }
 }
 
+export function clearRecentIds() {
+  try {
+    localStorage.removeItem(RECENT_KEY);
+  } catch {
+    // ignore storage failures
+  }
+}
+
 const FAVORITE_CLIENTS_KEY = "officequest.favoriteClients";
 
 export function loadFavoriteClients(): Set<string> {

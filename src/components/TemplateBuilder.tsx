@@ -59,6 +59,9 @@ interface TemplateBuilderProps {
   heading?: string;
   /** When provided, shows a "✨ Generate with AI" prompt that drafts the whole template from a one-line idea. */
   llmConfig?: LlmConfig;
+  /** Pre-fills the builder from an existing template - used for "Duplicate" on a
+   * custom template, so editing a copy doesn't touch the original. */
+  initialTemplate?: DocumentTemplate;
 }
 
 export function TemplateBuilder({
@@ -68,16 +71,23 @@ export function TemplateBuilder({
   primaryLabel = "Fill It Out Now",
   heading = "🧩 Build a Custom Template",
   llmConfig,
+  initialTemplate,
 }: TemplateBuilderProps) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [fields, setFields] = useState<BuilderField[]>([]);
+  const [title, setTitle] = useState(initialTemplate?.title ?? "");
+  const [description, setDescription] = useState(initialTemplate?.description ?? "");
+  const [fields, setFields] = useState<BuilderField[]>(
+    () =>
+      initialTemplate?.fields.map((f) => ({
+        ...f,
+        optionsText: f.options?.join(", "),
+      })) ?? [],
+  );
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [showAiPrompt, setShowAiPrompt] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiError, setAiError] = useState("");
-  const nextSeq = useRef(1);
+  const nextSeq = useRef((initialTemplate?.fields.length ?? 0) + 1);
 
   async function handleGenerateWithAi() {
     if (!llmConfig || !aiPrompt.trim()) return;
