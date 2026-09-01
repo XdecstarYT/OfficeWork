@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchCompany,
   fetchCompanyMembers,
@@ -95,6 +95,15 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   const [editLevel, setEditLevel] = useState(1);
   const [editDepartment, setEditDepartment] = useState("");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // A single shared banner is used for every action on this page - without
+  // clearing the previous timer, an older action's delayed setStatusMessage(null)
+  // could fire after a newer action just set a message, erasing it early.
+  const showStatus = useCallback((message: string, ms = 4000) => {
+    if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current);
+    setStatusMessage(message);
+    statusTimeoutRef.current = setTimeout(() => setStatusMessage(null), ms);
+  }, []);
   const [bonusTargetId, setBonusTargetId] = useState<string | null>(null);
   const [bonusAmount, setBonusAmount] = useState(50);
   const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
@@ -208,12 +217,12 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
             postedBy: profile.id,
           });
         }
-        setStatusMessage(
+        showStatus(
           `🏅 New achievement${newBadges.length > 1 ? "s" : ""} unlocked: ${newBadges
             .map((k) => getCompanyBadge(k)?.name ?? k)
             .join(", ")}!`,
+          6000,
         );
-        setTimeout(() => setStatusMessage(null), 6000);
         await load();
       })
       .catch(() => {});
@@ -267,10 +276,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     setAssignTargetId(null);
     setShowBuilder(false);
     setPendingTemplate(null);
-    setStatusMessage(
-      isSelfRequest ? `Requested "${title}" for yourself.` : `Assigned "${title}".`,
-    );
-    setTimeout(() => setStatusMessage(null), 4000);
+    showStatus(isSelfRequest ? `Requested "${title}" for yourself.` : `Assigned "${title}".`, 4000);
   }
 
   async function handleKick(memberId: string) {
@@ -278,12 +284,10 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     try {
       await kickMember(memberId);
       setConfirmKickId(null);
-      setStatusMessage(`Removed ${target?.display_name ?? "that member"} from the company.`);
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(`Removed ${target?.display_name ?? "that member"} from the company.`, 4000);
       await load();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't remove that member.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't remove that member.", 4000);
     }
   }
 
@@ -292,12 +296,10 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     try {
       await awardMoney(memberId, amount);
       setBonusTargetId(null);
-      setStatusMessage(`Gave ${target?.display_name ?? "that member"} a $${amount.toFixed(2)} bonus.`);
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(`Gave ${target?.display_name ?? "that member"} a $${amount.toFixed(2)} bonus.`, 4000);
       await load();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't award that bonus.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't award that bonus.", 4000);
     }
   }
 
@@ -305,12 +307,10 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     if (!company) return;
     try {
       const count = await awardBonusToAll(company.id, profile.id, profile.level, amount);
-      setStatusMessage(`Gave a $${amount.toFixed(2)} bonus to ${count} member${count === 1 ? "" : "s"}.`);
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(`Gave a $${amount.toFixed(2)} bonus to ${count} member${count === 1 ? "" : "s"}.`, 4000);
       await load();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't award company-wide bonus.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't award company-wide bonus.", 4000);
     }
   }
 
@@ -324,8 +324,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       setShowSettings(false);
       await load();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't rename the company.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't rename the company.", 4000);
     }
   }
 
@@ -339,8 +338,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       });
       await load();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't save company branding.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't save company branding.", 4000);
     } finally {
       setSavingBranding(false);
     }
@@ -353,8 +351,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       await setSalaryPerLevel(company.id, Math.max(0, salaryDraft));
       await load();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't save the salary rate.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't save the salary rate.", 4000);
     } finally {
       setSavingSalary(false);
     }
@@ -368,8 +365,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       setNewDeptName("");
       await load();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't add that department.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't add that department.", 4000);
     } finally {
       setSavingDept(false);
     }
@@ -386,21 +382,18 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     const item = EQUIPMENT_CATALOG.find((e) => e.key === itemKey);
     if (!item) return;
     if (profile.money < item.cost) {
-      setStatusMessage(`Not enough Money to buy the ${item.name}.`);
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(`Not enough Money to buy the ${item.name}.`, 4000);
       return;
     }
     setBuyingEquipment(itemKey);
     try {
       await awardMoney(profile.id, -item.cost);
       await purchaseEquipment(company.id, itemKey, profile.id);
-      setStatusMessage(`Purchased ${item.emoji} ${item.name} — every payout is now +${totalPayoutBonusPercent([...equipment.map((e) => e.item_key), itemKey])}% company-wide.`);
-      setTimeout(() => setStatusMessage(null), 5000);
+      showStatus(`Purchased ${item.emoji} ${item.name} — every payout is now +${totalPayoutBonusPercent([...equipment.map((e) => e.item_key), itemKey])}% company-wide.`, 5000);
       onProfileChanged();
       await load();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't complete that purchase.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't complete that purchase.", 4000);
     } finally {
       setBuyingEquipment(null);
     }
@@ -442,13 +435,11 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
         rating: reviewRating,
         comments: reviewComments.trim(),
       });
-      setStatusMessage(`Review submitted for ${reviewingMember.display_name}.`);
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(`Review submitted for ${reviewingMember.display_name}.`, 4000);
       setReviewingMember(null);
       await load();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't submit that review.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't submit that review.", 4000);
     } finally {
       setSubmittingReview(false);
     }
@@ -469,12 +460,10 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       setTimeOffStart("");
       setTimeOffEnd("");
       setTimeOffReason("");
-      setStatusMessage("Time off requested — your manager will review it.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus("Time off requested — your manager will review it.", 4000);
       await load();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't submit that request.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't submit that request.", 4000);
     } finally {
       setSubmittingTimeOff(false);
     }
@@ -503,8 +492,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       await regenerateInviteCode(company.id);
       await load();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't regenerate the invite code.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't regenerate the invite code.", 4000);
     } finally {
       setRegenerating(false);
     }
@@ -523,8 +511,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       }
       const winnerId = [...completedCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
       if (!winnerId) {
-        setStatusMessage("Nobody else has completed a task yet - nothing to award.");
-        setTimeout(() => setStatusMessage(null), 4000);
+        showStatus("Nobody else has completed a task yet - nothing to award.", 4000);
         return;
       }
       const winner = members.find((m) => m.id === winnerId);
@@ -535,12 +522,10 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
         body: `Congratulations to ${winner?.display_name ?? "our top performer"} for completing the most work this month! A $${EOTM_BONUS.toFixed(2)} bonus is on its way.`,
         postedBy: profile.id,
       });
-      setStatusMessage(`Awarded Employee of the Month to ${winner?.display_name} and posted the news.`);
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(`Awarded Employee of the Month to ${winner?.display_name} and posted the news.`, 4000);
       await load();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't award Employee of the Month.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't award Employee of the Month.", 4000);
     } finally {
       setAwardingEotm(false);
     }
@@ -567,13 +552,11 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
         subject: `${event.emoji} ${event.headline}`,
         body: `${event.body}${effectLine}`,
       });
-      setStatusMessage(`${event.emoji} "${event.headline}" happened to ${target.display_name} — they got an email about it.`);
-      setTimeout(() => setStatusMessage(null), 5000);
+      showStatus(`${event.emoji} "${event.headline}" happened to ${target.display_name} — they got an email about it.`, 5000);
       if (target.id === profile.id) onProfileChanged();
       await load();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't trigger an employee event.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't trigger an employee event.", 4000);
     } finally {
       setRollingEmployeeEvent(false);
     }
@@ -585,8 +568,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     if (customPersonaId) {
       const customRow = customNpcPersonas.find((p) => p.id === customPersonaId);
       if (!customRow) {
-        setStatusMessage("That custom persona was just removed - pick another one.");
-        setTimeout(() => setStatusMessage(null), 4000);
+        showStatus("That custom persona was just removed - pick another one.", 4000);
         return;
       }
       persona = customPersonaToNpcPersona(customRow);
@@ -595,22 +577,19 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     }
     if (!persona) return;
     if (profile.money < persona.hireCost) {
-      setStatusMessage(`You need $${persona.hireCost.toFixed(2)} to hire ${persona.name}.`);
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(`You need $${persona.hireCost.toFixed(2)} to hire ${persona.name}.`, 4000);
       return;
     }
     setHiring(true);
     try {
       await awardMoney(profile.id, -persona.hireCost);
       await hireNpc({ companyId: company.id, hiredBy: profile.id, persona, customPersonaId });
-      setStatusMessage(`Hired ${persona.name} as ${persona.suggestedTitle}!`);
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(`Hired ${persona.name} as ${persona.suggestedTitle}!`, 4000);
       setShowHire(false);
       onProfileChanged();
       await Promise.all([load(), reloadNpcs()]);
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't hire that coworker.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't hire that coworker.", 4000);
     } finally {
       setHiring(false);
     }
@@ -623,8 +602,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       await fireNpc(npc.id);
       await reloadNpcs();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't let that coworker go.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't let that coworker go.", 4000);
     }
   }
 
@@ -637,8 +615,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       setNpcDraftTitle(idea.jobTitle);
       setNpcDraftPersonality(idea.personality);
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't reach the AI.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't reach the AI.", 4000);
     } finally {
       setNpcAiBusy(false);
     }
@@ -668,8 +645,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       setNpcAiHint("");
       await reloadNpcs();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't create that persona.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't create that persona.", 4000);
     } finally {
       setCreatingNpcPersona(false);
     }
@@ -688,8 +664,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       await startCompanyDay(company);
       await load();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't start the day.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't start the day.", 4000);
     } finally {
       setStartingDay(false);
     }
@@ -725,8 +700,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       onProfileChanged();
       await load();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't end the day.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't end the day.", 4000);
     } finally {
       setEndingDay(false);
     }
@@ -735,8 +709,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   async function handleAssignNpcWork(template: DocumentTemplate) {
     const message = await assignTemplateToNpc(template);
     if (message) {
-      setStatusMessage(message);
-      setTimeout(() => setStatusMessage(null), 6000);
+      showStatus(message, 6000);
     }
     await load();
   }
@@ -748,8 +721,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       await setCareerMode(company.id, !company.career_mode);
       await load();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't update Career Mode.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't update Career Mode.", 4000);
     } finally {
       setTogglingCareerMode(false);
     }
@@ -763,8 +735,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     if (newLevelRaw === null) return;
     const newLevel = Math.max(m.level + 1, Math.min(Number(newLevelRaw), profile.level - 1));
     if (!Number.isFinite(newLevel) || newLevel <= m.level) {
-      setStatusMessage("Enter a level higher than their current one.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus("Enter a level higher than their current one.", 4000);
       return;
     }
     const newTitle = window.prompt("New job title? (leave as-is to keep current)", m.job_title) || m.job_title;
@@ -786,12 +757,10 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
           body: announcement,
         });
       }
-      setStatusMessage(`Promoted ${m.display_name} to ${newTitle} and sent them the news.`);
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(`Promoted ${m.display_name} to ${newTitle} and sent them the news.`, 4000);
       await load();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't promote that member.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't promote that member.", 4000);
     }
   }
 
@@ -820,8 +789,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       setEditingId(null);
       await load();
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't update that member's rank.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Couldn't update that member's rank.", 4000);
     }
   }
 

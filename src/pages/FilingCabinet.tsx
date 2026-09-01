@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ALL_TEMPLATES, searchTemplates, getTemplate } from "../lib/templates";
 import { CategoryTree, type CategorySelection } from "../components/CategoryTree";
 import { SearchBar } from "../components/SearchBar";
@@ -42,6 +42,12 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
   const [assignTargetId, setAssignTargetId] = useState<string>(profile.id);
   const [members, setMembers] = useState<Profile[]>([]);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showStatus = useCallback((message: string, ms = 4000) => {
+    if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current);
+    setStatusMessage(message);
+    statusTimeoutRef.current = setTimeout(() => setStatusMessage(null), ms);
+  }, []);
   const [sortMode, setSortMode] = useState<SortMode>("relevance");
   const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | "all">("all");
   const { favorites, toggleFavorite } = useFavorites();
@@ -73,8 +79,7 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
     setPickingNpcForTemplate(null);
     const message = await assignTemplateToNpc(template, npc);
     if (message) {
-      setStatusMessage(message);
-      setTimeout(() => setStatusMessage(null), 6000);
+      showStatus(message, 6000);
     }
   }
 
@@ -112,8 +117,7 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
       });
       const candidates = [...humanCandidates, ...npcCandidates];
       if (candidates.length === 0) {
-        setStatusMessage("Nobody available to smart-assign to.");
-        setTimeout(() => setStatusMessage(null), 4000);
+        showStatus("Nobody available to smart-assign to.", 4000);
         return;
       }
 
@@ -121,15 +125,13 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
       const chosenNpc = npcs.find((n) => n.id === pick.candidateId);
       if (chosenNpc) {
         const message = await assignTemplateToNpc(template, chosenNpc);
-        setStatusMessage(message || `🪄 Smart-assigned "${template.title}" to an AI coworker — ${pick.reason}`);
-        setTimeout(() => setStatusMessage(null), 6000);
+        showStatus(message || `🪄 Smart-assigned "${template.title}" to an AI coworker — ${pick.reason}`, 6000);
         return;
       }
 
       const chosenHuman = candidates.find((c) => c.id === pick.candidateId && !c.isNpc);
       if (!chosenHuman) {
-        setStatusMessage("Smart Assign couldn't settle on anyone — try again.");
-        setTimeout(() => setStatusMessage(null), 4000);
+        showStatus("Smart Assign couldn't settle on anyone — try again.", 4000);
         return;
       }
       const isSelfRequest = chosenHuman.id === profile.id;
@@ -140,13 +142,9 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
         assignedTo: chosenHuman.id,
         isSelfRequest,
       });
-      setStatusMessage(
-        `🪄 Smart-assigned "${template.title}" to ${chosenHuman.name} — ${pick.reason}`,
-      );
-      setTimeout(() => setStatusMessage(null), 6000);
+      showStatus(`🪄 Smart-assigned "${template.title}" to ${chosenHuman.name} — ${pick.reason}`, 6000);
     } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Smart Assign couldn't complete.");
-      setTimeout(() => setStatusMessage(null), 4000);
+      showStatus(err instanceof Error ? err.message : "Smart Assign couldn't complete.", 4000);
     } finally {
       setSmartAssigning(false);
     }
@@ -163,12 +161,12 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
       isSelfRequest,
       ...details,
     });
-    setStatusMessage(
+    showStatus(
       isSelfRequest
         ? `Requested "${assigningTemplate.title}" for yourself.`
         : `Assigned "${assigningTemplate.title}" to ${members.find((m) => m.id === assignTargetId)?.display_name}.`,
+      4000,
     );
-    setTimeout(() => setStatusMessage(null), 4000);
     setAssigningTemplate(null);
   }
 

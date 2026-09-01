@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchCompany } from "../lib/company";
 import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../types/database";
@@ -8,6 +8,7 @@ type Company = Database["public"]["Tables"]["companies"]["Row"];
 export function useCompany(companyId: string | null) {
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
+  const loadedCompanyIdRef = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!companyId) {
@@ -15,10 +16,16 @@ export function useCompany(companyId: string | null) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    // Only gate the whole app behind "Loading game…" (App.tsx) for a
+    // company we haven't loaded before - this refresh() also re-runs on
+    // every realtime change to the companies row (rename, salary, badges,
+    // day advance, ...), and re-flipping loading=true each time would
+    // remount the active tab and wipe its local UI state.
+    if (loadedCompanyIdRef.current !== companyId) setLoading(true);
     const data = await fetchCompany(companyId);
     setCompany(data);
     setLoading(false);
+    loadedCompanyIdRef.current = companyId;
   }, [companyId]);
 
   useEffect(() => {
