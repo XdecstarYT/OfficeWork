@@ -8,8 +8,18 @@ import {
   recordNpcReply,
   markRead,
   markAllRead,
+  setEmailFlagged,
+  setEmailArchived,
   type EmailRow,
 } from "../lib/emails";
+
+const CANNED_REPLIES = [
+  "Thanks for the update - noted!",
+  "On it, will have this back to you shortly.",
+  "Could you send a bit more detail on this?",
+  "Sounds good, approved.",
+  "I'll need a few more days on this one.",
+];
 import { fetchCompanyMembers } from "../lib/company";
 import { fetchCompanyNpcs, resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
 import { fetchCustomNpcPersonas, type CustomNpcPersonaRow } from "../lib/customNpcPersonas";
@@ -57,6 +67,8 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
   const [drafting, setDrafting] = useState(false);
   const [emailQuery, setEmailQuery] = useState("");
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -235,8 +247,21 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
     load();
   }
 
+  async function handleToggleFlag(email: EmailRow) {
+    await setEmailFlagged(email.id, !email.flagged);
+    load();
+  }
+
+  async function handleToggleArchive(email: EmailRow) {
+    await setEmailArchived(email.id, !email.archived);
+    if (openEmail?.id === email.id) setOpenEmail(null);
+    load();
+  }
+
   const visibleEmails = emails
+    .filter((e) => showArchived || !e.archived)
     .filter((e) => !unreadOnly || (e.recipient_id === profile.id && !e.read_at))
+    .filter((e) => !flaggedOnly || e.flagged)
     .filter((e) => {
       const q = emailQuery.trim().toLowerCase();
       if (!q) return true;
@@ -305,6 +330,24 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
             >
               Unread only
             </button>
+            <button
+              type="button"
+              onClick={() => setFlaggedOnly((v) => !v)}
+              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
+                flaggedOnly ? "bg-amber-500 text-white" : "border border-stone-300 text-stone-500 hover:bg-stone-100"
+              }`}
+            >
+              ⭐ Flagged only
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowArchived((v) => !v)}
+              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
+                showArchived ? "bg-stone-800 text-white" : "border border-stone-300 text-stone-500 hover:bg-stone-100"
+              }`}
+            >
+              {showArchived ? "Showing archived" : "Show archived"}
+            </button>
             {unreadCount > 0 && (
               <button
                 type="button"
@@ -330,26 +373,47 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
             {visibleEmails.map((email) => {
               const isUnread = email.recipient_id === profile.id && !email.read_at;
               return (
-                <button
+                <div
                   key={email.id}
-                  type="button"
-                  onClick={() => openEmailDetail(email)}
-                  className={`flex flex-col gap-0.5 rounded-md border border-stone-100 p-3 text-left hover:bg-stone-50 ${
+                  className={`relative flex flex-col gap-0.5 rounded-md border border-stone-100 hover:bg-stone-50 ${
                     isUnread ? "bg-emerald-50/50" : "bg-white"
-                  }`}
+                  } ${email.archived ? "opacity-60" : ""}`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className={`text-sm ${isUnread ? "font-semibold text-stone-900" : "text-stone-700"}`}>
-                      {senderLabel(email)} → {recipientLabel(email)}
+                  <button
+                    type="button"
+                    onClick={() => openEmailDetail(email)}
+                    className="flex flex-col gap-0.5 p-3 pr-16 text-left"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm ${isUnread ? "font-semibold text-stone-900" : "text-stone-700"}`}>
+                        {senderLabel(email)} → {recipientLabel(email)}
+                      </span>
+                      <span className="text-xs text-stone-400">
+                        {new Date(email.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                    <span className={`text-sm ${isUnread ? "font-medium text-stone-800" : "text-stone-500"}`}>
+                      {email.flagged && "⭐ "}
+                      {email.subject}
+                      {email.archived && " · archived"}
                     </span>
-                    <span className="text-xs text-stone-400">
-                      {new Date(email.created_at).toLocaleString()}
-                    </span>
-                  </div>
-                  <span className={`text-sm ${isUnread ? "font-medium text-stone-800" : "text-stone-500"}`}>
-                    {email.subject}
-                  </span>
-                </button>
+                  </button>
+                  {email.recipient_id === profile.id && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleFlag(email);
+                      }}
+                      title={email.flagged ? "Remove flag" : "Flag as important"}
+                      className={`absolute right-3 top-3 text-lg leading-none ${
+                        email.flagged ? "text-amber-500" : "text-stone-300 hover:text-stone-400"
+                      }`}
+                    >
+                      {email.flagged ? "★" : "☆"}
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -371,13 +435,33 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
             </p>
             <h2 className="mt-1 text-lg font-semibold text-stone-900">{openEmail.subject}</h2>
             <p className="mt-3 whitespace-pre-wrap text-sm text-stone-700">{openEmail.body}</p>
-            <button
-              type="button"
-              onClick={() => setOpenEmail(null)}
-              className="mt-4 rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
-            >
-              Close
-            </button>
+            <div className="mt-4 flex justify-end gap-2">
+              {openEmail.recipient_id === profile.id && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleFlag(openEmail)}
+                    className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+                  >
+                    {openEmail.flagged ? "☆ Unflag" : "⭐ Flag"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleArchive(openEmail)}
+                    className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+                  >
+                    {openEmail.archived ? "Unarchive" : "🗄 Archive"}
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={() => setOpenEmail(null)}
+                className="rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -441,7 +525,25 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
               className="mt-1 rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
 
-            <label className="mt-3 text-xs font-medium text-stone-500">Message</label>
+            <div className="mt-3 flex items-center justify-between">
+              <label className="text-xs font-medium text-stone-500">Message</label>
+              <select
+                value=""
+                onChange={(e) => {
+                  if (!e.target.value) return;
+                  setBody((prev) => (prev.trim() ? `${prev.trim()}\n\n${e.target.value}` : e.target.value));
+                  e.target.value = "";
+                }}
+                className="rounded-md border border-stone-300 px-2 py-1 text-xs text-stone-500 focus:border-emerald-500 focus:outline-none"
+              >
+                <option value="">Insert a quick phrase…</option>
+                {CANNED_REPLIES.map((phrase) => (
+                  <option key={phrase} value={phrase}>
+                    {phrase}
+                  </option>
+                ))}
+              </select>
+            </div>
             <textarea
               rows={6}
               value={body}

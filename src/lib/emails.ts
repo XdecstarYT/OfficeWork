@@ -114,3 +114,13 @@ export async function markAllRead(emailIds: string[]) {
     .in("id", emailIds);
   if (error) throw error;
 }
+
+export async function setEmailFlagged(emailId: string, flagged: boolean) {
+  const { error } = await supabase.from("emails").update({ flagged }).eq("id", emailId);
+  if (error) throw error;
+}
+
+export async function setEmailArchived(emailId: string, archived: boolean) {
+  const { error } = await supabase.from("emails").update({ archived }).eq("id", emailId);
+  if (error) throw error;
+}
