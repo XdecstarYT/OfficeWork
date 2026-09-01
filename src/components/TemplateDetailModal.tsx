@@ -13,6 +13,8 @@ interface TemplateDetailModalProps {
   onClose: () => void;
   onStart: (template: DocumentTemplate) => void;
   onDelete?: (template: DocumentTemplate) => void;
+  /** Shown as a secondary "🤖 Assign to AI Coworker" action when provided (i.e. the company has at least one hired). */
+  onAssignToNpc?: (template: DocumentTemplate) => void;
 }
 
 export function TemplateDetailModal({
@@ -22,6 +24,7 @@ export function TemplateDetailModal({
   onClose,
   onStart,
   onDelete,
+  onAssignToNpc,
 }: TemplateDetailModalProps) {
   return (
     <div
@@ -79,7 +82,7 @@ export function TemplateDetailModal({
           ) : (
             <span />
           )}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
@@ -87,6 +90,15 @@ export function TemplateDetailModal({
             >
               Cancel
             </button>
+            {onAssignToNpc && (
+              <button
+                type="button"
+                onClick={() => onAssignToNpc(template)}
+                className="rounded-md border border-violet-300 bg-violet-50 px-4 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100"
+              >
+                🤖 Assign to AI Coworker
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onStart(template)}

@@ -14,28 +14,22 @@ import {
   setCareerMode,
   updateCompanyBranding,
 } from "../lib/company";
-import { assignWork, assignWorkToNpc, completeNpcWork, fetchCompanyDocuments, payoutFor } from "../lib/documents";
+import { assignWork, fetchCompanyDocuments, payoutFor } from "../lib/documents";
 import { sendEmailToCoworker } from "../lib/emails";
 import { postCorporateUpdate } from "../lib/corporateUpdates";
-import { fetchCompanyNpcs, hireNpc, fireNpc, resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
-import {
-  fetchCustomNpcPersonas,
-  createCustomNpcPersona,
-  deleteCustomNpcPersona,
-  customPersonaToNpcPersona,
-  type CustomNpcPersonaRow,
-} from "../lib/customNpcPersonas";
+import { hireNpc, fireNpc, resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
+import { createCustomNpcPersona, deleteCustomNpcPersona, customPersonaToNpcPersona } from "../lib/customNpcPersonas";
 import { NPC_PERSONAS, getNpcPersona, type NpcPersona } from "../data/npcs";
 import {
   generatePromotionAnnouncement,
   generateNpcPersonaIdea,
-  draftDocumentFields,
   generateCompanyMotto,
 } from "../lib/aiClient";
 import { TemplatePickerModal } from "../components/TemplatePickerModal";
 import { TemplateBuilder } from "../components/TemplateBuilder";
 import { AssignTaskModal, type AssignTaskDetails } from "../components/AssignTaskModal";
 import { useCustomTemplates } from "../hooks/useCustomTemplates";
+import { useNpcWorkAssignment } from "../hooks/useNpcWorkAssignment";
 import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../types/database";
 import type { DocumentTemplate } from "../types/template";
@@ -82,10 +76,8 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   const [regenerating, setRegenerating] = useState(false);
   const [awardingEotm, setAwardingEotm] = useState(false);
   const EOTM_BONUS = 100;
-  const [npcs, setNpcs] = useState<CompanyNpcRow[]>([]);
   const [showHire, setShowHire] = useState(false);
   const [hiring, setHiring] = useState(false);
-  const [customNpcPersonas, setCustomNpcPersonas] = useState<CustomNpcPersonaRow[]>([]);
   const [showCreateNpc, setShowCreateNpc] = useState(false);
   const [npcDraftName, setNpcDraftName] = useState("");
   const [npcDraftAvatar, setNpcDraftAvatar] = useState("🤖");
@@ -99,8 +91,6 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   const [startingDay, setStartingDay] = useState(false);
   const [endingDay, setEndingDay] = useState(false);
   const [togglingCareerMode, setTogglingCareerMode] = useState(false);
-  const [assigningNpc, setAssigningNpc] = useState<CompanyNpcRow | null>(null);
-  const [npcWorking, setNpcWorking] = useState(false);
   const [emojiDraft, setEmojiDraft] = useState("🏢");
   const [mottoDraft, setMottoDraft] = useState("");
   const [savingBranding, setSavingBranding] = useState(false);
@@ -110,21 +100,19 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   const [memberDeptFilter, setMemberDeptFilter] = useState("");
   const [npcCompletedCounts, setNpcCompletedCounts] = useState<Record<string, number>>({});
   const { addCustomTemplate } = useCustomTemplates(profile.company_id, profile.id);
+  const { npcs, customNpcPersonas, assigningNpc, setAssigningNpc, npcWorking, assignTemplateToNpc, reloadNpcs } =
+    useNpcWorkAssignment(profile, llmConfig);
 
   const load = useCallback(async () => {
     if (!profile.company_id) return;
     setLoading(true);
-    const [c, m, n, cp, docs] = await Promise.all([
+    const [c, m, docs] = await Promise.all([
       fetchCompany(profile.company_id),
       fetchCompanyMembers(profile.company_id),
-      fetchCompanyNpcs(profile.company_id),
-      fetchCustomNpcPersonas(profile.company_id),
       fetchCompanyDocuments(profile.company_id),
     ]);
     setCompany(c);
     setMembers(m);
-    setNpcs(n);
-    setCustomNpcPersonas(cp);
     const counts: Record<string, number> = {};
     for (const d of docs) {
       if (d.status === "completed" && d.assigned_to_npc_id) {
@@ -155,21 +143,6 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "profiles", filter: `company_id=eq.${profile.company_id}` },
-        () => load(),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "company_npcs", filter: `company_id=eq.${profile.company_id}` },
-        () => load(),
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "custom_npc_personas",
-          filter: `company_id=eq.${profile.company_id}`,
-        },
         () => load(),
       )
       .subscribe();
@@ -365,7 +338,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       setTimeout(() => setStatusMessage(null), 4000);
       setShowHire(false);
       onProfileChanged();
-      await load();
+      await Promise.all([load(), reloadNpcs()]);
     } catch (err) {
       setStatusMessage(err instanceof Error ? err.message : "Couldn't hire that coworker.");
       setTimeout(() => setStatusMessage(null), 4000);
@@ -379,7 +352,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     if (!window.confirm(`Let ${persona?.name ?? "this coworker"} go?`)) return;
     try {
       await fireNpc(npc.id);
-      await load();
+      await reloadNpcs();
     } catch (err) {
       setStatusMessage(err instanceof Error ? err.message : "Couldn't let that coworker go.");
       setTimeout(() => setStatusMessage(null), 4000);
@@ -424,7 +397,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       setNpcDraftCost(50);
       setNpcDraftPersonality("");
       setNpcAiHint("");
-      await load();
+      await reloadNpcs();
     } catch (err) {
       setStatusMessage(err instanceof Error ? err.message : "Couldn't create that persona.");
       setTimeout(() => setStatusMessage(null), 4000);
@@ -436,7 +409,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   async function handleDeleteNpcPersona(id: string) {
     if (!window.confirm("Delete this custom coworker persona? Anyone already hired stays hired.")) return;
     await deleteCustomNpcPersona(id);
-    await load();
+    await reloadNpcs();
   }
 
   async function handleStartDay() {
@@ -489,47 +462,12 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   }
 
   async function handleAssignNpcWork(template: DocumentTemplate) {
-    if (!company || !assigningNpc) return;
-    const persona = resolveNpcPersona(assigningNpc, customNpcPersonas);
-    if (!persona) {
-      setAssigningNpc(null);
-      return;
+    const message = await assignTemplateToNpc(template);
+    if (message) {
+      setStatusMessage(message);
+      setTimeout(() => setStatusMessage(null), 6000);
     }
-    setNpcWorking(true);
-    try {
-      const doc = await assignWorkToNpc({
-        companyId: company.id,
-        template,
-        createdBy: profile.id,
-        npcId: assigningNpc.id,
-      });
-      // The document row already exists at this point (status "in_progress") -
-      // if drafting fails, still complete it with blank fields instead of
-      // leaving a permanently orphaned row nothing ever surfaces again.
-      try {
-        const values = await draftDocumentFields({
-          title: `${template.title} (drafted by ${persona.name}, ${persona.suggestedTitle})`,
-          fields: template.fields,
-          filledValues: {},
-          config: llmConfig,
-        });
-        await completeNpcWork(doc.id, profile.id, values);
-        setStatusMessage(`${persona.name} finished "${template.title}" — check the Archive to review it.`);
-        setTimeout(() => setStatusMessage(null), 5000);
-      } catch {
-        await completeNpcWork(doc.id, profile.id, {});
-        setStatusMessage(
-          `${persona.name} couldn't reach the AI to draft "${template.title}" — it's in the Archive blank, needs a manual fill-in.`,
-        );
-        setTimeout(() => setStatusMessage(null), 6000);
-      }
-    } catch (err) {
-      setStatusMessage(err instanceof Error ? err.message : "Couldn't get that work done.");
-      setTimeout(() => setStatusMessage(null), 4000);
-    } finally {
-      setNpcWorking(false);
-      setAssigningNpc(null);
-    }
+    await load();
   }
 
   async function handleToggleCareerMode() {

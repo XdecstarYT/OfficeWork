@@ -9,6 +9,8 @@ import { AssignTaskModal, type AssignTaskDetails } from "../components/AssignTas
 import { useFavorites } from "../hooks/useFavorites";
 import { useRecent } from "../hooks/useRecent";
 import { useCustomTemplates } from "../hooks/useCustomTemplates";
+import { useNpcWorkAssignment } from "../hooks/useNpcWorkAssignment";
+import { resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
 import { BLANK_PAGE_TEMPLATE } from "../data/blankPage";
 import { fetchCompanyMembers } from "../lib/company";
 import { assignWork } from "../lib/documents";
@@ -47,6 +49,8 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
     profile.company_id,
     profile.id,
   );
+  const { npcs, customNpcPersonas, npcWorking, assignTemplateToNpc } = useNpcWorkAssignment(profile, llmConfig);
+  const [pickingNpcForTemplate, setPickingNpcForTemplate] = useState<DocumentTemplate | null>(null);
 
   useEffect(() => {
     if (profile.company_id) {
@@ -59,6 +63,17 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
     setShowBuilder(false);
     setAssignTargetId(profile.id);
     setAssigningTemplate(template);
+  }
+
+  async function handleAssignToNpc(npc: CompanyNpcRow) {
+    if (!pickingNpcForTemplate) return;
+    const template = pickingNpcForTemplate;
+    setPickingNpcForTemplate(null);
+    const message = await assignTemplateToNpc(template, npc);
+    if (message) {
+      setStatusMessage(message);
+      setTimeout(() => setStatusMessage(null), 6000);
+    }
   }
 
   async function handleConfirmAssign(details: AssignTaskDetails) {
@@ -323,7 +338,57 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
                 }
               : undefined
           }
+          onAssignToNpc={
+            npcs.length > 0
+              ? (t) => {
+                  setActiveTemplate(null);
+                  setPickingNpcForTemplate(t);
+                }
+              : undefined
+          }
         />
+      )}
+
+      {pickingNpcForTemplate && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+          onClick={() => !npcWorking && setPickingNpcForTemplate(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-stone-900">Who should work on this?</h2>
+            <p className="mt-1 text-xs text-stone-500">"{pickingNpcForTemplate.title}"</p>
+            <div className="mt-3 flex flex-col gap-1.5">
+              {npcs.map((npc) => {
+                const persona = resolveNpcPersona(npc, customNpcPersonas);
+                return (
+                  <button
+                    key={npc.id}
+                    type="button"
+                    disabled={npcWorking}
+                    onClick={() => handleAssignToNpc(npc)}
+                    className="flex items-center justify-between rounded-md border border-stone-200 px-3 py-2 text-left text-sm hover:bg-stone-50 disabled:opacity-50"
+                  >
+                    <span>
+                      {persona?.avatar ?? "🤖"} {persona?.name ?? "AI Coworker"}
+                    </span>
+                    <span className="text-xs text-stone-400">{npc.job_title}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => setPickingNpcForTemplate(null)}
+              disabled={npcWorking}
+              className="mt-4 self-end rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100 disabled:opacity-50"
+            >
+              {npcWorking ? "Working…" : "Cancel"}
+            </button>
+          </div>
+        </div>
       )}
 
       {showBuilder && (
