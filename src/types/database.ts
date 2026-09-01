@@ -31,6 +31,7 @@ export interface Database {
           motto: string | null;
           salary_per_level: number;
           company_badges_claimed: string[];
+          total_payroll_paid: number;
           created_at: string;
         };
         Insert: {
@@ -47,6 +48,7 @@ export interface Database {
           motto?: string | null;
           salary_per_level?: number;
           company_badges_claimed?: string[];
+          total_payroll_paid?: number;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["companies"]["Insert"]>;
@@ -89,6 +91,9 @@ export interface Database {
           email_handle: string | null;
           department: string | null;
           claimed_milestones: string[];
+          bio: string | null;
+          last_active_date: string | null;
+          streak_count: number;
           created_at: string;
         };
         Insert: {
@@ -103,6 +108,9 @@ export interface Database {
           email_handle?: string | null;
           department?: string | null;
           claimed_milestones?: string[];
+          bio?: string | null;
+          last_active_date?: string | null;
+          streak_count?: number;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
@@ -187,6 +195,8 @@ export interface Database {
           subject: string;
           body: string;
           read_at: string | null;
+          flagged: boolean;
+          archived: boolean;
           created_at: string;
         };
         Insert: {
@@ -201,6 +211,8 @@ export interface Database {
           subject: string;
           body: string;
           read_at?: string | null;
+          flagged?: boolean;
+          archived?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["emails"]["Insert"]>;
@@ -336,6 +348,7 @@ export interface Database {
           body: string;
           posted_by: string;
           pinned: boolean;
+          category: "announcement" | "policy" | "celebration" | "other";
           created_at: string;
         };
         Insert: {
@@ -345,6 +358,7 @@ export interface Database {
           body: string;
           posted_by: string;
           pinned?: boolean;
+          category?: "announcement" | "policy" | "celebration" | "other";
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["corporate_updates"]["Insert"]>;
@@ -478,6 +492,58 @@ export interface Database {
           purchased_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["company_equipment"]["Insert"]>;
+        Relationships: [];
+      };
+      company_chat_messages: {
+        Row: {
+          id: string;
+          company_id: string;
+          sender_id: string;
+          body: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          sender_id: string;
+          body: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["company_chat_messages"]["Insert"]>;
+        Relationships: [];
+      };
+      corporate_update_reactions: {
+        Row: {
+          id: string;
+          update_id: string;
+          member_id: string;
+          emoji: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          update_id: string;
+          member_id: string;
+          emoji: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["corporate_update_reactions"]["Insert"]>;
+        Relationships: [];
+      };
+      member_moods: {
+        Row: {
+          member_id: string;
+          company_id: string;
+          emoji: string;
+          updated_at: string;
+        };
+        Insert: {
+          member_id: string;
+          company_id: string;
+          emoji: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["member_moods"]["Insert"]>;
         Relationships: [];
       };
     };

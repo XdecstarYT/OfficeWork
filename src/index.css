@@ -14,6 +14,16 @@ body {
   min-height: 100svh;
 }
 
+/* Preferences panel's Text Size setting - scales the whole app's base
+   font size via the root em, so every Tailwind text-* utility (which are
+   all rem-based) scales along with it without touching individual pages. */
+html[data-font-size="compact"] {
+  font-size: 14px;
+}
+html[data-font-size="large"] {
+  font-size: 18px;
+}
+
 .font-doc-serif {
   font-family: "Times New Roman", Times, Georgia, serif;
 }

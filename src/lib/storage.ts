@@ -75,3 +75,120 @@ export function saveClientRelationships(relationships: Record<string, number>) {
     // ignore storage failures
   }
 }
+
+const CLIENT_EARNINGS_KEY = "officequest.clientEarnings";
+
+export function loadClientEarnings(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(CLIENT_EARNINGS_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveClientEarnings(earnings: Record<string, number>) {
+  try {
+    localStorage.setItem(CLIENT_EARNINGS_KEY, JSON.stringify(earnings));
+  } catch {
+    // ignore storage failures
+  }
+}
+
+export type FontSize = "compact" | "normal" | "large";
+const FONT_SIZE_KEY = "officequest.fontSize";
+
+export function loadFontSize(): FontSize {
+  try {
+    const raw = localStorage.getItem(FONT_SIZE_KEY);
+    return raw === "compact" || raw === "large" ? raw : "normal";
+  } catch {
+    return "normal";
+  }
+}
+
+export function saveFontSize(size: FontSize) {
+  try {
+    localStorage.setItem(FONT_SIZE_KEY, size);
+  } catch {
+    // ignore storage failures
+  }
+}
+
+const SOUND_ENABLED_KEY = "officequest.soundEnabled";
+
+export function loadSoundEnabled(): boolean {
+  try {
+    return localStorage.getItem(SOUND_ENABLED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function saveSoundEnabled(enabled: boolean) {
+  try {
+    localStorage.setItem(SOUND_ENABLED_KEY, enabled ? "1" : "0");
+  } catch {
+    // ignore storage failures
+  }
+}
+
+const STARRED_DOCUMENTS_KEY = "officequest.starredDocuments";
+
+export function loadStarredDocuments(): Set<string> {
+  try {
+    const raw = localStorage.getItem(STARRED_DOCUMENTS_KEY);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function saveStarredDocuments(starred: Set<string>) {
+  try {
+    localStorage.setItem(STARRED_DOCUMENTS_KEY, JSON.stringify([...starred]));
+  } catch {
+    // ignore storage failures
+  }
+}
+
+export function loadDraftFieldValues(documentId: string): Record<string, string> | null {
+  try {
+    const raw = localStorage.getItem(`officequest.draft.${documentId}`);
+    return raw ? (JSON.parse(raw) as Record<string, string>) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveDraftFieldValues(documentId: string, values: Record<string, string>) {
+  try {
+    localStorage.setItem(`officequest.draft.${documentId}`, JSON.stringify(values));
+  } catch {
+    // ignore storage failures
+  }
+}
+
+export function clearDraftFieldValues(documentId: string) {
+  try {
+    localStorage.removeItem(`officequest.draft.${documentId}`);
+  } catch {
+    // ignore storage failures
+  }
+}
+
+/** Wipes every local (per-browser) preference this app has ever written -
+ * favorites, recents, font size, sound toggle, drafts, etc. Server-stored
+ * data (money, documents, company state) is untouched. */
+export function resetLocalPreferences() {
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith("officequest.")) keysToRemove.push(key);
+    }
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
+  } catch {
+    // ignore storage failures
+  }
+}

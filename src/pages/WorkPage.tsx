@@ -12,10 +12,12 @@ import {
   type DocumentRow,
 } from "../lib/documents";
 import { fetchCompanyMembers, awardMoney, awardXp } from "../lib/company";
+import { loadDraftFieldValues, saveDraftFieldValues, clearDraftFieldValues } from "../lib/storage";
 import { fetchCompanyEquipment } from "../lib/equipment";
 import { totalPayoutBonusPercent } from "../data/equipment";
 import { draftDocumentFields } from "../lib/aiClient";
 import { supabase } from "../lib/supabaseClient";
+import { renderBody } from "../lib/renderTemplate";
 import { DocumentFieldForm } from "../components/DocumentFieldForm";
 import { DocumentPreview } from "../components/DocumentPreview";
 import type { Database } from "../types/database";
@@ -58,6 +60,10 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
   const [draftError, setDraftError] = useState<string | null>(null);
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [bonusPercent, setBonusPercent] = useState(0);
+  const [copyLabel, setCopyLabel] = useState("📋 Copy Text");
+  const [workSortMode, setWorkSortMode] = useState<"due" | "payout" | "newest">("due");
+  const [approvingAll, setApprovingAll] = useState(false);
+  const [dismissedOverdueIds, setDismissedOverdueIds] = useState<Set<string>>(new Set());
 
   const memberLevel = (id: string | null) => members.find((m) => m.id === id)?.level ?? 0;
 
@@ -106,9 +112,22 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
 
   function openForFillOut(doc: DocumentRow) {
     setOpenDoc(doc);
-    setFieldValues((doc.field_values as Record<string, string>) ?? {});
+    const draft = loadDraftFieldValues(doc.id);
+    const saved = (doc.field_values as Record<string, string>) ?? {};
+    // A local draft only wins if it actually has something in it - otherwise
+    // an empty leftover draft object would silently blank out real saved data.
+    const hasDraftContent = draft && Object.values(draft).some((v) => v?.trim());
+    setFieldValues(hasDraftContent ? { ...saved, ...draft } : saved);
     setDraftError(null);
   }
+
+  // Autosaves whatever's typed into the open form to this browser, so an
+  // accidental tab switch or close doesn't lose it - cleared once the
+  // document is actually submitted.
+  useEffect(() => {
+    if (!openDoc) return;
+    saveDraftFieldValues(openDoc.id, fieldValues);
+  }, [openDoc, fieldValues]);
 
   async function handleAiDraft() {
     if (!openDoc) return;
@@ -149,6 +168,7 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
       await awardXp(profile.id, estimateXp(asTemplate(openDoc)));
       onProfileChanged();
     }
+    clearDraftFieldValues(openDoc.id);
     setOpenDoc(null);
     load();
   }
@@ -164,6 +184,17 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
       if (doc.assigned_to === profile.id) onProfileChanged();
     }
     load();
+  }
+
+  async function handleApproveAll() {
+    setApprovingAll(true);
+    try {
+      for (const doc of needsMyApproval) {
+        await handleApprove(doc);
+      }
+    } finally {
+      setApprovingAll(false);
+    }
   }
 
   async function handleReject(doc: DocumentRow) {
@@ -184,11 +215,21 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
     .filter((d) => !overdueOnly || isOverdue(d))
     .slice()
     .sort((a, b) => {
+      if (workSortMode === "payout") {
+        return payoutFor(b, asTemplate(b), bonusPercent) - payoutFor(a, asTemplate(a), bonusPercent);
+      }
+      if (workSortMode === "newest") {
+        return b.created_at.localeCompare(a.created_at);
+      }
       if (!a.due_at && !b.due_at) return 0;
       if (!a.due_at) return 1;
       if (!b.due_at) return -1;
       return a.due_at.localeCompare(b.due_at);
     });
+  const myOpenWorkTotal = myOpenWork.reduce(
+    (sum, d) => sum + payoutFor(d, asTemplate(d), bonusPercent),
+    0,
+  );
   const needsMyApproval = documents.filter(
     (d) => d.status === "pending_approval" && profile.level > memberLevel(d.assigned_to),
   );
@@ -226,17 +267,53 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
           )}
         </h1>
 
-        <Section title="📥 Your Open Work" empty="Nothing assigned right now.">
-          {myOpenWork.map((d) => (
+        <Section
+          title="📥 Your Open Work"
+          empty="Nothing assigned right now."
+          headerExtra={
+            myOpenWork.length > 0 ? (
+              <div className="flex items-center gap-2 text-xs">
+                <span className="font-medium text-emerald-700">💵 ${Math.round(myOpenWorkTotal)} total</span>
+                <select
+                  value={workSortMode}
+                  onChange={(e) => setWorkSortMode(e.target.value as typeof workSortMode)}
+                  className="rounded-md border border-stone-300 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+                >
+                  <option value="due">Sort: Due Date</option>
+                  <option value="payout">Sort: Payout</option>
+                  <option value="newest">Sort: Newest</option>
+                </select>
+              </div>
+            ) : undefined
+          }
+        >
+          {myOpenWork.map((d) => {
+            const visiblyOverdue = isOverdue(d) && !dismissedOverdueIds.has(d.id);
+            return (
             <div
               key={d.id}
               className={`relative flex items-center justify-between rounded-md border p-3 ${
-                isOverdue(d) ? "border-red-200 bg-red-50" : "border-stone-100"
+                visiblyOverdue ? "border-red-200 bg-red-50" : "border-stone-100"
               }`}
             >
               <div>
                 <p className="text-sm font-medium text-stone-800">
-                  {d.title} {isOverdue(d) && <span className="text-xs font-semibold text-red-600">⏰ Overdue</span>}
+                  {d.title}{" "}
+                  {visiblyOverdue && (
+                    <span className="text-xs font-semibold text-red-600">
+                      ⏰ Overdue{" "}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDismissedOverdueIds((prev) => new Set(prev).add(d.id))
+                        }
+                        title="Dismiss for this session"
+                        className="text-red-400 hover:text-red-700"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  )}
                 </p>
                 <p className="text-xs text-stone-400">
                   {STATUS_LABEL[d.status]} · assigned by{" "}
@@ -288,10 +365,26 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </Section>
 
-        <Section title="✅ Needs Your Approval" empty="Nothing waiting on you.">
+        <Section
+          title="✅ Needs Your Approval"
+          empty="Nothing waiting on you."
+          headerExtra={
+            needsMyApproval.length > 1 ? (
+              <button
+                type="button"
+                onClick={handleApproveAll}
+                disabled={approvingAll}
+                className="rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+              >
+                {approvingAll ? "Approving…" : `✅ Approve All (${needsMyApproval.length})`}
+              </button>
+            ) : undefined
+          }
+        >
           {needsMyApproval.map((d) => (
             <div key={d.id} className="rounded-md border border-amber-200 bg-amber-50 p-3">
               <p className="text-sm font-medium text-stone-800">{d.title}</p>
@@ -394,16 +487,30 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
           >
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold text-stone-900">{openDoc.title}</h2>
-              {openDoc.status !== "pending_approval" && (
+              <div className="flex shrink-0 gap-2">
                 <button
                   type="button"
-                  onClick={handleAiDraft}
-                  disabled={drafting}
-                  className="shrink-0 rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-100 disabled:opacity-50"
+                  onClick={() => {
+                    const text = renderBody(asTemplate(openDoc).bodyTemplate, fieldValues);
+                    navigator.clipboard?.writeText(text).catch(() => {});
+                    setCopyLabel("Copied!");
+                    setTimeout(() => setCopyLabel("📋 Copy Text"), 1500);
+                  }}
+                  className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
                 >
-                  {drafting ? "Drafting…" : "✨ AI Draft"}
+                  {copyLabel}
                 </button>
-              )}
+                {openDoc.status !== "pending_approval" && (
+                  <button
+                    type="button"
+                    onClick={handleAiDraft}
+                    disabled={drafting}
+                    className="rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-100 disabled:opacity-50"
+                  >
+                    {drafting ? "Drafting…" : "✨ AI Draft"}
+                  </button>
+                )}
+              </div>
             </div>
             {draftError && <p className="mt-1 text-xs text-red-600">{draftError}</p>}
 
@@ -469,15 +576,20 @@ function Section({
   title,
   empty,
   children,
+  headerExtra,
 }: {
   title: string;
   empty: string;
   children: React.ReactNode;
+  headerExtra?: React.ReactNode;
 }) {
   const hasChildren = Array.isArray(children) ? children.length > 0 : !!children;
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-400">{title}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-400">{title}</h2>
+        {headerExtra}
+      </div>
       {hasChildren ? (
         <div className="relative flex flex-col gap-2">{children}</div>
       ) : (

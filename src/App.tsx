@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { GameEntryScreen } from "./pages/GameEntryScreen";
 import { CompanyGate } from "./pages/CompanyGate";
 import { GameLobby } from "./pages/GameLobby";
@@ -10,6 +10,15 @@ import { useProfile } from "./hooks/useProfile";
 import { useCompany } from "./hooks/useCompany";
 import { useNotifications } from "./hooks/useNotifications";
 import { signOut } from "./lib/auth";
+import {
+  loadFontSize,
+  saveFontSize,
+  loadSoundEnabled,
+  saveSoundEnabled,
+  resetLocalPreferences,
+  type FontSize,
+} from "./lib/storage";
+import { playChime } from "./lib/sound";
 import type { ClientRequest } from "./types/template";
 
 // Each tab is its own chunk, downloaded only when opened - with 10 tabs and a
@@ -52,6 +61,21 @@ type Tab =
   | "archive"
   | "calendar";
 
+const TAB_META: { id: Tab; label: string; emoji: string }[] = [
+  { id: "dashboard", label: "Dashboard", emoji: "🏠" },
+  { id: "cabinet", label: "Filing Cabinet", emoji: "📁" },
+  { id: "work", label: "My Work", emoji: "📥" },
+  { id: "inbox", label: "Inbox", emoji: "✉️" },
+  { id: "company", label: "Company", emoji: "🏛" },
+  { id: "calendar", label: "Calendar", emoji: "🗓" },
+  { id: "meetings", label: "Board Meetings", emoji: "📅" },
+  { id: "updates", label: "Corporate Updates", emoji: "📰" },
+  { id: "activity", label: "Activity", emoji: "🗞" },
+  { id: "leaderboard", label: "Leaderboard", emoji: "🏆" },
+  { id: "archive", label: "Archive", emoji: "🗄" },
+  { id: "clients", label: "AI Clients", emoji: "🤝" },
+];
+
 function App() {
   const { session, user, loading: sessionLoading } = useSession();
   const { profile, loading: profileLoading, refresh: refreshProfile } = useProfile(user?.id ?? null);
@@ -59,17 +83,72 @@ function App() {
   const notifications = useNotifications(profile);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showPalette, setShowPalette] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState("");
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showPreferences, setShowPreferences] = useState(false);
+  const [fontSize, setFontSize] = useState<FontSize>(() => loadFontSize());
+  const [soundEnabled, setSoundEnabled] = useState(() => loadSoundEnabled());
+  const paletteInputRef = useRef<HTMLInputElement>(null);
+
+  const notificationTotal = notifications.pendingApproval + notifications.unreadEmail + notifications.overdue;
+
+  useEffect(() => {
+    document.title = notificationTotal > 0 ? `(${notificationTotal > 99 ? "99+" : notificationTotal}) Office Quest` : "Office Quest";
+  }, [notificationTotal]);
+
+  useEffect(() => {
+    document.documentElement.dataset.fontSize = fontSize;
+  }, [fontSize]);
+
+  // Chimes once per *increase* in the notification total, not on every render
+  // or on the initial load (which would otherwise chime immediately for
+  // whatever's already pending the moment the page opens).
+  const prevNotificationTotalRef = useRef<number | null>(null);
+  useEffect(() => {
+    const prev = prevNotificationTotalRef.current;
+    if (soundEnabled && prev !== null && notificationTotal > prev) playChime();
+    prevNotificationTotalRef.current = notificationTotal;
+  }, [notificationTotal, soundEnabled]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key.toLowerCase() !== "n" || e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target as HTMLElement;
-      if (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable) return;
-      setShowNotifications((s) => !s);
+      const inField = ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable;
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setShowPalette((s) => !s);
+        return;
+      }
+      if (inField) return;
+      if (e.key === "?") {
+        setShowShortcuts((s) => !s);
+        return;
+      }
+      if (e.key.toLowerCase() === "n" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        setShowNotifications((s) => !s);
+      }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  useEffect(() => {
+    if (showPalette) paletteInputRef.current?.focus();
+    else setPaletteQuery("");
+  }, [showPalette]);
+
+  const filteredPaletteTabs = useMemo(() => {
+    const q = paletteQuery.trim().toLowerCase();
+    if (!q) return TAB_META;
+    return TAB_META.filter((t) => t.label.toLowerCase().includes(q));
+  }, [paletteQuery]);
+
+  function goToTab(t: Tab) {
+    setTab(t);
+    setShowPalette(false);
+  }
 
   async function handleCompleteRequest(request: ClientRequest) {
     if (!user) return;
@@ -109,7 +188,6 @@ function App() {
   }
 
   const careerXp = careerProgress(profile.xp);
-  const notificationTotal = notifications.pendingApproval + notifications.unreadEmail + notifications.overdue;
 
   return (
     <div className="flex h-screen flex-col bg-white">
@@ -185,6 +263,23 @@ function App() {
                 </div>
               )}
             </div>
+            <button
+              type="button"
+              onClick={() => setShowPalette(true)}
+              className="hidden rounded-md border border-stone-200 px-2 py-1 text-xs text-stone-400 hover:bg-stone-100 sm:block"
+              title="Jump to a tab (⌘K)"
+            >
+              ⌘K
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowPreferences(true)}
+              className="rounded-md p-1.5 text-stone-500 hover:bg-stone-100"
+              aria-label="Preferences"
+              title="Preferences"
+            >
+              ⚙️
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -279,6 +374,164 @@ function App() {
           )}
         </Suspense>
       </div>
+
+      {showPalette && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center bg-stone-900/40 p-4 pt-24"
+          onClick={() => setShowPalette(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <input
+              ref={paletteInputRef}
+              type="text"
+              value={paletteQuery}
+              onChange={(e) => setPaletteQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setShowPalette(false);
+                if (e.key === "Enter" && filteredPaletteTabs[0]) goToTab(filteredPaletteTabs[0].id);
+              }}
+              placeholder="Jump to a tab…"
+              className="w-full border-b border-stone-200 px-4 py-3 text-sm focus:outline-none"
+            />
+            <div className="max-h-72 overflow-y-auto p-2">
+              {filteredPaletteTabs.length === 0 ? (
+                <p className="p-3 text-center text-xs text-stone-400">No matching tab.</p>
+              ) : (
+                filteredPaletteTabs.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => goToTab(t.id)}
+                    className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-stone-100 ${
+                      t.id === tab ? "font-medium text-stone-900" : "text-stone-600"
+                    }`}
+                  >
+                    <span>{t.emoji}</span>
+                    {t.label}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showShortcuts && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+          onClick={() => setShowShortcuts(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-stone-900">⌨️ Keyboard Shortcuts</h2>
+            <div className="mt-4 flex flex-col gap-2 text-sm text-stone-600">
+              <ShortcutRow keys="⌘/Ctrl K" label="Jump to a tab" />
+              <ShortcutRow keys="N" label="Toggle notifications" />
+              <ShortcutRow keys="/" label="Focus search (Filing Cabinet)" />
+              <ShortcutRow keys="?" label="Show this help" />
+              <ShortcutRow keys="Esc" label="Close any open dialog" />
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowShortcuts(false)}
+              className="mt-5 w-full rounded-md bg-stone-800 px-4 py-2 text-sm font-medium text-white hover:bg-stone-900"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showPreferences && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+          onClick={() => setShowPreferences(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-stone-900">⚙️ Preferences</h2>
+            <p className="mt-1 text-xs text-stone-400">Saved to this browser only.</p>
+
+            <div className="mt-4">
+              <label className="block text-xs font-medium uppercase tracking-wide text-stone-400">
+                Text Size
+              </label>
+              <div className="mt-1.5 flex gap-2">
+                {(["compact", "normal", "large"] as FontSize[]).map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => {
+                      setFontSize(size);
+                      saveFontSize(size);
+                    }}
+                    className={`flex-1 rounded-md border px-3 py-1.5 text-xs font-medium capitalize ${
+                      fontSize === size
+                        ? "border-stone-800 bg-stone-800 text-white"
+                        : "border-stone-300 text-stone-600 hover:bg-stone-100"
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="mt-4 flex items-center justify-between rounded-md border border-stone-200 px-3 py-2 text-sm text-stone-700">
+              🔔 Notification chime
+              <input
+                type="checkbox"
+                checked={soundEnabled}
+                onChange={(e) => {
+                  setSoundEnabled(e.target.checked);
+                  saveSoundEnabled(e.target.checked);
+                  if (e.target.checked) playChime();
+                }}
+                className="h-4 w-4"
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm("Reset all local preferences (favorites, recents, drafts, this panel)? Your game data is untouched.")) {
+                  resetLocalPreferences();
+                  window.location.reload();
+                }
+              }}
+              className="mt-4 w-full rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+            >
+              Reset local preferences
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowPreferences(false)}
+              className="mt-3 w-full rounded-md bg-stone-800 px-4 py-2 text-sm font-medium text-white hover:bg-stone-900"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ShortcutRow({ keys, label }: { keys: string; label: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span>{label}</span>
+      <kbd className="rounded border border-stone-300 bg-stone-50 px-1.5 py-0.5 font-mono text-xs text-stone-600">
+        {keys}
+      </kbd>
     </div>
   );
 }
