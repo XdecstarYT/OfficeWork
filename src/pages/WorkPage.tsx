@@ -12,6 +12,8 @@ import {
   type DocumentRow,
 } from "../lib/documents";
 import { fetchCompanyMembers, awardMoney, awardXp } from "../lib/company";
+import { fetchCompanyEquipment } from "../lib/equipment";
+import { totalPayoutBonusPercent } from "../data/equipment";
 import { draftDocumentFields } from "../lib/aiClient";
 import { supabase } from "../lib/supabaseClient";
 import { DocumentFieldForm } from "../components/DocumentFieldForm";
@@ -55,6 +57,7 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [bonusPercent, setBonusPercent] = useState(0);
 
   const memberLevel = (id: string | null) => members.find((m) => m.id === id)?.level ?? 0;
 
@@ -63,12 +66,14 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [mine, companyDocs, companyMembers] = await Promise.all([
+    const [mine, companyDocs, companyMembers, equipment] = await Promise.all([
       fetchMyDocuments(profile.id),
       profile.company_id ? fetchCompanyDocuments(profile.company_id) : Promise.resolve([]),
       profile.company_id ? fetchCompanyMembers(profile.company_id) : Promise.resolve([]),
+      profile.company_id ? fetchCompanyEquipment(profile.company_id) : Promise.resolve([]),
     ]);
     setMembers(companyMembers);
+    setBonusPercent(totalPayoutBonusPercent(equipment.map((e) => e.item_key)));
 
     // Merge: my docs + any pending_approval docs in the company I might be able to approve.
     const byId = new Map<string, DocumentRow>();
@@ -140,7 +145,7 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
     if (nextStatus === "completed") {
       // Self-serve completion (no approval needed) - pay the assignee, who is
       // always the caller here since this document didn't need sign-off.
-      await awardMoney(profile.id, payoutFor(openDoc, asTemplate(openDoc)));
+      await awardMoney(profile.id, Math.round(payoutFor(openDoc, asTemplate(openDoc), bonusPercent)));
       await awardXp(profile.id, estimateXp(asTemplate(openDoc)));
       onProfileChanged();
     }
@@ -154,7 +159,7 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
     // profiles_update_by_manager RLS policy allows since approving requires
     // outranking that person. Refresh only matters for our own balance.
     if (doc.assigned_to) {
-      await awardMoney(doc.assigned_to, payoutFor(doc, asTemplate(doc)));
+      await awardMoney(doc.assigned_to, Math.round(payoutFor(doc, asTemplate(doc), bonusPercent)));
       await awardXp(doc.assigned_to, estimateXp(asTemplate(doc)));
       if (doc.assigned_to === profile.id) onProfileChanged();
     }
@@ -236,7 +241,7 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
                 <p className="text-xs text-stone-400">
                   {STATUS_LABEL[d.status]} · assigned by{" "}
                   {members.find((m) => m.id === d.created_by)?.display_name ?? "someone"}
-                  {" · "}💵 ${payoutFor(d, asTemplate(d))}
+                  {" · "}💵 ${Math.round(payoutFor(d, asTemplate(d), bonusPercent))}
                   {d.due_at && (
                     <>
                       {" · "}

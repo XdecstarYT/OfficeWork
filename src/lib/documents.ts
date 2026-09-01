@@ -22,9 +22,15 @@ export function estimatePayout(template: DocumentTemplate | { difficulty: Diffic
   return PAYOUT_BY_DIFFICULTY[template.difficulty];
 }
 
-/** A manager-set payout wins over the flat per-difficulty default. */
-export function payoutFor(doc: Pick<DocumentRow, "payout_override">, template: DocumentTemplate): number {
-  return doc.payout_override ?? estimatePayout(template);
+/** A manager-set payout wins over the flat per-difficulty default. `bonusPercent`
+ * (from purchased Office Shop equipment) is applied on top of either. */
+export function payoutFor(
+  doc: Pick<DocumentRow, "payout_override">,
+  template: DocumentTemplate,
+  bonusPercent = 0,
+): number {
+  const base = doc.payout_override ?? estimatePayout(template);
+  return base * (1 + bonusPercent / 100);
 }
 
 const XP_BY_DIFFICULTY: Record<Difficulty, number> = {

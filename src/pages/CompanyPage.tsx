@@ -35,6 +35,8 @@ import {
   type TimeOffRequestRow,
 } from "../lib/timeOff";
 import { assignWork, fetchCompanyDocuments, payoutFor } from "../lib/documents";
+import { fetchCompanyEquipment, purchaseEquipment, type CompanyEquipmentRow } from "../lib/equipment";
+import { EQUIPMENT_CATALOG, totalPayoutBonusPercent } from "../data/equipment";
 import { sendEmailToCoworker } from "../lib/emails";
 import { postCorporateUpdate } from "../lib/corporateUpdates";
 import { hireNpc, fireNpc, resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
@@ -139,6 +141,8 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   const [memberSort, setMemberSort] = useState<"level" | "name" | "money" | "department">("level");
   const [memberDeptFilter, setMemberDeptFilter] = useState("");
   const [npcCompletedCounts, setNpcCompletedCounts] = useState<Record<string, number>>({});
+  const [equipment, setEquipment] = useState<CompanyEquipmentRow[]>([]);
+  const [buyingEquipment, setBuyingEquipment] = useState<string | null>(null);
   const { addCustomTemplate } = useCustomTemplates(profile.company_id, profile.id);
   const { npcs, customNpcPersonas, assigningNpc, setAssigningNpc, npcWorking, assignTemplateToNpc, reloadNpcs } =
     useNpcWorkAssignment(profile, llmConfig);
@@ -146,19 +150,21 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   const load = useCallback(async () => {
     if (!profile.company_id) return;
     setLoading(true);
-    const [c, m, docs, depts, reviews, timeOff] = await Promise.all([
+    const [c, m, docs, depts, reviews, timeOff, equip] = await Promise.all([
       fetchCompany(profile.company_id),
       fetchCompanyMembers(profile.company_id),
       fetchCompanyDocuments(profile.company_id),
       fetchCompanyDepartments(profile.company_id),
       fetchCompanyReviews(profile.company_id),
       fetchTimeOffRequests(profile.company_id),
+      fetchCompanyEquipment(profile.company_id),
     ]);
     setCompany(c);
     setMembers(m);
     setCustomDepartments(depts);
     setAllReviews(reviews);
     setTimeOffRequests(timeOff);
+    setEquipment(equip);
     const npcCounts: Record<string, number> = {};
     const memberCounts: Record<string, number> = {};
     for (const d of docs) {
@@ -337,6 +343,31 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     if (!window.confirm("Remove this department? Members already assigned to it keep the label.")) return;
     await removeCompanyDepartment(id);
     await load();
+  }
+
+  async function handlePurchaseEquipment(itemKey: string) {
+    if (!company) return;
+    const item = EQUIPMENT_CATALOG.find((e) => e.key === itemKey);
+    if (!item) return;
+    if (profile.money < item.cost) {
+      setStatusMessage(`Not enough Money to buy the ${item.name}.`);
+      setTimeout(() => setStatusMessage(null), 4000);
+      return;
+    }
+    setBuyingEquipment(itemKey);
+    try {
+      await awardMoney(profile.id, -item.cost);
+      await purchaseEquipment(company.id, itemKey, profile.id);
+      setStatusMessage(`Purchased ${item.emoji} ${item.name} — every payout is now +${totalPayoutBonusPercent([...equipment.map((e) => e.item_key), itemKey])}% company-wide.`);
+      setTimeout(() => setStatusMessage(null), 5000);
+      onProfileChanged();
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't complete that purchase.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    } finally {
+      setBuyingEquipment(null);
+    }
   }
 
   function openReviewFor(m: Profile) {
@@ -1359,6 +1390,55 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
               })}
             </div>
           )}
+        </div>
+
+        <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50/40 p-4">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-amber-700">🛒 Office Shop</h2>
+            <p className="text-xs text-amber-600">
+              One-time purchases that permanently boost everyone's task payouts, company-wide.
+              {equipment.length > 0 && (
+                <>
+                  {" "}
+                  Currently{" "}
+                  <strong>+{totalPayoutBonusPercent(equipment.map((e) => e.item_key))}%</strong> on every payout.
+                </>
+              )}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {EQUIPMENT_CATALOG.map((item) => {
+              const owned = equipment.some((e) => e.item_key === item.key);
+              return (
+                <div
+                  key={item.key}
+                  className={`flex flex-col gap-1 rounded-md border p-3 ${
+                    owned ? "border-amber-300 bg-amber-100/60" : "border-amber-100 bg-white"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-stone-800">
+                      {item.emoji} {item.name}
+                    </span>
+                    <span className="text-xs font-semibold text-amber-700">+{item.payoutBonusPercent}%</span>
+                  </div>
+                  <p className="text-xs text-stone-500">{item.description}</p>
+                  {owned ? (
+                    <span className="mt-1 text-xs font-medium text-amber-700">✅ Owned</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handlePurchaseEquipment(item.key)}
+                      disabled={buyingEquipment === item.key}
+                      className="mt-1 self-start rounded-md bg-amber-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+                    >
+                      {buyingEquipment === item.key ? "Buying…" : `Buy for $${item.cost}`}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {(timeOffRequests.some((r) => r.member_id === profile.id) ||
