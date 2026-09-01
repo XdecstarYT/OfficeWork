@@ -633,3 +633,33 @@ One sentence, under 12 words, a little tongue-in-cheek but plausible as real cor
     return fallback;
   }
 }
+
+/** Drafts performance review comments from the employee's stats. Falls back to a generic note if unreachable. */
+export async function generatePerformanceReviewDraft(params: {
+  memberName: string;
+  jobTitle: string;
+  rating: number;
+  tasksCompleted: number;
+  moneyEarned: number;
+  config: LlmConfig;
+}): Promise<string> {
+  const { memberName, jobTitle, rating, tasksCompleted, moneyEarned, config } = params;
+  const fallback = `${memberName} has completed ${tasksCompleted} task${tasksCompleted === 1 ? "" : "s"} this cycle. Keep up the good work.`;
+  try {
+    const system = `You write short, constructive performance review comments for a cozy office-life simulation \
+game. 2-4 sentences, professional, specific to the numbers given, matching the tone of a ${rating}-out-of-5 rating \
+(1 = needs real improvement, 5 = outstanding). No markdown.`;
+    const user = `Employee: ${memberName}, ${jobTitle}. Tasks completed: ${tasksCompleted}. Money earned: $${moneyEarned.toFixed(2)}. Rating: ${rating}/5.`;
+    const result = await llmChatCompletion({
+      config,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      maxTokens: 200,
+    });
+    return result.content?.trim() || fallback;
+  } catch {
+    return fallback;
+  }
+}

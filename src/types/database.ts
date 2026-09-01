@@ -29,6 +29,8 @@ export interface Database {
           career_mode: boolean;
           emoji: string;
           motto: string | null;
+          salary_per_level: number;
+          company_badges_claimed: string[];
           created_at: string;
         };
         Insert: {
@@ -43,6 +45,8 @@ export interface Database {
           career_mode?: boolean;
           emoji?: string;
           motto?: string | null;
+          salary_per_level?: number;
+          company_badges_claimed?: string[];
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["companies"]["Insert"]>;
@@ -364,6 +368,118 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["custom_templates"]["Insert"]>;
         Relationships: [];
       };
+      company_departments: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          created_by: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["company_departments"]["Insert"]>;
+        Relationships: [];
+      };
+      performance_reviews: {
+        Row: {
+          id: string;
+          company_id: string;
+          member_id: string;
+          reviewer_id: string;
+          rating: number;
+          comments: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          member_id: string;
+          reviewer_id: string;
+          rating: number;
+          comments?: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["performance_reviews"]["Insert"]>;
+        Relationships: [];
+      };
+      time_off_requests: {
+        Row: {
+          id: string;
+          company_id: string;
+          member_id: string;
+          start_date: string;
+          end_date: string;
+          reason: string;
+          status: "pending" | "approved" | "denied";
+          decided_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          member_id: string;
+          start_date: string;
+          end_date: string;
+          reason?: string;
+          status?: "pending" | "approved" | "denied";
+          decided_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["time_off_requests"]["Insert"]>;
+        Relationships: [];
+      };
+      client_contracts: {
+        Row: {
+          id: string;
+          company_id: string;
+          client_id: string;
+          title: string;
+          total_tasks: number;
+          completed_tasks: number;
+          bonus_payout: number;
+          status: "active" | "completed";
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          client_id: string;
+          title: string;
+          total_tasks: number;
+          completed_tasks?: number;
+          bonus_payout?: number;
+          status?: "active" | "completed";
+          created_by: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["client_contracts"]["Insert"]>;
+        Relationships: [];
+      };
+      company_equipment: {
+        Row: {
+          id: string;
+          company_id: string;
+          item_key: string;
+          purchased_by: string;
+          purchased_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          item_key: string;
+          purchased_by: string;
+          purchased_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["company_equipment"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -378,6 +494,10 @@ export interface Database {
       claim_milestone: {
         Args: { p_milestone_id: string };
         Returns: boolean;
+      };
+      check_company_badges: {
+        Args: Record<string, never>;
+        Returns: string[];
       };
     };
     Enums: Record<string, never>;

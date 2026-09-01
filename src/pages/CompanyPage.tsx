@@ -13,7 +13,20 @@ import {
   endCompanyDay,
   setCareerMode,
   updateCompanyBranding,
+  setSalaryPerLevel,
+  paySalaries,
 } from "../lib/company";
+import {
+  fetchCompanyDepartments,
+  addCompanyDepartment,
+  removeCompanyDepartment,
+  type CompanyDepartmentRow,
+} from "../lib/departments";
+import {
+  fetchCompanyReviews,
+  createPerformanceReview,
+  type PerformanceReviewRow,
+} from "../lib/performanceReviews";
 import { assignWork, fetchCompanyDocuments, payoutFor } from "../lib/documents";
 import { sendEmailToCoworker } from "../lib/emails";
 import { postCorporateUpdate } from "../lib/corporateUpdates";
@@ -24,6 +37,7 @@ import {
   generatePromotionAnnouncement,
   generateNpcPersonaIdea,
   generateCompanyMotto,
+  generatePerformanceReviewDraft,
 } from "../lib/aiClient";
 import { TemplatePickerModal } from "../components/TemplatePickerModal";
 import { TemplateBuilder } from "../components/TemplateBuilder";
@@ -94,6 +108,19 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   const [emojiDraft, setEmojiDraft] = useState("🏢");
   const [mottoDraft, setMottoDraft] = useState("");
   const [savingBranding, setSavingBranding] = useState(false);
+  const [salaryDraft, setSalaryDraft] = useState(2);
+  const [savingSalary, setSavingSalary] = useState(false);
+  const [customDepartments, setCustomDepartments] = useState<CompanyDepartmentRow[]>([]);
+  const [newDeptName, setNewDeptName] = useState("");
+  const [savingDept, setSavingDept] = useState(false);
+  const [memberCompletedCounts, setMemberCompletedCounts] = useState<Record<string, number>>({});
+  const [allReviews, setAllReviews] = useState<PerformanceReviewRow[]>([]);
+  const [reviewingMember, setReviewingMember] = useState<Profile | null>(null);
+  const [reviewRating, setReviewRating] = useState(3);
+  const [reviewComments, setReviewComments] = useState("");
+  const [draftingReview, setDraftingReview] = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [showReviewHistoryFor, setShowReviewHistoryFor] = useState<string | null>(null);
   const [generatingMotto, setGeneratingMotto] = useState(false);
   const [memberQuery, setMemberQuery] = useState("");
   const [memberSort, setMemberSort] = useState<"level" | "name" | "money" | "department">("level");
@@ -106,20 +133,29 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   const load = useCallback(async () => {
     if (!profile.company_id) return;
     setLoading(true);
-    const [c, m, docs] = await Promise.all([
+    const [c, m, docs, depts, reviews] = await Promise.all([
       fetchCompany(profile.company_id),
       fetchCompanyMembers(profile.company_id),
       fetchCompanyDocuments(profile.company_id),
+      fetchCompanyDepartments(profile.company_id),
+      fetchCompanyReviews(profile.company_id),
     ]);
     setCompany(c);
     setMembers(m);
-    const counts: Record<string, number> = {};
+    setCustomDepartments(depts);
+    setAllReviews(reviews);
+    const npcCounts: Record<string, number> = {};
+    const memberCounts: Record<string, number> = {};
     for (const d of docs) {
-      if (d.status === "completed" && d.assigned_to_npc_id) {
-        counts[d.assigned_to_npc_id] = (counts[d.assigned_to_npc_id] ?? 0) + 1;
+      if (d.status !== "completed") continue;
+      if (d.assigned_to_npc_id) {
+        npcCounts[d.assigned_to_npc_id] = (npcCounts[d.assigned_to_npc_id] ?? 0) + 1;
+      } else if (d.assigned_to) {
+        memberCounts[d.assigned_to] = (memberCounts[d.assigned_to] ?? 0) + 1;
       }
     }
-    setNpcCompletedCounts(counts);
+    setNpcCompletedCounts(npcCounts);
+    setMemberCompletedCounts(memberCounts);
     setLoading(false);
   }, [profile.company_id]);
 
@@ -246,6 +282,89 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       setTimeout(() => setStatusMessage(null), 4000);
     } finally {
       setSavingBranding(false);
+    }
+  }
+
+  async function handleSaveSalary() {
+    if (!company) return;
+    setSavingSalary(true);
+    try {
+      await setSalaryPerLevel(company.id, Math.max(0, salaryDraft));
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't save the salary rate.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    } finally {
+      setSavingSalary(false);
+    }
+  }
+
+  async function handleAddDepartment() {
+    if (!company || !newDeptName.trim()) return;
+    setSavingDept(true);
+    try {
+      await addCompanyDepartment(company.id, profile.id, newDeptName.trim());
+      setNewDeptName("");
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't add that department.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    } finally {
+      setSavingDept(false);
+    }
+  }
+
+  async function handleRemoveDepartment(id: string) {
+    if (!window.confirm("Remove this department? Members already assigned to it keep the label.")) return;
+    await removeCompanyDepartment(id);
+    await load();
+  }
+
+  function openReviewFor(m: Profile) {
+    setReviewingMember(m);
+    setReviewRating(3);
+    setReviewComments("");
+  }
+
+  async function handleGenerateReviewDraft() {
+    if (!reviewingMember) return;
+    setDraftingReview(true);
+    try {
+      setReviewComments(
+        await generatePerformanceReviewDraft({
+          memberName: reviewingMember.display_name,
+          jobTitle: reviewingMember.job_title,
+          rating: reviewRating,
+          tasksCompleted: memberCompletedCounts[reviewingMember.id] ?? 0,
+          moneyEarned: reviewingMember.money,
+          config: llmConfig,
+        }),
+      );
+    } finally {
+      setDraftingReview(false);
+    }
+  }
+
+  async function handleSubmitReview() {
+    if (!company || !reviewingMember) return;
+    setSubmittingReview(true);
+    try {
+      await createPerformanceReview({
+        companyId: company.id,
+        memberId: reviewingMember.id,
+        reviewerId: profile.id,
+        rating: reviewRating,
+        comments: reviewComments.trim(),
+      });
+      setStatusMessage(`Review submitted for ${reviewingMember.display_name}.`);
+      setTimeout(() => setStatusMessage(null), 4000);
+      setReviewingMember(null);
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't submit that review.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    } finally {
+      setSubmittingReview(false);
     }
   }
 
@@ -445,13 +564,15 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       }
       const topId = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
       const topName = topId ? members.find((m) => m.id === topId)?.display_name : null;
+      const payroll = await paySalaries(members, company.salary_per_level);
       await endCompanyDay(company.id);
       await postCorporateUpdate({
         companyId: company.id,
         title: `📅 Day ${company.current_day} Wrap-Up`,
-        body: `${completedToday.length} task${completedToday.length === 1 ? "" : "s"} completed today, $${moneyEarned.toFixed(2)} earned company-wide.${topName ? ` Top performer: ${topName}.` : ""}`,
+        body: `${completedToday.length} task${completedToday.length === 1 ? "" : "s"} completed today, $${moneyEarned.toFixed(2)} earned company-wide.${topName ? ` Top performer: ${topName}.` : ""}${payroll > 0 ? ` 💵 $${payroll.toFixed(2)} in salaries paid out.` : ""}`,
         postedBy: profile.id,
       });
+      onProfileChanged();
       await load();
     } catch (err) {
       setStatusMessage(err instanceof Error ? err.message : "Couldn't end the day.");
@@ -563,6 +684,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   }
 
   const isOwner = company.owner_id === profile.id;
+  const allDepartmentNames = [...new Set([...DEPARTMENTS, ...customDepartments.map((d) => d.name)])];
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
@@ -597,6 +719,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                   setNameDraft(company.name);
                   setEmojiDraft(company.emoji);
                   setMottoDraft(company.motto ?? "");
+                  setSalaryDraft(company.salary_per_level);
                   setShowSettings((s) => !s);
                 }}
                 className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
@@ -692,6 +815,77 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                 Regenerating invalidates the old code — anyone who hasn't joined yet will need the
                 new one.
               </p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium uppercase tracking-wide text-stone-400">
+                💵 Payroll — salary per level, paid to everyone when a Day ends
+              </label>
+              <div className="mt-1 flex gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  step="0.5"
+                  value={salaryDraft}
+                  onChange={(e) => setSalaryDraft(Number(e.target.value))}
+                  className="w-24 rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveSalary}
+                  disabled={savingSalary}
+                  className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+                >
+                  {savingSalary ? "Saving…" : "Save"}
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-stone-400">
+                $0 turns payroll off. A level-5 member earns 5× this per Day ended.
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium uppercase tracking-wide text-stone-400">
+                🏷 Custom Departments
+              </label>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {allDepartmentNames.map((d) => {
+                  const customRow = customDepartments.find((cd) => cd.name === d);
+                  return (
+                    <span
+                      key={d}
+                      className="flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-600"
+                    >
+                      {d}
+                      {customRow && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDepartment(customRow.id)}
+                          className="text-stone-400 hover:text-red-600"
+                          aria-label={`Remove ${d}`}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+              <div className="mt-2 flex gap-2">
+                <input
+                  type="text"
+                  value={newDeptName}
+                  onChange={(e) => setNewDeptName(e.target.value)}
+                  placeholder="New department name…"
+                  className="flex-1 rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddDepartment}
+                  disabled={savingDept || !newDeptName.trim()}
+                  className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+                >
+                  {savingDept ? "Adding…" : "Add"}
+                </button>
+              </div>
             </div>
             <div className="flex items-center justify-between rounded-md border border-stone-200 bg-stone-50 p-3">
               <div>
@@ -885,7 +1079,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                         className="rounded border border-stone-300 px-2 py-1 text-xs"
                       >
                         <option value="">No department</option>
-                        {DEPARTMENTS.map((d) => (
+                        {allDepartmentNames.map((d) => (
                           <option key={d} value={d}>
                             {d}
                           </option>
@@ -1016,7 +1210,24 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                         >
                           🚪 Kick
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => openReviewFor(m)}
+                          className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+                        >
+                          📝 Review
+                        </button>
                       </>
+                    )}
+                    {allReviews.some((r) => r.member_id === m.id) && (
+                      <button
+                        type="button"
+                        onClick={() => setShowReviewHistoryFor(m.id)}
+                        className="rounded-md border border-stone-200 px-3 py-1.5 text-xs text-stone-500 hover:bg-stone-100"
+                      >
+                        {allReviews.filter((r) => r.member_id === m.id).length} review
+                        {allReviews.filter((r) => r.member_id === m.id).length === 1 ? "" : "s"}
+                      </button>
                     )}
                   </div>
                 )}
@@ -1161,6 +1372,111 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
           onClose={() => setPendingTemplate(null)}
           onConfirm={handleConfirmAssign}
         />
+      )}
+
+      {reviewingMember && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+          onClick={() => setReviewingMember(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-stone-900">📝 Review {reviewingMember.display_name}</h2>
+            <p className="mt-1 text-xs text-stone-500">
+              {memberCompletedCounts[reviewingMember.id] ?? 0} task
+              {(memberCompletedCounts[reviewingMember.id] ?? 0) === 1 ? "" : "s"} completed · $
+              {reviewingMember.money.toFixed(2)}
+            </p>
+            <div className="mt-3 flex gap-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setReviewRating(n)}
+                  className={`text-2xl leading-none ${n <= reviewRating ? "text-amber-500" : "text-stone-200"}`}
+                  aria-label={`${n} star${n === 1 ? "" : "s"}`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={reviewComments}
+              onChange={(e) => setReviewComments(e.target.value)}
+              placeholder="Comments…"
+              rows={4}
+              className="mt-3 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <div className="mt-3 flex justify-between gap-2">
+              <button
+                type="button"
+                onClick={handleGenerateReviewDraft}
+                disabled={draftingReview}
+                className="rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-100 disabled:opacity-50"
+              >
+                {draftingReview ? "Thinking…" : "✨ AI Draft"}
+              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setReviewingMember(null)}
+                  className="rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmitReview}
+                  disabled={submittingReview}
+                  className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+                >
+                  {submittingReview ? "Submitting…" : "Submit Review"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showReviewHistoryFor && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+          onClick={() => setShowReviewHistoryFor(null)}
+        >
+          <div
+            className="flex max-h-[80vh] w-full max-w-md flex-col overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-stone-900">
+              Review history — {members.find((m) => m.id === showReviewHistoryFor)?.display_name}
+            </h2>
+            <div className="mt-3 flex flex-col gap-3">
+              {allReviews
+                .filter((r) => r.member_id === showReviewHistoryFor)
+                .map((r) => (
+                  <div key={r.id} className="rounded-md border border-stone-100 p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-amber-500">{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</span>
+                      <span className="text-xs text-stone-400">{new Date(r.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <p className="mt-1 text-sm text-stone-700">{r.comments}</p>
+                    <p className="mt-1 text-xs text-stone-400">
+                      — {members.find((m) => m.id === r.reviewer_id)?.display_name ?? "A manager"}
+                    </p>
+                  </div>
+                ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowReviewHistoryFor(null)}
+              className="mt-4 self-end rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       )}
 
       {showHire && (

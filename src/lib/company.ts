@@ -251,3 +251,25 @@ export async function claimMilestone(milestoneId: string): Promise<boolean> {
   if (error) throw error;
   return data ?? false;
 }
+
+export async function setSalaryPerLevel(companyId: string, amount: number) {
+  const { error } = await supabase.from("companies").update({ salary_per_level: amount }).eq("id", companyId);
+  if (error) throw error;
+}
+
+/** Pays every member `level * salary_per_level` - run as part of ending the
+ * day. Uses awardMoney's own read-then-write per member rather than a bulk
+ * update, same as awardBonusToAll, since RLS is enforced per-row anyway. */
+export async function paySalaries(members: Profile[], salaryPerLevel: number): Promise<number> {
+  if (salaryPerLevel <= 0) return 0;
+  let total = 0;
+  await Promise.all(
+    members.map((m) => {
+      const salary = m.level * salaryPerLevel;
+      if (salary <= 0) return Promise.resolve();
+      total += salary;
+      return awardMoney(m.id, salary);
+    }),
+  );
+  return total;
+}
