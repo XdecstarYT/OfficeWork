@@ -15,6 +15,9 @@ interface TemplateDetailModalProps {
   onDelete?: (template: DocumentTemplate) => void;
   /** Shown as a secondary "🤖 Assign to AI Coworker" action when provided (i.e. the company has at least one hired). */
   onAssignToNpc?: (template: DocumentTemplate) => void;
+  /** Shown as a "🪄 Smart Assign" action when provided (owner, with at least one assignable coworker). */
+  onSmartAssign?: (template: DocumentTemplate) => void;
+  smartAssigning?: boolean;
 }
 
 export function TemplateDetailModal({
@@ -25,6 +28,8 @@ export function TemplateDetailModal({
   onStart,
   onDelete,
   onAssignToNpc,
+  onSmartAssign,
+  smartAssigning,
 }: TemplateDetailModalProps) {
   return (
     <div
@@ -97,6 +102,16 @@ export function TemplateDetailModal({
                 className="rounded-md border border-violet-300 bg-violet-50 px-4 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100"
               >
                 🤖 Assign to AI Coworker
+              </button>
+            )}
+            {onSmartAssign && (
+              <button
+                type="button"
+                onClick={() => onSmartAssign(template)}
+                disabled={smartAssigning}
+                className="rounded-md border border-fuchsia-300 bg-fuchsia-50 px-4 py-2 text-sm font-medium text-fuchsia-700 hover:bg-fuchsia-100 disabled:opacity-50"
+              >
+                {smartAssigning ? "Thinking…" : "🪄 Smart Assign"}
               </button>
             )}
             <button

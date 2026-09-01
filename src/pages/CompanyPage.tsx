@@ -6,6 +6,7 @@ import {
   leaveCompany,
   kickMember,
   awardMoney,
+  awardXp,
   awardBonusToAll,
   renameCompany,
   regenerateInviteCode,
@@ -37,6 +38,7 @@ import {
 import { assignWork, fetchCompanyDocuments, payoutFor } from "../lib/documents";
 import { fetchCompanyEquipment, purchaseEquipment, type CompanyEquipmentRow } from "../lib/equipment";
 import { EQUIPMENT_CATALOG, totalPayoutBonusPercent } from "../data/equipment";
+import { rollEmployeeEvent } from "../data/employeeEvents";
 import { sendEmailToCoworker } from "../lib/emails";
 import { postCorporateUpdate } from "../lib/corporateUpdates";
 import { hireNpc, fireNpc, resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
@@ -98,6 +100,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   const [nameDraft, setNameDraft] = useState("");
   const [regenerating, setRegenerating] = useState(false);
   const [awardingEotm, setAwardingEotm] = useState(false);
+  const [rollingEmployeeEvent, setRollingEmployeeEvent] = useState(false);
   const EOTM_BONUS = 100;
   const [showHire, setShowHire] = useState(false);
   const [hiring, setHiring] = useState(false);
@@ -507,6 +510,39 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       setTimeout(() => setStatusMessage(null), 4000);
     } finally {
       setAwardingEotm(false);
+    }
+  }
+
+  async function handleRollEmployeeEvent() {
+    if (!company || members.length === 0) return;
+    setRollingEmployeeEvent(true);
+    try {
+      const target = members[Math.floor(Math.random() * members.length)];
+      const event = rollEmployeeEvent();
+      if (event.money !== 0) await awardMoney(target.id, event.money);
+      if (event.xp !== 0) await awardXp(target.id, event.xp);
+      const effectLine =
+        event.money !== 0 || event.xp !== 0
+          ? `\n\n(${event.money !== 0 ? `${event.money > 0 ? "+" : ""}$${event.money} money` : ""}${
+              event.money !== 0 && event.xp !== 0 ? ", " : ""
+            }${event.xp !== 0 ? `${event.xp > 0 ? "+" : ""}${event.xp} XP` : ""}.)`
+          : "";
+      await sendEmailToCoworker({
+        companyId: company.id,
+        senderId: profile.id,
+        recipientId: target.id,
+        subject: `${event.emoji} ${event.headline}`,
+        body: `${event.body}${effectLine}`,
+      });
+      setStatusMessage(`${event.emoji} "${event.headline}" happened to ${target.display_name} — they got an email about it.`);
+      setTimeout(() => setStatusMessage(null), 5000);
+      if (target.id === profile.id) onProfileChanged();
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't trigger an employee event.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    } finally {
+      setRollingEmployeeEvent(false);
     }
   }
 
@@ -1081,6 +1117,16 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                   className="rounded-md border border-yellow-300 bg-yellow-50 px-3 py-1.5 text-xs font-medium text-yellow-800 hover:bg-yellow-100 disabled:opacity-50"
                 >
                   {awardingEotm ? "Awarding…" : "🏅 Employee of the Month"}
+                </button>
+              )}
+              {isOwner && members.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleRollEmployeeEvent}
+                  disabled={rollingEmployeeEvent}
+                  className="rounded-md border border-teal-300 bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-100 disabled:opacity-50"
+                >
+                  {rollingEmployeeEvent ? "Rolling…" : "🎲 Random Employee Event"}
                 </button>
               )}
             </div>

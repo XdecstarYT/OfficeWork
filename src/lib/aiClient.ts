@@ -634,6 +634,86 @@ One sentence, under 12 words, a little tongue-in-cheek but plausible as real cor
   }
 }
 
+export interface AssigneeCandidate {
+  id: string;
+  name: string;
+  jobTitle: string;
+  personality?: string;
+  isNpc: boolean;
+  openTaskCount: number;
+}
+
+const SMART_ASSIGN_TOOL: LlmTool = {
+  type: "function",
+  function: {
+    name: "pick_assignee",
+    description: "Pick which coworker is the best fit to hand this document to.",
+    parameters: {
+      type: "object",
+      properties: {
+        candidateId: { type: "string", description: "The id of the chosen candidate from the provided list." },
+        reason: { type: "string", description: "One short sentence on why this candidate fits best." },
+      },
+      required: ["candidateId", "reason"],
+    },
+  },
+};
+
+export interface SmartAssignPick {
+  candidateId: string;
+  reason: string;
+}
+
+/** Picks the best-fit coworker (human or AI) for a template from a roster,
+ * weighing job title/personality fit against current workload. Falls back
+ * to whoever has the fewest open tasks if the AI is unreachable, so Smart
+ * Assign never just fails outright. */
+export async function pickBestAssignee(
+  template: DocumentTemplate,
+  candidates: AssigneeCandidate[],
+  config: LlmConfig,
+): Promise<SmartAssignPick> {
+  const leastBusy = [...candidates].sort((a, b) => a.openTaskCount - b.openTaskCount)[0];
+  const fallback: SmartAssignPick = {
+    candidateId: leastBusy.id,
+    reason: "Picked whoever currently has the lightest workload (AI unreachable).",
+  };
+  if (candidates.length <= 1) return fallback;
+
+  try {
+    const roster = candidates
+      .map(
+        (c) =>
+          `- id: ${c.id} | ${c.name}, ${c.jobTitle}${c.personality ? ` (${c.personality})` : ""}${
+            c.isNpc ? " [AI coworker]" : ""
+          } | currently has ${c.openTaskCount} open task(s)`,
+      )
+      .join("\n");
+    const system = `You are staffing a piece of office paperwork in a cozy office-life simulation game. Pick the \
+single best-fit coworker from the roster for the document below, weighing their job title/personality fit against \
+who is least overloaded right now - don't always just pick the busiest or the least busy, use real judgment. \
+Respond only by calling the pick_assignee tool with one of the given candidate ids.`;
+    const user = `Document: "${template.title}" - ${template.description}\n\nRoster:\n${roster}`;
+    const result = await llmChatCompletion({
+      config,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      tools: [SMART_ASSIGN_TOOL],
+      forceToolName: "pick_assignee",
+      maxTokens: 200,
+    });
+    const call = result.toolCalls.find((c) => c.function.name === "pick_assignee");
+    if (!call) return fallback;
+    const input = parseToolArguments<SmartAssignPick>(call);
+    if (!candidates.some((c) => c.id === input.candidateId)) return fallback;
+    return input;
+  } catch {
+    return fallback;
+  }
+}
+
 /** Drafts performance review comments from the employee's stats. Falls back to a generic note if unreachable. */
 export async function generatePerformanceReviewDraft(params: {
   memberName: string;

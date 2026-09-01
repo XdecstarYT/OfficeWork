@@ -13,7 +13,8 @@ import { useNpcWorkAssignment } from "../hooks/useNpcWorkAssignment";
 import { resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
 import { BLANK_PAGE_TEMPLATE } from "../data/blankPage";
 import { fetchCompanyMembers } from "../lib/company";
-import { assignWork } from "../lib/documents";
+import { assignWork, fetchCompanyDocuments } from "../lib/documents";
+import { pickBestAssignee, type AssigneeCandidate } from "../lib/aiClient";
 import type { Database } from "../types/database";
 import type { Difficulty, DocumentTemplate } from "../types/template";
 import type { LlmConfig } from "../lib/llmConfig";
@@ -51,6 +52,7 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
   );
   const { npcs, customNpcPersonas, npcWorking, assignTemplateToNpc } = useNpcWorkAssignment(profile, llmConfig);
   const [pickingNpcForTemplate, setPickingNpcForTemplate] = useState<DocumentTemplate | null>(null);
+  const [smartAssigning, setSmartAssigning] = useState(false);
 
   useEffect(() => {
     if (profile.company_id) {
@@ -73,6 +75,80 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
     if (message) {
       setStatusMessage(message);
       setTimeout(() => setStatusMessage(null), 6000);
+    }
+  }
+
+  async function handleSmartAssign(template: DocumentTemplate) {
+    if (!profile.company_id) return;
+    setActiveTemplate(null);
+    setSmartAssigning(true);
+    try {
+      const docs = await fetchCompanyDocuments(profile.company_id);
+      const openCountFor = (matcher: (d: (typeof docs)[number]) => boolean) =>
+        docs.filter((d) => d.status !== "completed" && matcher(d)).length;
+
+      const humanCandidates: AssigneeCandidate[] = [
+        { id: profile.id, name: "Myself", jobTitle: profile.job_title, isNpc: false, openTaskCount: openCountFor((d) => d.assigned_to === profile.id) },
+        ...members
+          .filter((m) => m.id !== profile.id && profile.level > m.level)
+          .map((m) => ({
+            id: m.id,
+            name: m.display_name,
+            jobTitle: m.job_title,
+            isNpc: false,
+            openTaskCount: openCountFor((d) => d.assigned_to === m.id),
+          })),
+      ];
+      const npcCandidates: AssigneeCandidate[] = npcs.map((npc) => {
+        const persona = resolveNpcPersona(npc, customNpcPersonas);
+        return {
+          id: npc.id,
+          name: persona?.name ?? "Unknown",
+          jobTitle: npc.job_title,
+          personality: persona?.personality,
+          isNpc: true,
+          openTaskCount: openCountFor((d) => d.assigned_to_npc_id === npc.id),
+        };
+      });
+      const candidates = [...humanCandidates, ...npcCandidates];
+      if (candidates.length === 0) {
+        setStatusMessage("Nobody available to smart-assign to.");
+        setTimeout(() => setStatusMessage(null), 4000);
+        return;
+      }
+
+      const pick = await pickBestAssignee(template, candidates, llmConfig);
+      const chosenNpc = npcs.find((n) => n.id === pick.candidateId);
+      if (chosenNpc) {
+        const message = await assignTemplateToNpc(template, chosenNpc);
+        setStatusMessage(message || `🪄 Smart-assigned "${template.title}" to an AI coworker — ${pick.reason}`);
+        setTimeout(() => setStatusMessage(null), 6000);
+        return;
+      }
+
+      const chosenHuman = candidates.find((c) => c.id === pick.candidateId && !c.isNpc);
+      if (!chosenHuman) {
+        setStatusMessage("Smart Assign couldn't settle on anyone — try again.");
+        setTimeout(() => setStatusMessage(null), 4000);
+        return;
+      }
+      const isSelfRequest = chosenHuman.id === profile.id;
+      await assignWork({
+        companyId: profile.company_id,
+        template,
+        createdBy: profile.id,
+        assignedTo: chosenHuman.id,
+        isSelfRequest,
+      });
+      setStatusMessage(
+        `🪄 Smart-assigned "${template.title}" to ${chosenHuman.name} — ${pick.reason}`,
+      );
+      setTimeout(() => setStatusMessage(null), 6000);
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Smart Assign couldn't complete.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    } finally {
+      setSmartAssigning(false);
     }
   }
 
@@ -346,6 +422,13 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
                 }
               : undefined
           }
+          onSmartAssign={
+            isOwner &&
+            (members.some((m) => m.id !== profile.id && profile.level > m.level) || npcs.length > 0)
+              ? handleSmartAssign
+              : undefined
+          }
+          smartAssigning={smartAssigning}
         />
       )}
 
