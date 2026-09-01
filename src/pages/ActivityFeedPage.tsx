@@ -34,6 +34,8 @@ export function ActivityFeedPage({ profile }: ActivityFeedPageProps) {
   const [items, setItems] = useState<ActivityItem[]>([]);
   const [members, setMembers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actorFilter, setActorFilter] = useState("");
+  const [eventFilter, setEventFilter] = useState("");
 
   const load = useCallback(async () => {
     if (!profile.company_id) return;
@@ -80,13 +82,45 @@ export function ActivityFeedPage({ profile }: ActivityFeedPageProps) {
           <p className="text-sm text-stone-500">Everything happening across the company, live.</p>
         </div>
 
+        {items.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            <select
+              value={actorFilter}
+              onChange={(e) => setActorFilter(e.target.value)}
+              className="rounded-md border border-stone-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none"
+            >
+              <option value="">Everyone</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.display_name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={eventFilter}
+              onChange={(e) => setEventFilter(e.target.value)}
+              className="rounded-md border border-stone-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none"
+            >
+              <option value="">All events</option>
+              {Object.entries(EVENT_LABEL).map(([type, label]) => (
+                <option key={type} value={type}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {items.length === 0 ? (
           <p className="rounded-lg border border-dashed border-stone-200 bg-stone-50 p-6 text-center text-sm text-stone-400">
             Nothing has happened yet — request or assign some work to get started.
           </p>
         ) : (
           <div className="flex flex-col gap-1">
-            {items.map((item) => (
+            {items
+              .filter((item) => !actorFilter || item.actor_id === actorFilter)
+              .filter((item) => !eventFilter || item.event_type === eventFilter)
+              .map((item) => (
               <div
                 key={item.id}
                 className="flex items-start gap-3 rounded-md border border-stone-100 px-3 py-2"

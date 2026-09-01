@@ -187,9 +187,15 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
   const needsMyApproval = documents.filter(
     (d) => d.status === "pending_approval" && profile.level > memberLevel(d.assigned_to),
   );
-  const iAssignedToOthers = documents.filter(
-    (d) => d.created_by === profile.id && d.assigned_to !== profile.id && d.status !== "completed",
-  );
+  const iAssignedToOthers = documents
+    .filter((d) => d.created_by === profile.id && d.assigned_to !== profile.id && d.status !== "completed")
+    .slice()
+    .sort((a, b) => {
+      if (!a.due_at && !b.due_at) return 0;
+      if (!a.due_at) return 1;
+      if (!b.due_at) return -1;
+      return a.due_at.localeCompare(b.due_at);
+    });
   const completed = documents.filter((d) => d.status === "completed").slice(0, 10);
   const overdueCount = documents.filter(isOverdue).length;
 

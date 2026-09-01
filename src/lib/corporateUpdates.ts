@@ -30,6 +30,11 @@ export async function postCorporateUpdate(params: {
 }
 
 export async function deleteCorporateUpdate(id: string) {
-  const { error } = await supabase.from("corporate_updates").delete().eq("id", id);
+  const { error } = await supabase.from("corporate_updates").delete().eq("id", id).select().single();
+  if (error) throw error;
+}
+
+export async function setCorporateUpdatePinned(id: string, pinned: boolean) {
+  const { error } = await supabase.from("corporate_updates").update({ pinned }).eq("id", id);
   if (error) throw error;
 }

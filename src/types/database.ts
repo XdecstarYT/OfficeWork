@@ -331,6 +331,7 @@ export interface Database {
           title: string;
           body: string;
           posted_by: string;
+          pinned: boolean;
           created_at: string;
         };
         Insert: {
@@ -339,6 +340,7 @@ export interface Database {
           title: string;
           body: string;
           posted_by: string;
+          pinned?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["corporate_updates"]["Insert"]>;

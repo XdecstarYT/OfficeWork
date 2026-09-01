@@ -107,6 +107,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   const [generatingMotto, setGeneratingMotto] = useState(false);
   const [memberQuery, setMemberQuery] = useState("");
   const [memberSort, setMemberSort] = useState<"level" | "name" | "money" | "department">("level");
+  const [memberDeptFilter, setMemberDeptFilter] = useState("");
   const [npcCompletedCounts, setNpcCompletedCounts] = useState<Record<string, number>>({});
   const { addCustomTemplate } = useCustomTemplates(profile.company_id, profile.id);
 
@@ -884,11 +885,26 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                 <option value="money">Sort: Money</option>
                 <option value="department">Sort: Department</option>
               </select>
+              {new Set(members.map((m) => m.department).filter(Boolean)).size > 0 && (
+                <select
+                  value={memberDeptFilter}
+                  onChange={(e) => setMemberDeptFilter(e.target.value)}
+                  className="shrink-0 rounded-md border border-stone-300 px-2 py-1.5 text-xs focus:border-emerald-500 focus:outline-none"
+                >
+                  <option value="">All departments</option>
+                  {[...new Set(members.map((m) => m.department).filter((d): d is string => !!d))].map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           )}
 
           {members
             .filter((m) => m.display_name.toLowerCase().includes(memberQuery.trim().toLowerCase()))
+            .filter((m) => !memberDeptFilter || m.department === memberDeptFilter)
             .slice()
             .sort((a, b) => {
               if (memberSort === "name") return a.display_name.localeCompare(b.display_name);

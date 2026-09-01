@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { GameEntryScreen } from "./pages/GameEntryScreen";
 import { CompanyGate } from "./pages/CompanyGate";
 import { GameLobby } from "./pages/GameLobby";
@@ -55,6 +55,17 @@ function App() {
   const notifications = useNotifications(profile);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key.toLowerCase() !== "n" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement;
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable) return;
+      setShowNotifications((s) => !s);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   async function handleCompleteRequest(request: ClientRequest) {
     if (!user) return;
@@ -123,6 +134,7 @@ function App() {
                 onClick={() => setShowNotifications((s) => !s)}
                 className="relative rounded-md p-1.5 text-stone-500 hover:bg-stone-100"
                 aria-label="Notifications"
+                title="Notifications (press N)"
               >
                 🔔
                 {notificationTotal > 0 && (
@@ -171,7 +183,9 @@ function App() {
             </div>
             <button
               type="button"
-              onClick={() => signOut()}
+              onClick={() => {
+                if (window.confirm("Sign out?")) signOut();
+              }}
               className="text-xs text-stone-400 hover:text-stone-600"
             >
               Sign out

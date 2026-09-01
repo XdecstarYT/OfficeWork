@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchCompanyMembers } from "../lib/company";
 import { fetchCompanyDocuments } from "../lib/documents";
+import { fetchCompanyNpcs } from "../lib/npcs";
 import { careerLevelFromXp } from "../lib/careerLevel";
+import { downloadCsv } from "../lib/csv";
 import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../types/database";
 
@@ -16,7 +18,13 @@ const MEDALS = ["🥇", "🥈", "🥉"];
 interface Badge {
   emoji: string;
   label: string;
-  earned: (stats: { completed: number; money: number; careerLevel: number; tenureDays: number }) => boolean;
+  earned: (stats: {
+    completed: number;
+    money: number;
+    careerLevel: number;
+    tenureDays: number;
+    npcsHired: number;
+  }) => boolean;
 }
 
 const BADGES: Badge[] = [
@@ -28,7 +36,9 @@ const BADGES: Badge[] = [
   { emoji: "⭐", label: "Rising Star", earned: (s) => s.careerLevel >= 5 },
   { emoji: "🌟", label: "Veteran", earned: (s) => s.careerLevel >= 10 },
   { emoji: "📅", label: "One Month In", earned: (s) => s.tenureDays >= 30 },
+  { emoji: "🤖", label: "Team Player", earned: (s) => s.npcsHired >= 1 },
 ];
+
 
 function Rankings({
   title,
@@ -73,14 +83,17 @@ function Rankings({
 export function LeaderboardPage({ profile }: LeaderboardPageProps) {
   const [members, setMembers] = useState<Profile[]>([]);
   const [completedCounts, setCompletedCounts] = useState<Record<string, number>>({});
+  const [npcsHiredCounts, setNpcsHiredCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [departmentFilter, setDepartmentFilter] = useState("");
 
   const load = useCallback(async () => {
     if (!profile.company_id) return;
     setLoading(true);
-    const [m, docs] = await Promise.all([
+    const [m, docs, npcs] = await Promise.all([
       fetchCompanyMembers(profile.company_id),
       fetchCompanyDocuments(profile.company_id),
+      fetchCompanyNpcs(profile.company_id),
     ]);
     setMembers(m);
     const counts: Record<string, number> = {};
@@ -90,6 +103,11 @@ export function LeaderboardPage({ profile }: LeaderboardPageProps) {
       }
     }
     setCompletedCounts(counts);
+    const hireCounts: Record<string, number> = {};
+    for (const n of npcs) {
+      hireCounts[n.hired_by] = (hireCounts[n.hired_by] ?? 0) + 1;
+    }
+    setNpcsHiredCounts(hireCounts);
     setLoading(false);
   }, [profile.company_id]);
 
@@ -136,9 +154,29 @@ export function LeaderboardPage({ profile }: LeaderboardPageProps) {
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
-        <div>
-          <h1 className="text-lg font-semibold text-stone-900">🏆 Leaderboard</h1>
-          <p className="text-sm text-stone-500">See how you stack up against your coworkers.</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-semibold text-stone-900">🏆 Leaderboard</h1>
+            <p className="text-sm text-stone-500">See how you stack up against your coworkers.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              downloadCsv("leaderboard.csv", [
+                ["Name", "Money", "Tasks Completed", "Career Level", "Department"],
+                ...members.map((m) => [
+                  m.display_name,
+                  m.money.toFixed(2),
+                  completedCounts[m.id] ?? 0,
+                  careerLevelFromXp(m.xp),
+                  m.department ?? "",
+                ]),
+              ])
+            }
+            className="shrink-0 rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+          >
+            ⬇ Export CSV
+          </button>
         </div>
 
         <Rankings title="💵 Richest" rows={byMoney} profile={profile} formatValue={(v) => `$${v.toFixed(2)}`} />
@@ -156,16 +194,35 @@ export function LeaderboardPage({ profile }: LeaderboardPageProps) {
         />
 
         <section className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-white p-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-400">
-            🎖 Achievements
-          </h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-400">
+              🎖 Achievements
+            </h2>
+            {new Set(members.map((m) => m.department).filter(Boolean)).size > 0 && (
+              <select
+                value={departmentFilter}
+                onChange={(e) => setDepartmentFilter(e.target.value)}
+                className="rounded-md border border-stone-300 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+              >
+                <option value="">All departments</option>
+                {[...new Set(members.map((m) => m.department).filter((d): d is string => !!d))].map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
           <div className="flex flex-col gap-2">
-            {members.map((m) => {
+            {members
+              .filter((m) => !departmentFilter || m.department === departmentFilter)
+              .map((m) => {
               const stats = {
                 completed: completedCounts[m.id] ?? 0,
                 money: m.money,
                 careerLevel: careerLevelFromXp(m.xp),
                 tenureDays: (Date.now() - new Date(m.created_at).getTime()) / 86_400_000,
+                npcsHired: npcsHiredCounts[m.id] ?? 0,
               };
               const earned = BADGES.filter((b) => b.earned(stats));
               return (

@@ -4,6 +4,7 @@ import { fetchCompanyDocuments } from "../lib/documents";
 import { fetchCompanyActivity, type ActivityItem } from "../lib/activity";
 import { fetchCorporateUpdates, type CorporateUpdateRow } from "../lib/corporateUpdates";
 import { fetchCompanyNpcs } from "../lib/npcs";
+import { fetchMeetings, type BoardMeetingRow } from "../lib/boardMeetings";
 import { CAREER_MILESTONES, isMilestoneComplete } from "../data/careerMilestones";
 import type { NotificationCounts } from "../hooks/useNotifications";
 import { careerProgress } from "../lib/careerLevel";
@@ -51,6 +52,8 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
   const [latestUpdate, setLatestUpdate] = useState<CorporateUpdateRow | null>(null);
   const [updatesPosted, setUpdatesPosted] = useState(0);
   const [npcCount, setNpcCount] = useState(0);
+  const [tasksThisWeek, setTasksThisWeek] = useState(0);
+  const [nextMeeting, setNextMeeting] = useState<BoardMeetingRow | null>(null);
   const [members, setMembers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [claimingId, setClaimingId] = useState<string | null>(null);
@@ -62,20 +65,31 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
       return;
     }
     setLoading(true);
-    const [m, docs, activity, updates, npcs] = await Promise.all([
+    const [m, docs, activity, updates, npcs, meetings] = await Promise.all([
       fetchCompanyMembers(profile.company_id),
       fetchCompanyDocuments(profile.company_id),
       fetchCompanyActivity(profile.company_id, 5),
       fetchCorporateUpdates(profile.company_id),
       fetchCompanyNpcs(profile.company_id),
+      fetchMeetings(profile.company_id),
     ]);
     setMembers(m);
     setMemberCount(m.length);
     setTasksCompleted(docs.filter((d) => d.status === "completed").length);
+    const weekAgo = Date.now() - 7 * 86_400_000;
+    setTasksThisWeek(
+      docs.filter((d) => d.status === "completed" && d.completed_at && new Date(d.completed_at).getTime() >= weekAgo)
+        .length,
+    );
     setRecentActivity(activity);
     setLatestUpdate(updates[0] ?? null);
     setUpdatesPosted(updates.length);
     setNpcCount(npcs.length);
+    const now = Date.now();
+    const upcoming = meetings
+      .filter((mt) => new Date(mt.scheduled_at).getTime() >= now)
+      .sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
+    setNextMeeting(upcoming[0] ?? null);
     setLoading(false);
   }, [profile.company_id]);
 
@@ -132,20 +146,22 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
   }
 
   const notificationTotal = notifications.pendingApproval + notifications.unreadEmail + notifications.overdue;
+  const hour = new Date().getHours();
+  const timeGreeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
         <div>
           <h1 className="text-lg font-semibold text-stone-900">
-            👋 Welcome back, {profile.display_name}
+            👋 {timeGreeting}, {profile.display_name}
           </h1>
           <p className="text-sm text-stone-500">
             {profile.job_title} at {company?.name ?? "your company"} · Rank {profile.level}
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           <StatTile emoji="💵" label="Money" value={`$${profile.money.toFixed(2)}`} />
           <StatTile
             emoji="⭐"
@@ -155,7 +171,25 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
           />
           <StatTile emoji="🏢" label="Team Size" value={String(memberCount)} />
           <StatTile emoji="✅" label="Tasks Completed" value={String(tasksCompleted)} />
+          <StatTile emoji="📆" label="This Week" value={String(tasksThisWeek)} sub="tasks completed" />
         </div>
+
+        {nextMeeting && (
+          <section className="rounded-lg border border-sky-200 bg-sky-50/50 p-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-sky-700">
+              📅 Upcoming Meeting
+            </h2>
+            <h3 className="mt-1 text-sm font-semibold text-stone-900">{nextMeeting.title}</h3>
+            <p className="mt-0.5 text-xs text-stone-500">{new Date(nextMeeting.scheduled_at).toLocaleString()}</p>
+            <button
+              type="button"
+              onClick={() => onNavigate("meetings")}
+              className="mt-2 text-xs font-medium text-sky-700 hover:text-sky-800"
+            >
+              View & RSVP →
+            </button>
+          </section>
+        )}
 
         {company?.career_mode && (
           <section className="rounded-lg border border-indigo-200 bg-indigo-50/50 p-4">

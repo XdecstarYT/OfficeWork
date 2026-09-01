@@ -3,6 +3,7 @@ import {
   fetchCorporateUpdates,
   postCorporateUpdate,
   deleteCorporateUpdate,
+  setCorporateUpdatePinned,
   type CorporateUpdateRow,
 } from "../lib/corporateUpdates";
 import { fetchCompanyMembers, awardMoney, awardXp } from "../lib/company";
@@ -126,6 +127,15 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
     }
   }
 
+  async function handleTogglePin(u: CorporateUpdateRow) {
+    try {
+      await setCorporateUpdatePinned(u.id, !u.pinned);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't pin that update.");
+    }
+  }
+
   if (loading) {
     return <div className="flex-1 p-6 text-sm text-stone-400">Loading updates…</div>;
   }
@@ -199,14 +209,21 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
                 const q = query.trim().toLowerCase();
                 return !q || u.title.toLowerCase().includes(q) || u.body.toLowerCase().includes(q);
               })
+              .slice()
+              .sort((a, b) => Number(b.pinned) - Number(a.pinned))
               .map((u) => (
               <article
                 key={u.id}
-                className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm"
+                className={`rounded-xl border p-5 shadow-sm ${
+                  u.pinned ? "border-amber-300 bg-amber-50/40" : "border-stone-200 bg-white"
+                }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
-                    Company-Wide
+                  <span className="flex items-center gap-1.5">
+                    <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                      Company-Wide
+                    </span>
+                    {u.pinned && <span className="text-xs" title="Pinned">📌</span>}
                   </span>
                   <span className="text-xs text-stone-400">
                     {new Date(u.created_at).toLocaleString()}
@@ -220,15 +237,26 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
                   <p className="text-xs font-medium text-stone-400">
                     — {members.find((m) => m.id === u.posted_by)?.display_name ?? "Leadership"}
                   </p>
-                  {(isOwner || u.posted_by === profile.id) && (
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(u.id)}
-                      className="text-xs font-medium text-red-500 hover:text-red-700"
-                    >
-                      🗑️ Delete
-                    </button>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {isOwner && (
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePin(u)}
+                        className="text-xs font-medium text-amber-600 hover:text-amber-800"
+                      >
+                        {u.pinned ? "Unpin" : "📌 Pin"}
+                      </button>
+                    )}
+                    {(isOwner || u.posted_by === profile.id) && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(u.id)}
+                        className="text-xs font-medium text-red-500 hover:text-red-700"
+                      >
+                        🗑️ Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
               </article>
             ))}

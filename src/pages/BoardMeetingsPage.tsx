@@ -33,6 +33,7 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
   const [scheduledAt, setScheduledAt] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   const load = useCallback(async () => {
     if (!profile.company_id) return;
@@ -143,8 +144,10 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
   }
 
   const now = Date.now();
-  const upcoming = meetings.filter((m) => new Date(m.scheduled_at).getTime() >= now);
-  const past = meetings.filter((m) => new Date(m.scheduled_at).getTime() < now);
+  const q = query.trim().toLowerCase();
+  const matchesQuery = (m: BoardMeetingRow) => !q || m.title.toLowerCase().includes(q);
+  const upcoming = meetings.filter((m) => new Date(m.scheduled_at).getTime() >= now && matchesQuery(m));
+  const past = meetings.filter((m) => new Date(m.scheduled_at).getTime() < now && matchesQuery(m));
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
@@ -165,6 +168,16 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
 
         {statusMessage && (
           <div className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-800">{statusMessage}</div>
+        )}
+
+        {meetings.length > 3 && (
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search meetings by title…"
+            className="rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          />
         )}
 
         <MeetingList

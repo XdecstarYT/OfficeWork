@@ -3,6 +3,7 @@ import { fetchCompanyDocuments, payoutFor, type DocumentRow } from "../lib/docum
 import { fetchCompanyMembers } from "../lib/company";
 import { fetchCompanyNpcs, resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
 import { fetchCustomNpcPersonas, type CustomNpcPersonaRow } from "../lib/customNpcPersonas";
+import { downloadCsv } from "../lib/csv";
 import { supabase } from "../lib/supabaseClient";
 import { DocumentPreview } from "../components/DocumentPreview";
 import type { Database } from "../types/database";
@@ -26,6 +27,9 @@ export function ArchivePage({ profile }: ArchivePageProps) {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [personFilter, setPersonFilter] = useState("");
+  const [sortMode, setSortMode] = useState<"newest" | "oldest" | "payout">("newest");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [openDoc, setOpenDoc] = useState<DocumentRow | null>(null);
 
   const load = useCallback(async () => {
@@ -74,11 +78,27 @@ export function ArchivePage({ profile }: ArchivePageProps) {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return documents
-      .filter((d) => !personFilter || d.assigned_to === personFilter)
+    const fromTime = dateFrom ? new Date(dateFrom).getTime() : null;
+    const toTime = dateTo ? new Date(dateTo).getTime() + 86_400_000 : null;
+    const results = documents
+      .filter((d) => {
+        if (!personFilter) return true;
+        if (personFilter === "__npc__") return !!d.assigned_to_npc_id;
+        return d.assigned_to === personFilter;
+      })
       .filter((d) => !q || d.title.toLowerCase().includes(q))
-      .sort((a, b) => (b.completed_at ?? "").localeCompare(a.completed_at ?? ""));
-  }, [documents, query, personFilter]);
+      .filter((d) => {
+        if (!fromTime && !toTime) return true;
+        const t = d.completed_at ? new Date(d.completed_at).getTime() : 0;
+        return (!fromTime || t >= fromTime) && (!toTime || t < toTime);
+      });
+    const sorted = [...results];
+    if (sortMode === "newest") sorted.sort((a, b) => (b.completed_at ?? "").localeCompare(a.completed_at ?? ""));
+    else if (sortMode === "oldest") sorted.sort((a, b) => (a.completed_at ?? "").localeCompare(b.completed_at ?? ""));
+    else if (sortMode === "payout")
+      sorted.sort((a, b) => payoutFor(b, asTemplate(b)) - payoutFor(a, asTemplate(a)));
+    return sorted;
+  }, [documents, query, personFilter, sortMode, dateFrom, dateTo]);
 
   if (loading) {
     return <div className="flex-1 p-6 text-sm text-stone-400">Loading archive…</div>;
@@ -87,20 +107,41 @@ export function ArchivePage({ profile }: ArchivePageProps) {
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="mx-auto flex max-w-3xl flex-col gap-4">
-        <div>
-          <h1 className="text-lg font-semibold text-stone-900">🗄 Document Archive</h1>
-          <p className="text-sm text-stone-500">
-            Every completed document across the company — {documents.length} total.
-          </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-semibold text-stone-900">🗄 Document Archive</h1>
+            <p className="text-sm text-stone-500">
+              Every completed document across the company — {documents.length} total.
+            </p>
+          </div>
+          {documents.length > 0 && (
+            <button
+              type="button"
+              onClick={() =>
+                downloadCsv("archive.csv", [
+                  ["Title", "Completed By", "Payout", "Completed At"],
+                  ...filtered.map((d) => [
+                    d.title,
+                    completedByLabel(d),
+                    d.assigned_to_npc_id ? 0 : payoutFor(d, asTemplate(d)),
+                    d.completed_at ? new Date(d.completed_at).toLocaleString() : "",
+                  ]),
+                ])
+              }
+              className="shrink-0 rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+            >
+              ⬇ Export CSV
+            </button>
+          )}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by title…"
-            className="flex-1 rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="min-w-[10rem] flex-1 rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
           />
           <select
             value={personFilter}
@@ -113,7 +154,35 @@ export function ArchivePage({ profile }: ArchivePageProps) {
                 {m.display_name}
               </option>
             ))}
+            {npcs.length > 0 && <option value="__npc__">🤖 AI Coworkers</option>}
           </select>
+          <select
+            value={sortMode}
+            onChange={(e) => setSortMode(e.target.value as typeof sortMode)}
+            className="rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="payout">Highest payout</option>
+          </select>
+          <label className="flex items-center gap-1 text-xs text-stone-500">
+            From
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="rounded-md border border-stone-300 px-2 py-1.5 text-xs focus:border-emerald-500 focus:outline-none"
+            />
+          </label>
+          <label className="flex items-center gap-1 text-xs text-stone-500">
+            To
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="rounded-md border border-stone-300 px-2 py-1.5 text-xs focus:border-emerald-500 focus:outline-none"
+            />
+          </label>
         </div>
 
         {filtered.length === 0 ? (

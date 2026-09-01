@@ -204,6 +204,26 @@ with real coworkers.
   count and Money thresholds, Career Level thresholds, hiring your first AI
   coworker, reaching Day 5, posting your first Corporate Update) each unlock
   a one-time Money/XP reward you claim with a button once you've reached it.
+- **Assign Work to AI Coworkers**: hired AI coworkers aren't just for email
+  and drafts — from the Company tab, "📋 Assign Work" lets you hand one a
+  template directly. They draft and complete it immediately (no payout —
+  they're salaried by their hire cost, not per task) and it shows up
+  properly credited to them in the Archive.
+- **Company branding**: give your company an emoji and a motto from Company
+  Settings, with an "✨ Generate Motto" button that brainstorms one via AI.
+- **Custom AI personas can now be created and hired/added by anyone**, not
+  just picked from the built-in rosters — see AI Coworkers and AI Clients
+  above.
+- **Quality-of-life pass** across the app: sort/filter controls (Filing
+  Cabinet by name/time/difficulty, My Work overdue-only, Archive by
+  date range/payout/AI-vs-human, Corporate Updates and Activity Feed by
+  author, Leaderboard by department, AI Clients by category), search boxes
+  (Inbox, Corporate Updates, Board Meetings), pinnable Corporate Updates,
+  favoritable AI Clients, CSV export (Leaderboard, Archive), a
+  time-of-day-aware Dashboard greeting with a "this week" stat and an
+  upcoming-meeting preview, an "N" keyboard shortcut for notifications, and
+  confirmation prompts before destructive actions (sign out, leave company,
+  delete a custom template).
 
 Not yet built: an avatar/office world, cosmetics.
 
