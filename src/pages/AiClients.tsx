@@ -13,6 +13,13 @@ import { TAXONOMY } from "../data/taxonomy";
 import { useClientRequests } from "../hooks/useClientRequests";
 import { useClientRelationships } from "../hooks/useClientRelationships";
 import { useFavoriteClients } from "../hooks/useFavoriteClients";
+import {
+  fetchClientContracts,
+  createClientContract,
+  incrementContractProgress,
+  type ClientContractRow,
+} from "../lib/clientContracts";
+import { awardMoney } from "../lib/company";
 import { ClientRequestModal } from "../components/ClientRequestModal";
 import { supabase } from "../lib/supabaseClient";
 import type { LlmConfig } from "../lib/llmConfig";
@@ -60,17 +67,28 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
   const [clientAiHint, setClientAiHint] = useState("");
   const [clientAiBusy, setClientAiBusy] = useState(false);
   const [creatingClient, setCreatingClient] = useState(false);
+  const [contracts, setContracts] = useState<ClientContractRow[]>([]);
+  const [offeringContractFor, setOfferingContractFor] = useState<ClientPersona | null>(null);
+  const [contractTitle, setContractTitle] = useState("");
+  const [contractTasks, setContractTasks] = useState(5);
+  const [contractBonus, setContractBonus] = useState(50);
+  const [creatingContract, setCreatingContract] = useState(false);
 
   const companyId = profile.company_id;
 
-  const loadCustomClients = useCallback(async () => {
+  const loadClientData = useCallback(async () => {
     if (!companyId) return;
-    setCustomClients(await fetchCustomAiClients(companyId));
+    const [clients, contractRows] = await Promise.all([
+      fetchCustomAiClients(companyId),
+      fetchClientContracts(companyId),
+    ]);
+    setCustomClients(clients);
+    setContracts(contractRows);
   }, [companyId]);
 
   useEffect(() => {
-    loadCustomClients();
-  }, [loadCustomClients]);
+    loadClientData();
+  }, [loadClientData]);
 
   useEffect(() => {
     if (!companyId) return;
@@ -79,13 +97,18 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "custom_ai_clients", filter: `company_id=eq.${companyId}` },
-        () => loadCustomClients(),
+        () => loadClientData(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "client_contracts", filter: `company_id=eq.${companyId}` },
+        () => loadClientData(),
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [companyId, loadCustomClients]);
+  }, [companyId, loadClientData]);
 
   const allClients: ClientPersona[] = [...CLIENTS, ...customClients.map(customRowToClientPersona)];
   const visibleClients = allClients
@@ -140,7 +163,7 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
       setClientDraftMin(15);
       setClientDraftMax(50);
       setClientAiHint("");
-      await loadCustomClients();
+      await loadClientData();
     } finally {
       setCreatingClient(false);
     }
@@ -149,7 +172,7 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
   async function handleDeleteClient(id: string) {
     if (!window.confirm("Delete this custom client? Its active/past requests aren't affected.")) return;
     await deleteCustomAiClient(id);
-    await loadCustomClients();
+    await loadClientData();
   }
 
   async function handleGetWork(clientId: string) {
@@ -177,6 +200,41 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
     } finally {
       setLoadingClientId(null);
       setOpenClientId(clientId);
+    }
+  }
+
+  async function handleCreateContract() {
+    if (!companyId || !offeringContractFor || !contractTitle.trim()) return;
+    setCreatingContract(true);
+    try {
+      await createClientContract({
+        companyId,
+        clientId: offeringContractFor.id,
+        title: contractTitle.trim(),
+        totalTasks: Math.max(1, contractTasks),
+        bonusPayout: Math.max(0, contractBonus),
+        createdBy: profile.id,
+      });
+      setOfferingContractFor(null);
+      setContractTitle("");
+      setContractTasks(5);
+      setContractBonus(50);
+      await loadClientData();
+    } finally {
+      setCreatingContract(false);
+    }
+  }
+
+  /** After a client task is completed: bump any active contract for that
+   * client and pay out the bonus once it's finished. Not awaited by the
+   * caller (matches the existing fire-and-forget onCompleteRequest/
+   * recordCompletion calls in the same spot) - profiles has its own
+   * realtime subscription elsewhere, so the balance still lands live. */
+  async function handleContractProgress(clientId: string) {
+    if (!companyId) return;
+    const finished = await incrementContractProgress(companyId, clientId);
+    if (finished) {
+      await awardMoney(profile.id, finished.bonusPayout);
     }
   }
 
@@ -275,6 +333,36 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
                     </span>
                   ) : null;
                 })()}
+
+                {(() => {
+                  const contract = contracts.find((ct) => ct.client_id === c.id && ct.status === "active");
+                  if (!contract) return null;
+                  const pct = Math.min(100, (contract.completed_tasks / contract.total_tasks) * 100);
+                  return (
+                    <div className="rounded-md border border-indigo-200 bg-indigo-50/50 p-2">
+                      <p className="text-xs font-medium text-indigo-700">
+                        📜 {contract.title} — {contract.completed_tasks}/{contract.total_tasks} · $
+                        {contract.bonus_payout.toFixed(2)} bonus
+                      </p>
+                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-indigo-100">
+                        <div className="h-full rounded-full bg-indigo-500" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {isOwner && !contracts.some((ct) => ct.client_id === c.id && ct.status === "active") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOfferingContractFor(c);
+                      setContractTitle(`${c.name}'s ongoing work`);
+                    }}
+                    className="w-fit text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                  >
+                    📜 Offer a Contract
+                  </button>
+                )}
 
                 {errorByClient[c.id] && (
                   <p className="text-xs text-amber-600">{errorByClient[c.id]}</p>
@@ -416,6 +504,71 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
         </div>
       )}
 
+      {offeringContractFor && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+          onClick={() => setOfferingContractFor(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-stone-900">
+              📜 Offer {offeringContractFor.name} a Contract
+            </h2>
+            <p className="mt-1 text-xs text-stone-500">
+              A multi-task engagement — complete this many requests from them to earn the bonus.
+            </p>
+            <input
+              type="text"
+              value={contractTitle}
+              onChange={(e) => setContractTitle(e.target.value)}
+              placeholder="Contract title"
+              className="mt-3 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <div className="mt-2 flex gap-2">
+              <label className="flex-1 text-xs text-stone-500">
+                Tasks
+                <input
+                  type="number"
+                  min={1}
+                  value={contractTasks}
+                  onChange={(e) => setContractTasks(Number(e.target.value))}
+                  className="mt-1 w-full rounded-md border border-stone-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none"
+                />
+              </label>
+              <label className="flex-1 text-xs text-stone-500">
+                Bonus $
+                <input
+                  type="number"
+                  min={0}
+                  value={contractBonus}
+                  onChange={(e) => setContractBonus(Number(e.target.value))}
+                  className="mt-1 w-full rounded-md border border-stone-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none"
+                />
+              </label>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setOfferingContractFor(null)}
+                className="rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateContract}
+                disabled={creatingContract || !contractTitle.trim()}
+                className="rounded-md bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-50"
+              >
+                {creatingContract ? "Offering…" : "Offer Contract"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {openClient && openRequest && (
         <ClientRequestModal
           clientPersona={openClient}
@@ -430,6 +583,7 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
           onComplete={(finalRequest) => {
             onCompleteRequest(finalRequest);
             recordCompletion(openClient.id);
+            handleContractProgress(openClient.id);
             clearRequest(openClient.id);
             setOpenClientId(null);
           }}

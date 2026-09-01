@@ -27,6 +27,13 @@ import {
   createPerformanceReview,
   type PerformanceReviewRow,
 } from "../lib/performanceReviews";
+import {
+  fetchTimeOffRequests,
+  requestTimeOff,
+  decideTimeOff,
+  isOnLeaveToday,
+  type TimeOffRequestRow,
+} from "../lib/timeOff";
 import { assignWork, fetchCompanyDocuments, payoutFor } from "../lib/documents";
 import { sendEmailToCoworker } from "../lib/emails";
 import { postCorporateUpdate } from "../lib/corporateUpdates";
@@ -121,6 +128,12 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   const [draftingReview, setDraftingReview] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
   const [showReviewHistoryFor, setShowReviewHistoryFor] = useState<string | null>(null);
+  const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequestRow[]>([]);
+  const [showRequestTimeOff, setShowRequestTimeOff] = useState(false);
+  const [timeOffStart, setTimeOffStart] = useState("");
+  const [timeOffEnd, setTimeOffEnd] = useState("");
+  const [timeOffReason, setTimeOffReason] = useState("");
+  const [submittingTimeOff, setSubmittingTimeOff] = useState(false);
   const [generatingMotto, setGeneratingMotto] = useState(false);
   const [memberQuery, setMemberQuery] = useState("");
   const [memberSort, setMemberSort] = useState<"level" | "name" | "money" | "department">("level");
@@ -133,17 +146,19 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   const load = useCallback(async () => {
     if (!profile.company_id) return;
     setLoading(true);
-    const [c, m, docs, depts, reviews] = await Promise.all([
+    const [c, m, docs, depts, reviews, timeOff] = await Promise.all([
       fetchCompany(profile.company_id),
       fetchCompanyMembers(profile.company_id),
       fetchCompanyDocuments(profile.company_id),
       fetchCompanyDepartments(profile.company_id),
       fetchCompanyReviews(profile.company_id),
+      fetchTimeOffRequests(profile.company_id),
     ]);
     setCompany(c);
     setMembers(m);
     setCustomDepartments(depts);
     setAllReviews(reviews);
+    setTimeOffRequests(timeOff);
     const npcCounts: Record<string, number> = {};
     const memberCounts: Record<string, number> = {};
     for (const d of docs) {
@@ -186,6 +201,10 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       supabase.removeChannel(channel);
     };
   }, [profile.company_id, load]);
+
+  function memberLevelFor(memberId: string): number {
+    return members.find((m) => m.id === memberId)?.level ?? Infinity;
+  }
 
   function reviewTaskDetails(template: DocumentTemplate) {
     setPendingTemplate(template);
@@ -366,6 +385,37 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     } finally {
       setSubmittingReview(false);
     }
+  }
+
+  async function handleRequestTimeOff() {
+    if (!company || !timeOffStart || !timeOffEnd) return;
+    setSubmittingTimeOff(true);
+    try {
+      await requestTimeOff({
+        companyId: company.id,
+        memberId: profile.id,
+        startDate: timeOffStart,
+        endDate: timeOffEnd,
+        reason: timeOffReason.trim(),
+      });
+      setShowRequestTimeOff(false);
+      setTimeOffStart("");
+      setTimeOffEnd("");
+      setTimeOffReason("");
+      setStatusMessage("Time off requested — your manager will review it.");
+      setTimeout(() => setStatusMessage(null), 4000);
+      await load();
+    } catch (err) {
+      setStatusMessage(err instanceof Error ? err.message : "Couldn't submit that request.");
+      setTimeout(() => setStatusMessage(null), 4000);
+    } finally {
+      setSubmittingTimeOff(false);
+    }
+  }
+
+  async function handleDecideTimeOff(id: string, status: "approved" | "denied") {
+    await decideTimeOff(id, status, profile.id);
+    await load();
   }
 
   async function handleGenerateMotto() {
@@ -971,6 +1021,13 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
               >
                 🧩 Build Custom Task
               </button>
+              <button
+                type="button"
+                onClick={() => setShowRequestTimeOff(true)}
+                className="rounded-md border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700 hover:bg-sky-100"
+              >
+                🌴 Request Time Off
+              </button>
               {members.some((m) => profile.level > m.level) && (
                 <button
                   type="button"
@@ -1056,6 +1113,11 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                 <div>
                   <p className="text-sm font-medium text-stone-800">
                     {m.display_name} {isMe && <span className="text-stone-400">(you)</span>}
+                    {isOnLeaveToday(timeOffRequests, m.id) && (
+                      <span className="ml-1.5 rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-medium text-sky-700">
+                        🌴 On Leave
+                      </span>
+                    )}
                   </p>
                   {isEditing ? (
                     <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -1299,6 +1361,63 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
           )}
         </div>
 
+        {(timeOffRequests.some((r) => r.member_id === profile.id) ||
+          timeOffRequests.some((r) => r.status === "pending" && profile.level > memberLevelFor(r.member_id))) && (
+          <div className="flex flex-col gap-2 rounded-lg border border-sky-200 bg-sky-50/40 p-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-sky-700">🌴 Time Off</h2>
+            <div className="flex flex-col gap-1.5">
+              {timeOffRequests
+                .filter(
+                  (r) =>
+                    r.member_id === profile.id ||
+                    (r.status === "pending" && profile.level > memberLevelFor(r.member_id)),
+                )
+                .map((r) => (
+                  <div
+                    key={r.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-sky-100 bg-white px-3 py-2 text-sm"
+                  >
+                    <span>
+                      {members.find((m) => m.id === r.member_id)?.display_name ?? "Someone"} · {r.start_date} to{" "}
+                      {r.end_date}
+                      {r.reason && <span className="text-stone-400"> — {r.reason}</span>}
+                    </span>
+                    {r.status === "pending" && profile.level > memberLevelFor(r.member_id) ? (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleDecideTimeOff(r.id, "approved")}
+                          className="rounded bg-emerald-700 px-2 py-1 text-xs text-white hover:bg-emerald-800"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDecideTimeOff(r.id, "denied")}
+                          className="rounded border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100"
+                        >
+                          Deny
+                        </button>
+                      </div>
+                    ) : (
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                          r.status === "approved"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : r.status === "denied"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-stone-100 text-stone-500"
+                        }`}
+                      >
+                        {r.status}
+                      </span>
+                    )}
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
         <button
           type="button"
           onClick={async () => {
@@ -1311,6 +1430,64 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
           Leave company
         </button>
       </div>
+
+      {showRequestTimeOff && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+          onClick={() => setShowRequestTimeOff(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-stone-900">🌴 Request Time Off</h2>
+            <div className="mt-3 flex gap-2">
+              <label className="flex-1 text-xs text-stone-500">
+                From
+                <input
+                  type="date"
+                  value={timeOffStart}
+                  onChange={(e) => setTimeOffStart(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-stone-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none"
+                />
+              </label>
+              <label className="flex-1 text-xs text-stone-500">
+                To
+                <input
+                  type="date"
+                  value={timeOffEnd}
+                  onChange={(e) => setTimeOffEnd(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-stone-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none"
+                />
+              </label>
+            </div>
+            <textarea
+              value={timeOffReason}
+              onChange={(e) => setTimeOffReason(e.target.value)}
+              placeholder="Reason (optional)…"
+              rows={2}
+              className="mt-3 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowRequestTimeOff(false)}
+                className="rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRequestTimeOff}
+                disabled={submittingTimeOff || !timeOffStart || !timeOffEnd}
+                className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+              >
+                {submittingTimeOff ? "Submitting…" : "Submit Request"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {assigningNpc && !npcWorking && (
         <TemplatePickerModal
