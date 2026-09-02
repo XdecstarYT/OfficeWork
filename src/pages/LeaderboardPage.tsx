@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchCompanyMembers } from "../lib/company";
 import { fetchCompanyDocuments } from "../lib/documents";
-import { fetchCompanyNpcs } from "../lib/npcs";
+import { fetchCompanyNpcs, resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
+import { fetchCustomNpcPersonas, type CustomNpcPersonaRow } from "../lib/customNpcPersonas";
 import { careerLevelFromXp } from "../lib/careerLevel";
 import { downloadCsv } from "../lib/csv";
 import { supabase } from "../lib/supabaseClient";
@@ -88,18 +89,26 @@ export function LeaderboardPage({ profile }: LeaderboardPageProps) {
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [completedCountsThisWeek, setCompletedCountsThisWeek] = useState<Record<string, number>>({});
   const [rangeMode, setRangeMode] = useState<"all" | "week">("all");
+  const [npcs, setNpcs] = useState<CompanyNpcRow[]>([]);
+  const [customNpcPersonas, setCustomNpcPersonas] = useState<CustomNpcPersonaRow[]>([]);
+  const [npcCompletedCounts, setNpcCompletedCounts] = useState<Record<string, number>>({});
+  const [rankCopyLabel, setRankCopyLabel] = useState("📋 Copy My Rank");
 
   const load = useCallback(async () => {
     if (!profile.company_id) return;
     setLoading(true);
-    const [m, docs, npcs] = await Promise.all([
+    const [m, docs, companyNpcs, customPersonas] = await Promise.all([
       fetchCompanyMembers(profile.company_id),
       fetchCompanyDocuments(profile.company_id),
       fetchCompanyNpcs(profile.company_id),
+      fetchCustomNpcPersonas(profile.company_id),
     ]);
     setMembers(m);
+    setNpcs(companyNpcs);
+    setCustomNpcPersonas(customPersonas);
     const counts: Record<string, number> = {};
     const weekCounts: Record<string, number> = {};
+    const npcCounts: Record<string, number> = {};
     const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     for (const d of docs) {
       if (d.status === "completed" && d.assigned_to) {
@@ -108,11 +117,15 @@ export function LeaderboardPage({ profile }: LeaderboardPageProps) {
           weekCounts[d.assigned_to] = (weekCounts[d.assigned_to] ?? 0) + 1;
         }
       }
+      if (d.status === "completed" && d.assigned_to_npc_id) {
+        npcCounts[d.assigned_to_npc_id] = (npcCounts[d.assigned_to_npc_id] ?? 0) + 1;
+      }
     }
     setCompletedCounts(counts);
     setCompletedCountsThisWeek(weekCounts);
+    setNpcCompletedCounts(npcCounts);
     const hireCounts: Record<string, number> = {};
-    for (const n of npcs) {
+    for (const n of companyNpcs) {
       hireCounts[n.hired_by] = (hireCounts[n.hired_by] ?? 0) + 1;
     }
     setNpcsHiredCounts(hireCounts);
@@ -147,22 +160,62 @@ export function LeaderboardPage({ profile }: LeaderboardPageProps) {
     return <div className="flex-1 p-6 text-sm text-stone-400">Loading leaderboard…</div>;
   }
 
-  const byMoney = [...members]
+  const rankedMembers = members.filter((m) => !departmentFilter || m.department === departmentFilter);
+
+  const byMoney = [...rankedMembers]
     .map((m) => ({ id: m.id, display_name: m.display_name, value: m.money }))
     .sort((a, b) => b.value - a.value);
 
   const activeCompletedCounts = rangeMode === "week" ? completedCountsThisWeek : completedCounts;
-  const byCompleted = [...members]
+  const byCompleted = [...rankedMembers]
     .map((m) => ({ id: m.id, display_name: m.display_name, value: activeCompletedCounts[m.id] ?? 0 }))
     .sort((a, b) => b.value - a.value);
 
-  const byCareerLevel = [...members]
+  const byCareerLevel = [...rankedMembers]
     .map((m) => ({ id: m.id, display_name: m.display_name, value: careerLevelFromXp(m.xp) }))
+    .sort((a, b) => b.value - a.value);
+
+  const byStreak = [...rankedMembers]
+    .map((m) => ({ id: m.id, display_name: m.display_name, value: m.streak_count }))
+    .filter((r) => r.value > 0)
+    .sort((a, b) => b.value - a.value);
+
+  const badgeCountFor = (m: Profile) =>
+    BADGES.filter((b) =>
+      b.earned({
+        completed: completedCounts[m.id] ?? 0,
+        money: m.money,
+        careerLevel: careerLevelFromXp(m.xp),
+        tenureDays: (Date.now() - new Date(m.created_at).getTime()) / 86_400_000,
+        npcsHired: npcsHiredCounts[m.id] ?? 0,
+      }),
+    ).length;
+
+  const byBadges = [...rankedMembers]
+    .map((m) => ({ id: m.id, display_name: m.display_name, value: badgeCountFor(m) }))
+    .filter((r) => r.value > 0)
+    .sort((a, b) => b.value - a.value);
+
+  const byNpcCompleted = npcs
+    .map((n) => ({
+      id: n.id,
+      display_name: resolveNpcPersona(n, customNpcPersonas)?.name ?? "AI Coworker",
+      value: npcCompletedCounts[n.id] ?? 0,
+    }))
+    .filter((r) => r.value > 0)
     .sort((a, b) => b.value - a.value);
 
   const myMoneyRank = byMoney.findIndex((r) => r.id === profile.id) + 1;
   const myCompletedRank = byCompleted.findIndex((r) => r.id === profile.id) + 1;
   const myCareerRank = byCareerLevel.findIndex((r) => r.id === profile.id) + 1;
+  const amFirst = myMoneyRank === 1 || myCompletedRank === 1 || myCareerRank === 1;
+
+  function handleCopyMyRank() {
+    const text = `My rank: #${myMoneyRank} in Money, #${myCompletedRank} in Tasks, #${myCareerRank} in Career Level.`;
+    navigator.clipboard?.writeText(text).catch(() => {});
+    setRankCopyLabel("Copied!");
+    setTimeout(() => setRankCopyLabel("📋 Copy My Rank"), 1500);
+  }
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
@@ -192,12 +245,23 @@ export function LeaderboardPage({ profile }: LeaderboardPageProps) {
           </button>
         </div>
 
-        {members.length > 0 && (
-          <p className="rounded-md bg-stone-50 px-3 py-2 text-xs text-stone-500">
-            Your rank: <strong className="text-stone-700">#{myMoneyRank}</strong> in Money ·{" "}
-            <strong className="text-stone-700">#{myCompletedRank}</strong> in Tasks ·{" "}
-            <strong className="text-stone-700">#{myCareerRank}</strong> in Career Level
+        {amFirst && (
+          <p className="rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700">
+            🎉 You're #1 in at least one category — nice work!
           </p>
+        )}
+
+        {members.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-stone-50 px-3 py-2 text-xs text-stone-500">
+            <span>
+              Your rank: <strong className="text-stone-700">#{myMoneyRank}</strong> in Money ·{" "}
+              <strong className="text-stone-700">#{myCompletedRank}</strong> in Tasks ·{" "}
+              <strong className="text-stone-700">#{myCareerRank}</strong> in Career Level
+            </span>
+            <button type="button" onClick={handleCopyMyRank} className="shrink-0 font-medium text-stone-500 hover:text-stone-700">
+              {rankCopyLabel}
+            </button>
+          </div>
         )}
 
         <div className="flex items-center gap-1.5 self-start rounded-md border border-stone-200 p-0.5 text-xs">
@@ -235,6 +299,31 @@ export function LeaderboardPage({ profile }: LeaderboardPageProps) {
           formatValue={(v) => `Lvl ${v}`}
         />
 
+        {byStreak.length > 0 && (
+          <Rankings title="🔥 Longest Streaks" rows={byStreak} profile={profile} formatValue={(v) => `${v}d`} />
+        )}
+
+        {byBadges.length > 0 && (
+          <Rankings title="🎖 Most Badges" rows={byBadges} profile={profile} formatValue={(v) => `${v}`} />
+        )}
+
+        {byNpcCompleted.length > 0 && (
+          <section className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-white p-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-400">🤖 Top AI Coworkers</h2>
+            <ol className="flex flex-col gap-1">
+              {byNpcCompleted.map((r, i) => (
+                <li key={r.id} className="flex items-center justify-between rounded-md px-3 py-1.5 text-sm">
+                  <span className="flex items-center gap-2 text-stone-700">
+                    <span className="w-6 shrink-0 text-center">{MEDALS[i] ?? `#${i + 1}`}</span>
+                    {r.display_name}
+                  </span>
+                  <span className="font-medium tabular-nums text-stone-600">{r.value} completed</span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
         <section className="flex flex-col gap-2 rounded-lg border border-stone-200 bg-white p-4">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-400">
@@ -267,33 +356,42 @@ export function LeaderboardPage({ profile }: LeaderboardPageProps) {
                 npcsHired: npcsHiredCounts[m.id] ?? 0,
               };
               const earned = BADGES.filter((b) => b.earned(stats));
+              const nextBadge = BADGES.find((b) => !b.earned(stats));
               return (
                 <div
                   key={m.id}
-                  className={`flex flex-wrap items-center gap-2 rounded-md px-3 py-2 text-sm ${
+                  className={`flex flex-col gap-1 rounded-md px-3 py-2 text-sm ${
                     m.id === profile.id ? "bg-emerald-50" : ""
                   }`}
                 >
-                  <span className={m.id === profile.id ? "font-semibold text-emerald-800" : "text-stone-700"}>
-                    {m.display_name} {m.id === profile.id && "(you)"}
-                  </span>
-                  {m.department && (
-                    <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-500">
-                      {m.department}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={m.id === profile.id ? "font-semibold text-emerald-800" : "text-stone-700"}>
+                      {m.display_name} {m.id === profile.id && "(you)"}
                     </span>
-                  )}
-                  {earned.length === 0 ? (
-                    <span className="text-xs text-stone-400">No badges yet.</span>
-                  ) : (
-                    earned.map((b) => (
-                      <span
-                        key={b.label}
-                        title={b.label}
-                        className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
-                      >
-                        {b.emoji} {b.label}
+                    {m.department && (
+                      <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-500">
+                        {m.department}
                       </span>
-                    ))
+                    )}
+                    {earned.length > 0 && (
+                      <span className="text-[10px] text-stone-400">({earned.length} badge{earned.length === 1 ? "" : "s"})</span>
+                    )}
+                    {earned.length === 0 ? (
+                      <span className="text-xs text-stone-400">No badges yet.</span>
+                    ) : (
+                      earned.map((b) => (
+                        <span
+                          key={b.label}
+                          title={b.label}
+                          className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                        >
+                          {b.emoji} {b.label}
+                        </span>
+                      ))
+                    )}
+                  </div>
+                  {m.id === profile.id && nextBadge && (
+                    <p className="text-[11px] text-stone-400">Next: {nextBadge.emoji} {nextBadge.label}</p>
                   )}
                 </div>
               );

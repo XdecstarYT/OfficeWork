@@ -5,6 +5,7 @@ import { fetchCompanyNpcs, resolveNpcPersona, type CompanyNpcRow } from "../lib/
 import { fetchCustomNpcPersonas, type CustomNpcPersonaRow } from "../lib/customNpcPersonas";
 import { downloadCsv } from "../lib/csv";
 import { loadStarredDocuments, saveStarredDocuments } from "../lib/storage";
+import { renderBody } from "../lib/renderTemplate";
 import { supabase } from "../lib/supabaseClient";
 import { DocumentPreview } from "../components/DocumentPreview";
 import type { Database } from "../types/database";
@@ -34,6 +35,7 @@ export function ArchivePage({ profile }: ArchivePageProps) {
   const [openDoc, setOpenDoc] = useState<DocumentRow | null>(null);
   const [starred, setStarred] = useState<Set<string>>(() => loadStarredDocuments());
   const [starredOnly, setStarredOnly] = useState(false);
+  const [copyLabel, setCopyLabel] = useState("📋 Copy Text");
 
   function toggleStar(id: string) {
     setStarred((prev) => {
@@ -100,7 +102,7 @@ export function ArchivePage({ profile }: ArchivePageProps) {
         return d.assigned_to === personFilter;
       })
       .filter((d) => !starredOnly || starred.has(d.id))
-      .filter((d) => !q || d.title.toLowerCase().includes(q))
+      .filter((d) => !q || d.title.toLowerCase().includes(q) || completedByLabel(d).toLowerCase().includes(q))
       .filter((d) => {
         if (!fromTime && !toTime) return true;
         const t = d.completed_at ? new Date(d.completed_at).getTime() : 0;
@@ -119,6 +121,45 @@ export function ArchivePage({ profile }: ArchivePageProps) {
     [filtered],
   );
 
+  const activeFilterCount =
+    (query ? 1 : 0) + (personFilter ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0) + (starredOnly ? 1 : 0);
+
+  function clearAllFilters() {
+    setQuery("");
+    setPersonFilter("");
+    setDateFrom("");
+    setDateTo("");
+    setStarredOnly(false);
+  }
+
+  function setDateRange(days: number) {
+    const from = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+    setDateFrom(from);
+    setDateTo(new Date().toISOString().slice(0, 10));
+  }
+
+  function handleRandom() {
+    if (filtered.length === 0) return;
+    setOpenDoc(filtered[Math.floor(Math.random() * filtered.length)]);
+  }
+
+  function handleCopyDocText() {
+    if (!openDoc) return;
+    const text = renderBody(asTemplate(openDoc).bodyTemplate, (openDoc.field_values as Record<string, string>) ?? {});
+    navigator.clipboard?.writeText(text).catch(() => {});
+    setCopyLabel("Copied!");
+    setTimeout(() => setCopyLabel("📋 Copy Text"), 1500);
+  }
+
+  useEffect(() => {
+    if (!openDoc) return;
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpenDoc(null);
+    }
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [openDoc]);
+
   if (loading) {
     return <div className="flex-1 p-6 text-sm text-stone-400">Loading archive…</div>;
   }
@@ -134,7 +175,14 @@ export function ArchivePage({ profile }: ArchivePageProps) {
             </p>
           </div>
           {documents.length > 0 && (
-            <div className="flex shrink-0 gap-2">
+            <div className="flex shrink-0 flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleRandom}
+                className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+              >
+                🎲 Random
+              </button>
               <button
                 type="button"
                 onClick={() =>
@@ -185,9 +233,28 @@ export function ArchivePage({ profile }: ArchivePageProps) {
         {filtered.length > 0 && (
           <p className="text-xs text-stone-400">
             {filtered.length} document{filtered.length === 1 ? "" : "s"} · 💵 $
-            {filteredPayoutTotal.toFixed(2)} total payout
+            {filteredPayoutTotal.toFixed(2)} total payout · avg $
+            {(filteredPayoutTotal / filtered.length).toFixed(2)}
           </p>
         )}
+
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setDateRange(7)} className="rounded-full border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-500 hover:bg-stone-100">
+            Last 7 days
+          </button>
+          <button type="button" onClick={() => setDateRange(30)} className="rounded-full border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-500 hover:bg-stone-100">
+            Last 30 days
+          </button>
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="rounded-full border border-red-200 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+            >
+              ✕ Clear filters
+            </button>
+          )}
+        </div>
 
         <div className="flex flex-wrap gap-2">
           <input
@@ -267,6 +334,11 @@ export function ArchivePage({ profile }: ArchivePageProps) {
                     {d.title}
                   </p>
                   <p className="text-xs text-stone-400">
+                    {asTemplate(d).category && (
+                      <span className="mr-1 rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-500">
+                        {asTemplate(d).category}
+                      </span>
+                    )}
                     {completedByLabel(d)}
                     {!d.assigned_to_npc_id && ` · 💵 $${payoutFor(d, asTemplate(d))}`} ·{" "}
                     {d.completed_at ? new Date(d.completed_at).toLocaleDateString() : "—"}
@@ -305,13 +377,22 @@ export function ArchivePage({ profile }: ArchivePageProps) {
                   {openDoc.completed_at ? new Date(openDoc.completed_at).toLocaleDateString() : "—"}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="shrink-0 rounded-md bg-stone-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-900"
-              >
-                🖨 Print / Save as PDF
-              </button>
+              <div className="flex shrink-0 gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopyDocText}
+                  className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+                >
+                  {copyLabel}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="rounded-md bg-stone-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-900"
+                >
+                  🖨 Print / Save as PDF
+                </button>
+              </div>
             </div>
             <div className="print-area mt-3">
               <DocumentPreview

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchCompanyActivity, type ActivityItem } from "../lib/activity";
 import { fetchCompanyMembers } from "../lib/company";
 import { downloadCsv } from "../lib/csv";
+import { relativeTime } from "../lib/time";
 import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../types/database";
 
@@ -41,6 +42,7 @@ export function ActivityFeedPage({ profile }: ActivityFeedPageProps) {
   const [eventFilter, setEventFilter] = useState("");
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [todayOnly, setTodayOnly] = useState(false);
 
   const load = useCallback(async () => {
     if (!profile.company_id) return;
@@ -82,7 +84,13 @@ export function ActivityFeedPage({ profile }: ActivityFeedPageProps) {
 
   const visibleItems = items
     .filter((item) => !actorFilter || item.actor_id === actorFilter)
-    .filter((item) => !eventFilter || item.event_type === eventFilter);
+    .filter((item) => !eventFilter || item.event_type === eventFilter)
+    .filter((item) => !todayOnly || new Date(item.created_at).toDateString() === new Date().toDateString());
+
+  const eventCounts = items.reduce<Record<string, number>>((acc, item) => {
+    acc[item.event_type] = (acc[item.event_type] ?? 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
@@ -115,6 +123,12 @@ export function ActivityFeedPage({ profile }: ActivityFeedPageProps) {
         </div>
 
         {items.length > 0 && (
+          <p className="text-xs text-stone-400">
+            {visibleItems.length} of {items.length} events shown
+          </p>
+        )}
+
+        {items.length > 0 && (
           <div className="flex flex-wrap gap-2">
             <select
               value={actorFilter}
@@ -136,10 +150,32 @@ export function ActivityFeedPage({ profile }: ActivityFeedPageProps) {
               <option value="">All events</option>
               {Object.entries(EVENT_LABEL).map(([type, label]) => (
                 <option key={type} value={type}>
-                  {label}
+                  {label} ({eventCounts[type] ?? 0})
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={() => setTodayOnly((v) => !v)}
+              className={`shrink-0 rounded-full px-2.5 py-1.5 text-xs font-medium ${
+                todayOnly ? "bg-sky-600 text-white" : "border border-stone-300 text-stone-500 hover:bg-stone-100"
+              }`}
+            >
+              Today only
+            </button>
+            {(actorFilter || eventFilter || todayOnly) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActorFilter("");
+                  setEventFilter("");
+                  setTodayOnly(false);
+                }}
+                className="shrink-0 rounded-full border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+              >
+                ✕ Clear
+              </button>
+            )}
           </div>
         )}
 
@@ -158,12 +194,20 @@ export function ActivityFeedPage({ profile }: ActivityFeedPageProps) {
                   <span className="text-base leading-none">{EVENT_ICON[item.event_type] ?? "•"}</span>
                   <div className="flex-1">
                     <p className="text-sm text-stone-700">
-                      <span className="font-medium text-stone-900">{actorName(item.actor_id)}</span>{" "}
+                      <button
+                        type="button"
+                        onClick={() => item.actor_id && setActorFilter(item.actor_id)}
+                        className="font-medium text-stone-900 hover:underline"
+                      >
+                        {actorName(item.actor_id)}
+                      </button>{" "}
                       {EVENT_LABEL[item.event_type] ?? item.event_type}{" "}
                       <span className="font-medium text-stone-900">"{item.documentTitle}"</span>
                       {item.note && <span className="text-stone-500"> — {item.note}</span>}
                     </p>
-                    <p className="text-xs text-stone-400">{new Date(item.created_at).toLocaleString()}</p>
+                    <p className="text-xs text-stone-400" title={new Date(item.created_at).toLocaleString()}>
+                      {relativeTime(item.created_at)}
+                    </p>
                   </div>
                 </div>
               ))}
