@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createCompany, joinCompany } from "../lib/company";
 import { signOut } from "../lib/auth";
+import { randomCompanyName } from "../lib/randomName";
 
 interface CompanyGateProps {
   userId: string;
@@ -78,19 +79,31 @@ export function CompanyGate({ userId, onDone }: CompanyGateProps) {
               type="text"
               placeholder="Invite code (e.g. AB12CD)"
               required
+              autoFocus
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               className="rounded-md border border-stone-300 px-3 py-2 text-sm uppercase tracking-widest focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
           ) : (
-            <input
-              type="text"
-              placeholder={mode === "solo" ? "Office name (optional)" : "Company name"}
-              required={mode === "create"}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder={mode === "solo" ? "Office name (optional)" : "Company name"}
+                required={mode === "create"}
+                autoFocus
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="flex-1 rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+              <button
+                type="button"
+                onClick={() => setName(randomCompanyName())}
+                title="Suggest a name"
+                className="shrink-0 rounded-md border border-stone-300 px-3 py-2 text-sm hover:bg-stone-100"
+              >
+                🎲
+              </button>
+            </div>
           )}
           {mode === "solo" && (
             <p className="text-xs text-stone-400">

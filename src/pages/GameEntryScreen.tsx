@@ -2,20 +2,12 @@ import { useEffect, useState } from "react";
 import { createSessionAccount, loginWithCode } from "../lib/sessionAuth";
 import { createCompany, joinCompany } from "../lib/company";
 import { supabase } from "../lib/supabaseClient";
+import { randomCompanyName } from "../lib/randomName";
 
 const EMAIL_SUFFIX = "@officequest.mail";
 
 type Step = "choose" | "create-details" | "join-details" | "solo-details" | "identity" | "code" | "login";
 type Intent = "create" | "join" | "solo" | null;
-
-const NAME_ADJECTIVES = ["Northwind", "Summit", "Cedar", "Harbor", "Bright", "Silverline", "Riverside", "Granite"];
-const NAME_NOUNS = ["Logistics", "Ventures", "Partners", "Solutions", "Holdings", "Collective", "& Co", "Group"];
-
-function randomCompanyName(): string {
-  const adj = NAME_ADJECTIVES[Math.floor(Math.random() * NAME_ADJECTIVES.length)];
-  const noun = NAME_NOUNS[Math.floor(Math.random() * NAME_NOUNS.length)];
-  return `${adj} ${noun}`;
-}
 
 function ProgressDots({ current }: { current: 0 | 1 | 2 }) {
   return (
