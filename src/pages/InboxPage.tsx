@@ -7,11 +7,20 @@ import {
   sendEmailToNpc,
   recordNpcReply,
   markRead,
+  markUnread,
   markAllRead,
   setEmailFlagged,
   setEmailArchived,
   type EmailRow,
 } from "../lib/emails";
+import {
+  loadEmailComposeDraft,
+  saveEmailComposeDraft,
+  clearEmailComposeDraft,
+  loadSnoozedUntil,
+  saveSnoozedUntil,
+} from "../lib/storage";
+import { relativeTime } from "../lib/time";
 
 const CANNED_REPLIES = [
   "Thanks for the update - noted!",
@@ -69,6 +78,11 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [senderFilter, setSenderFilter] = useState<"all" | "coworker" | "client" | "npc">("all");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [snoozed, setSnoozed] = useState<Record<string, number>>(() => loadSnoozedUntil());
+  const [showSnoozed, setShowSnoozed] = useState(false);
+  const [copyLabel, setCopyLabel] = useState("📋 Copy");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -88,6 +102,27 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Autosaves whatever's in the compose form to this browser, restored the
+  // next time Compose is opened fresh (not via Reply/Forward) - mirrors the
+  // same draft-preserving pattern used for document field values.
+  useEffect(() => {
+    if (!showCompose) return;
+    if (!recipient && !subject && !body) return;
+    saveEmailComposeDraft({ recipient: recipient ? `${recipient.type}:${recipient.id}` : "", subject, body });
+  }, [showCompose, recipient, subject, body]);
+
+  useEffect(() => {
+    if (!openEmail && !showCompose) return;
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setOpenEmail(null);
+        setShowCompose(false);
+      }
+    }
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [openEmail, showCompose]);
 
   useEffect(() => {
     if (!profile.company_id) return;
@@ -130,6 +165,73 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
       await markRead(email.id);
       load();
     }
+  }
+
+  function senderTypeOf(email: EmailRow): "coworker" | "client" | "npc" {
+    if (email.sender_client_id || email.recipient_client_id) return "client";
+    if (email.sender_npc_id || email.recipient_npc_id) return "npc";
+    return "coworker";
+  }
+
+  function openCompose(prefill?: { recipient: RecipientChoice | null; subject: string; body: string }) {
+    setOpenEmail(null);
+    setError(null);
+    if (prefill) {
+      setRecipient(prefill.recipient);
+      setSubject(prefill.subject);
+      setBody(prefill.body);
+    }
+    setShowCompose(true);
+  }
+
+  function handleReply(email: EmailRow) {
+    const other: RecipientChoice | null = email.sender_client_id
+      ? { type: "client", id: email.sender_client_id }
+      : email.sender_npc_id
+        ? { type: "npc", id: email.sender_npc_id }
+        : email.sender_id
+          ? { type: "coworker", id: email.sender_id }
+          : null;
+    if (!other) return;
+    openCompose({
+      recipient: other,
+      subject: email.subject.startsWith("Re: ") ? email.subject : `Re: ${email.subject}`,
+      body: "",
+    });
+  }
+
+  function handleForward(email: EmailRow) {
+    const quoted = email.body
+      .split("\n")
+      .map((line) => `> ${line}`)
+      .join("\n");
+    openCompose({
+      recipient: null,
+      subject: email.subject.startsWith("Fwd: ") ? email.subject : `Fwd: ${email.subject}`,
+      body: `\n\n---- Forwarded message from ${senderLabel(email)} ----\n${quoted}`,
+    });
+  }
+
+  function handleSnooze(email: EmailRow) {
+    const next = { ...snoozed, [email.id]: Date.now() + 24 * 3_600_000 };
+    setSnoozed(next);
+    saveSnoozedUntil(next);
+    setOpenEmail(null);
+  }
+
+  async function handleToggleUnread(email: EmailRow) {
+    if (email.read_at) {
+      await markUnread(email.id);
+    } else {
+      await markRead(email.id);
+    }
+    load();
+  }
+
+  async function handleArchiveAllRead() {
+    const readEmails = emails.filter((e) => e.recipient_id === profile.id && e.read_at && !e.archived);
+    await Promise.all(readEmails.map((e) => setEmailArchived(e.id, true)));
+    load();
   }
 
   async function handleSend() {
@@ -206,6 +308,7 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
       setSubject("");
       setBody("");
       setRecipient(null);
+      clearEmailComposeDraft();
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't send that email.");
@@ -258,10 +361,14 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
     load();
   }
 
+  const now = Date.now();
+  const activeSnoozedIds = new Set(Object.keys(snoozed).filter((id) => snoozed[id] > now));
   const visibleEmails = emails
     .filter((e) => showArchived || !e.archived)
     .filter((e) => !unreadOnly || (e.recipient_id === profile.id && !e.read_at))
     .filter((e) => !flaggedOnly || e.flagged)
+    .filter((e) => senderFilter === "all" || senderTypeOf(e) === senderFilter)
+    .filter((e) => showSnoozed || !activeSnoozedIds.has(e.id))
     .filter((e) => {
       const q = emailQuery.trim().toLowerCase();
       if (!q) return true;
@@ -270,8 +377,15 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
         senderLabel(e).toLowerCase().includes(q) ||
         recipientLabel(e).toLowerCase().includes(q)
       );
-    });
+    })
+    .slice()
+    .sort((a, b) =>
+      sortOrder === "newest" ? b.created_at.localeCompare(a.created_at) : a.created_at.localeCompare(b.created_at),
+    );
   const unreadCount = emails.filter((e) => e.recipient_id === profile.id && !e.read_at).length;
+  const flaggedCount = emails.filter((e) => e.flagged).length;
+  const readCount = emails.filter((e) => e.recipient_id === profile.id && e.read_at && !e.archived).length;
+  const snoozedCount = activeSnoozedIds.size;
 
   if (loading) {
     return <div className="flex-1 p-6 text-sm text-stone-400">Loading inbox…</div>;
@@ -300,7 +414,16 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
             )}
             <button
               type="button"
-              onClick={() => setShowCompose(true)}
+              onClick={() => {
+                const draft = loadEmailComposeDraft();
+                if (draft && (draft.subject || draft.body || draft.recipient)) {
+                  const [type, id] = draft.recipient.split(":");
+                  setRecipient(type ? { type: type as "coworker" | "client" | "npc", id } : null);
+                  setSubject(draft.subject);
+                  setBody(draft.body);
+                }
+                setShowCompose(true);
+              }}
               className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800"
             >
               ✉️ Compose
@@ -310,6 +433,13 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
 
         {error && !showCompose && (
           <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>
+        )}
+
+        {emails.length > 0 && (
+          <p className="text-xs text-stone-400">
+            {emails.length} emails · {unreadCount} unread · {flaggedCount} flagged
+            {snoozedCount > 0 && ` · ${snoozedCount} snoozed`}
+          </p>
         )}
 
         {emails.length > 0 && (
@@ -348,6 +478,34 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
             >
               {showArchived ? "Showing archived" : "Show archived"}
             </button>
+            {snoozedCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowSnoozed((v) => !v)}
+                className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
+                  showSnoozed ? "bg-sky-600 text-white" : "border border-stone-300 text-stone-500 hover:bg-stone-100"
+                }`}
+              >
+                😴 {showSnoozed ? "Hide snoozed" : `Show snoozed (${snoozedCount})`}
+              </button>
+            )}
+            <select
+              value={senderFilter}
+              onChange={(e) => setSenderFilter(e.target.value as typeof senderFilter)}
+              className="shrink-0 rounded-md border border-stone-300 px-2 py-1 text-xs text-stone-500 focus:border-emerald-500 focus:outline-none"
+            >
+              <option value="all">Everyone</option>
+              <option value="coworker">Coworkers</option>
+              <option value="client">Clients</option>
+              <option value="npc">AI Coworkers</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => setSortOrder((o) => (o === "newest" ? "oldest" : "newest"))}
+              className="shrink-0 rounded-md border border-stone-300 px-2 py-1 text-xs text-stone-500 hover:bg-stone-100"
+            >
+              {sortOrder === "newest" ? "↓ Newest" : "↑ Oldest"}
+            </button>
             {unreadCount > 0 && (
               <button
                 type="button"
@@ -355,6 +513,15 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
                 className="shrink-0 text-xs font-medium text-emerald-700 hover:text-emerald-800"
               >
                 Mark all read ({unreadCount})
+              </button>
+            )}
+            {readCount > 0 && (
+              <button
+                type="button"
+                onClick={handleArchiveAllRead}
+                className="shrink-0 text-xs font-medium text-stone-500 hover:text-stone-700"
+              >
+                Archive all read ({readCount})
               </button>
             )}
           </div>
@@ -388,8 +555,8 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
                       <span className={`text-sm ${isUnread ? "font-semibold text-stone-900" : "text-stone-700"}`}>
                         {senderLabel(email)} → {recipientLabel(email)}
                       </span>
-                      <span className="text-xs text-stone-400">
-                        {new Date(email.created_at).toLocaleString()}
+                      <span className="text-xs text-stone-400" title={new Date(email.created_at).toLocaleString()}>
+                        {relativeTime(email.created_at)}
                       </span>
                     </div>
                     <span className={`text-sm ${isUnread ? "font-medium text-stone-800" : "text-stone-500"}`}>
@@ -434,10 +601,58 @@ export function InboxPage({ profile, llmConfig }: InboxPageProps) {
               {new Date(openEmail.created_at).toLocaleString()}
             </p>
             <h2 className="mt-1 text-lg font-semibold text-stone-900">{openEmail.subject}</h2>
-            <p className="mt-3 whitespace-pre-wrap text-sm text-stone-700">{openEmail.body}</p>
-            <div className="mt-4 flex justify-end gap-2">
+            <p className="print-area mt-3 whitespace-pre-wrap text-sm text-stone-700">{openEmail.body}</p>
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard?.writeText(openEmail.body).catch(() => {});
+                  setCopyLabel("Copied!");
+                  setTimeout(() => setCopyLabel("📋 Copy"), 1500);
+                }}
+                className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+              >
+                {copyLabel}
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+              >
+                🖨 Print
+              </button>
+              <button
+                type="button"
+                onClick={() => handleForward(openEmail)}
+                className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+              >
+                ↪ Forward
+              </button>
+              {openEmail.sender_id && openEmail.sender_id !== profile.id && (
+                <button
+                  type="button"
+                  onClick={() => handleReply(openEmail)}
+                  className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+                >
+                  ↩ Reply
+                </button>
+              )}
               {openEmail.recipient_id === profile.id && (
                 <>
+                  <button
+                    type="button"
+                    onClick={() => handleSnooze(openEmail)}
+                    className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+                  >
+                    😴 Snooze 1d
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleUnread(openEmail)}
+                    className="rounded-md border border-stone-300 px-3 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+                  >
+                    {openEmail.read_at ? "Mark Unread" : "Mark Read"}
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleToggleFlag(openEmail)}

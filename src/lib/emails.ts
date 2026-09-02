@@ -106,6 +106,11 @@ export async function markRead(emailId: string) {
   if (error) throw error;
 }
 
+export async function markUnread(emailId: string) {
+  const { error } = await supabase.from("emails").update({ read_at: null }).eq("id", emailId);
+  if (error) throw error;
+}
+
 export async function markAllRead(emailIds: string[]) {
   if (emailIds.length === 0) return;
   const { error } = await supabase

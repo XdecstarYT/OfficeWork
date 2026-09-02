@@ -302,6 +302,58 @@ export function saveCabinetSortMode(mode: string) {
   }
 }
 
+const EMAIL_COMPOSE_DRAFT_KEY = "officequest.emailComposeDraft";
+
+export interface EmailComposeDraft {
+  recipient: string;
+  subject: string;
+  body: string;
+}
+
+export function loadEmailComposeDraft(): EmailComposeDraft | null {
+  try {
+    const raw = localStorage.getItem(EMAIL_COMPOSE_DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as EmailComposeDraft) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveEmailComposeDraft(draft: EmailComposeDraft) {
+  try {
+    localStorage.setItem(EMAIL_COMPOSE_DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    // ignore storage failures
+  }
+}
+
+export function clearEmailComposeDraft() {
+  try {
+    localStorage.removeItem(EMAIL_COMPOSE_DRAFT_KEY);
+  } catch {
+    // ignore storage failures
+  }
+}
+
+const EMAIL_SNOOZE_KEY = "officequest.emailSnoozedUntil";
+
+export function loadSnoozedUntil(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(EMAIL_SNOOZE_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveSnoozedUntil(map: Record<string, number>) {
+  try {
+    localStorage.setItem(EMAIL_SNOOZE_KEY, JSON.stringify(map));
+  } catch {
+    // ignore storage failures
+  }
+}
+
 /** Wipes every local (per-browser) preference this app has ever written -
  * favorites, recents, font size, sound toggle, drafts, etc. Server-stored
  * data (money, documents, company state) is untouched. */
