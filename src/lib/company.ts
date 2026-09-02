@@ -38,6 +38,41 @@ export async function createCompany(
 }
 
 /**
+ * Founds a subsidiary under an existing company - a fully independent
+ * company (its own invite code, roster, day counter, everything) linked
+ * back to its parent for display purposes. Unlike createCompany, this does
+ * NOT move the caller into it: the founding owner stays put in their
+ * current company and simply owns this new one too (RLS's `companies_select`
+ * already lets an owner see companies they own regardless of membership).
+ * Whoever will actually run it joins later with the generated invite code.
+ */
+export async function createSubsidiary(
+  parentCompanyId: string,
+  name: string,
+  ownerId: string,
+  emoji: string,
+): Promise<Company> {
+  const invite_code = generateInviteCode();
+  const { data: company, error } = await supabase
+    .from("companies")
+    .insert({ name, invite_code, owner_id: ownerId, parent_company_id: parentCompanyId, emoji })
+    .select()
+    .single();
+  if (error) throw error;
+  return company;
+}
+
+export async function fetchSubsidiaries(parentCompanyId: string): Promise<Company[]> {
+  const { data, error } = await supabase
+    .from("companies")
+    .select("*")
+    .eq("parent_company_id", parentCompanyId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+/**
  * Resolves a main invite_code or a role-granting sub code via a security-definer
  * RPC (the joining user has no company_id yet, so RLS alone can't let them read
  * the companies/company_invite_codes rows directly to find out where to go).

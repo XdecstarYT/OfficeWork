@@ -397,6 +397,43 @@ A much larger follow-up pass, organized by area. Roughly 20 batches, each typech
 - Negotiation chat auto-scrolls and offers quick-reply chips; the assign/template/client-request modals all got Esc-to-close, copy-summary buttons, and (where relevant) a due-date preset row.
 - The sign-up flow gained step-progress dots, a random company-name suggester, and a warning before closing the tab with an unsaved login code.
 
+### Stock Market
+
+- A **shared fictional ticker** — 16 fictional companies across sectors like
+  Technology, Shipping, Finance, and Food & Beverage. Prices are a pure
+  function of `(symbol, calendar day)`, computed client-side with a seeded
+  PRNG (a slow sine-wave "personality" per stock layered with per-day
+  noise) — so every player everywhere sees the exact same price on the same
+  real-world day, with no server-side price history to maintain.
+- **Buy and sell** with your own Money at the current price; a position's
+  average cost updates on each additional buy, and a full sell closes it
+  out. Both actions log to a personal trade history and a company-wide
+  **Trading Floor** feed.
+- **Portfolio view**: cash, holdings value, net worth, and unrealized
+  gain/loss (in $ and %) at a glance, plus per-holding gain/loss.
+- Search, sector filter, and sort (name/price/today's change/held-first),
+  each stock showing a 14-day sparkline and today's % change.
+- New tables: `stock_holdings` (one row per player per symbol, RLS-scoped to
+  the owning player only) and `stock_transactions` (a trade log, visible to
+  the trader and their current company, for the Trading Floor feed).
+
+### Subsidiaries
+
+- A company's owner can **found a subsidiary** — a brand-new, fully
+  independent company (its own invite code, roster, day counter, everything)
+  linked back to its parent. Founding one does *not* move you into it: you
+  stay in your current company and just also own the new one; whoever will
+  actually run it joins later with the generated invite code, the same way
+  anyone joins any game.
+- The parent's Company page lists its subsidiaries (name, emoji, Day
+  counter, badges earned, all-time payroll paid) with a copyable invite
+  code; a subsidiary shows an "⬆ Part of {parent}" banner back up to its
+  parent.
+- New column `companies.parent_company_id`, plus RLS so a company's members
+  can see its subsidiaries and a subsidiary's members can see their parent
+  — and only someone who actually owns a company can declare it as the
+  parent of a new one.
+
 Not yet built: an avatar/office world, cosmetics.
 
 ## Getting started

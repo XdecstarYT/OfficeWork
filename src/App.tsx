@@ -55,6 +55,9 @@ const ArchivePage = lazy(() => import("./pages/ArchivePage").then((m) => ({ defa
 const CompanyCalendarPage = lazy(() =>
   import("./pages/CompanyCalendarPage").then((m) => ({ default: m.CompanyCalendarPage })),
 );
+const StockMarketPage = lazy(() =>
+  import("./pages/StockMarketPage").then((m) => ({ default: m.StockMarketPage })),
+);
 
 type Tab =
   | "dashboard"
@@ -67,12 +70,20 @@ type Tab =
   | "updates"
   | "activity"
   | "leaderboard"
+  | "stocks"
   | "archive"
   | "calendar";
 
-const APP_VERSION = "1.3.0";
+const APP_VERSION = "1.4.0";
 
 const CHANGELOG: { version: string; notes: string[] }[] = [
+  {
+    version: "1.4.0",
+    notes: [
+      "Stock Market — a shared fictional ticker you can trade with your own money.",
+      "Subsidiaries — found and track sub-companies under your own.",
+    ],
+  },
   {
     version: "1.3.0",
     notes: [
@@ -100,6 +111,7 @@ const TAB_META: { id: Tab; label: string; emoji: string }[] = [
   { id: "updates", label: "Corporate Updates", emoji: "📰" },
   { id: "activity", label: "Activity", emoji: "🗞" },
   { id: "leaderboard", label: "Leaderboard", emoji: "🏆" },
+  { id: "stocks", label: "Stock Market", emoji: "📈" },
   { id: "archive", label: "Archive", emoji: "🗄" },
   { id: "clients", label: "AI Clients", emoji: "🤝" },
 ];
@@ -452,6 +464,9 @@ function App() {
           {tab === "updates" && <CorporateUpdatesPage profile={profile} company={company} />}
           {tab === "activity" && <ActivityFeedPage profile={profile} />}
           {tab === "leaderboard" && <LeaderboardPage profile={profile} />}
+          {tab === "stocks" && (
+            <StockMarketPage profile={profile} company={company} onProfileChanged={refreshProfile} />
+          )}
           {tab === "archive" && <ArchivePage profile={profile} />}
           {tab === "clients" && (
             <AiClients

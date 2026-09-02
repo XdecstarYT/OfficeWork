@@ -32,6 +32,7 @@ export interface Database {
           salary_per_level: number;
           company_badges_claimed: string[];
           total_payroll_paid: number;
+          parent_company_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -49,6 +50,7 @@ export interface Database {
           salary_per_level?: number;
           company_badges_claimed?: string[];
           total_payroll_paid?: number;
+          parent_company_id?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["companies"]["Insert"]>;
@@ -474,6 +476,50 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["client_contracts"]["Insert"]>;
+        Relationships: [];
+      };
+      stock_holdings: {
+        Row: {
+          id: string;
+          member_id: string;
+          symbol: string;
+          shares: number;
+          avg_cost: number;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          member_id: string;
+          symbol: string;
+          shares?: number;
+          avg_cost?: number;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["stock_holdings"]["Insert"]>;
+        Relationships: [];
+      };
+      stock_transactions: {
+        Row: {
+          id: string;
+          company_id: string | null;
+          member_id: string;
+          symbol: string;
+          side: "buy" | "sell";
+          shares: number;
+          price: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id?: string | null;
+          member_id: string;
+          symbol: string;
+          side: "buy" | "sell";
+          shares: number;
+          price: number;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["stock_transactions"]["Insert"]>;
         Relationships: [];
       };
       company_equipment: {

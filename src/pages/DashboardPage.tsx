@@ -29,7 +29,8 @@ type Tab =
   | "activity"
   | "leaderboard"
   | "archive"
-  | "calendar";
+  | "calendar"
+  | "stocks";
 
 interface DashboardPageProps {
   profile: Profile;
@@ -410,6 +411,7 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
             <QuickAction emoji="📥" label="Check My Work" onClick={() => onNavigate("work")} />
             <QuickAction emoji="🏆" label="View Leaderboard" onClick={() => onNavigate("leaderboard")} />
             <QuickAction emoji="🗓" label="View Calendar" onClick={() => onNavigate("calendar")} />
+            <QuickAction emoji="📈" label="Stock Market" onClick={() => onNavigate("stocks")} />
           </div>
         </section>
 

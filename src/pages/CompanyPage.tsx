@@ -19,7 +19,10 @@ import {
   incrementTotalPayrollPaid,
   checkCompanyBadges,
   updateMyBio,
+  createSubsidiary,
+  fetchSubsidiaries,
 } from "../lib/company";
+import { randomCompanyName } from "../lib/randomName";
 import { fetchMemberMoods, setMyMood } from "../lib/memberMoods";
 import { CompanyShoutbox } from "../components/CompanyShoutbox";
 import { OrgChart } from "../components/OrgChart";
@@ -185,6 +188,13 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   const [buyingEquipment, setBuyingEquipment] = useState<string | null>(null);
   const [summaryCopyLabel, setSummaryCopyLabel] = useState("📋 Copy Summary");
   const [inviteCopyLabel, setInviteCopyLabel] = useState("📤 Copy Invite Message");
+  const [subsidiaries, setSubsidiaries] = useState<Company[]>([]);
+  const [parentCompany, setParentCompany] = useState<Company | null>(null);
+  const [showFoundSubsidiary, setShowFoundSubsidiary] = useState(false);
+  const [subDraftName, setSubDraftName] = useState("");
+  const [subDraftEmoji, setSubDraftEmoji] = useState("🏢");
+  const [foundingSubsidiary, setFoundingSubsidiary] = useState(false);
+  const [subCopiedId, setSubCopiedId] = useState<string | null>(null);
   const { addCustomTemplate } = useCustomTemplates(profile.company_id, profile.id);
   const { npcs, customNpcPersonas, assigningNpc, setAssigningNpc, npcWorking, assignTemplateToNpc, reloadNpcs } =
     useNpcWorkAssignment(profile, llmConfig);
@@ -228,8 +238,33 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     setMemberCompletedCounts(memberCounts);
     setMemberOverdueCounts(overdueCounts);
     setTotalCompletedDocs(docs.filter((d) => d.status === "completed").length);
+    if (c) {
+      const [subs, parent] = await Promise.all([
+        fetchSubsidiaries(c.id),
+        c.parent_company_id ? fetchCompany(c.parent_company_id) : Promise.resolve(null),
+      ]);
+      setSubsidiaries(subs);
+      setParentCompany(parent);
+    }
     setLoading(false);
   }, [profile.company_id]);
+
+  async function handleFoundSubsidiary() {
+    if (!company || !subDraftName.trim()) return;
+    setFoundingSubsidiary(true);
+    try {
+      const sub = await createSubsidiary(company.id, subDraftName.trim(), profile.id, subDraftEmoji.trim() || "🏢");
+      setSubsidiaries((prev) => [sub, ...prev]);
+      setShowFoundSubsidiary(false);
+      setSubDraftName("");
+      setSubDraftEmoji("🏢");
+      showStatus(`Founded "${sub.name}" — invite code ${sub.invite_code}. Share it with whoever will run it.`, 8000);
+    } catch (err) {
+      showStatus(err instanceof Error ? err.message : "Couldn't found that subsidiary.", 4000);
+    } finally {
+      setFoundingSubsidiary(false);
+    }
+  }
 
   useEffect(() => {
     load();
@@ -1009,8 +1044,70 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                 ⚙️ Settings
               </button>
             )}
+            {isOwner && (
+              <button
+                type="button"
+                onClick={() => setShowFoundSubsidiary(true)}
+                className="rounded-md border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+              >
+                🏢 Found Subsidiary
+              </button>
+            )}
           </div>
         </div>
+
+        {parentCompany && (
+          <p className="text-xs text-stone-400">
+            ⬆ Part of{" "}
+            <span className="font-medium text-stone-600">
+              {parentCompany.emoji} {parentCompany.name}
+            </span>
+          </p>
+        )}
+
+        {subsidiaries.length > 0 && (
+          <section className="flex flex-col gap-2 rounded-lg border border-indigo-200 bg-indigo-50/40 p-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-indigo-700">
+              🏢 Subsidiaries ({subsidiaries.length})
+            </h2>
+            <div className="flex flex-col gap-1.5">
+              {subsidiaries.map((sub) => (
+                <div
+                  key={sub.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-indigo-100 bg-white px-3 py-2 text-sm"
+                >
+                  <span>
+                    <span className="font-medium text-stone-800">
+                      {sub.emoji} {sub.name}
+                    </span>
+                    <span className="ml-1.5 text-xs text-stone-400">
+                      Day {sub.current_day} · {sub.company_badges_claimed.length} badge
+                      {sub.company_badges_claimed.length === 1 ? "" : "s"}
+                      {sub.total_payroll_paid > 0 && ` · $${sub.total_payroll_paid.toFixed(2)} paid out`}
+                    </span>
+                  </span>
+                  {isOwner && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(sub.invite_code).catch(() => {});
+                        setSubCopiedId(sub.id);
+                        setTimeout(() => setSubCopiedId(null), 1500);
+                      }}
+                      className="shrink-0 rounded-md border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-600 hover:bg-stone-100"
+                    >
+                      {subCopiedId === sub.id ? "Copied!" : `🔑 ${sub.invite_code}`}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-indigo-500">
+              Subsidiaries are full, independent companies — join one with its invite code the same way you'd join any
+              game.
+            </p>
+          </section>
+        )}
 
         <div className="flex flex-wrap gap-2">
             {company.company_badges_claimed.map((key) => {
@@ -1897,6 +1994,63 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
           Leave company
         </button>
       </div>
+
+      {showFoundSubsidiary && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+          onClick={() => setShowFoundSubsidiary(false)}
+        >
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-stone-900">🏢 Found a Subsidiary</h2>
+            <p className="mt-1 text-xs text-stone-500">
+              Creates a brand-new, fully independent company linked under {company.name}. You'll stay put here — hand
+              the invite code to whoever will run it.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <input
+                type="text"
+                value={subDraftEmoji}
+                onChange={(e) => setSubDraftEmoji(e.target.value)}
+                placeholder="🏢"
+                className="w-14 rounded-md border border-stone-300 px-2 py-2 text-center text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              <input
+                type="text"
+                value={subDraftName}
+                onChange={(e) => setSubDraftName(e.target.value)}
+                placeholder="Subsidiary name"
+                autoFocus
+                className="flex-1 rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              <button
+                type="button"
+                onClick={() => setSubDraftName(randomCompanyName())}
+                title="Suggest a name"
+                className="shrink-0 rounded-md border border-stone-300 px-3 py-2 text-sm hover:bg-stone-100"
+              >
+                🎲
+              </button>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowFoundSubsidiary(false)}
+                className="rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleFoundSubsidiary}
+                disabled={foundingSubsidiary || !subDraftName.trim()}
+                className="rounded-md bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-50"
+              >
+                {foundingSubsidiary ? "Founding…" : "Found It"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showRequestTimeOff && (
         <div
