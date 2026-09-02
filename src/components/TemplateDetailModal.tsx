@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { estimatePayout } from "../lib/documents";
 import type { DocumentTemplate } from "../types/template";
 
 const DIFFICULTY_LABEL: Record<DocumentTemplate["difficulty"], string> = {
@@ -37,6 +39,17 @@ export function TemplateDetailModal({
   onDuplicate,
   onTagClick,
 }: TemplateDetailModalProps) {
+  const [showFields, setShowFields] = useState(false);
+  const [copyLabel, setCopyLabel] = useState("📋 Copy Details");
+
+  useEffect(() => {
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [onClose]);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
@@ -85,13 +98,32 @@ export function TemplateDetailModal({
           )}
         </div>
 
-        <div className="mt-5 flex items-center gap-4 rounded-lg bg-stone-50 p-3 text-sm text-stone-600">
+        <div className="mt-5 flex flex-wrap items-center gap-4 rounded-lg bg-stone-50 p-3 text-sm text-stone-600">
           <span>⏱ ~{template.estimatedMinutes} min</span>
           <span>·</span>
           <span>{DIFFICULTY_LABEL[template.difficulty]}</span>
           <span>·</span>
-          <span>{template.fields.length} fields</span>
+          <span>💵 ${estimatePayout(template)}</span>
+          <span>·</span>
+          <button type="button" onClick={() => setShowFields((v) => !v)} className="underline decoration-dotted hover:text-stone-800">
+            {template.fields.length} fields
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const text = `${template.title}\n${template.description}\n~${template.estimatedMinutes} min · ${DIFFICULTY_LABEL[template.difficulty]} · $${estimatePayout(template)}`;
+              navigator.clipboard?.writeText(text).catch(() => {});
+              setCopyLabel("Copied!");
+              setTimeout(() => setCopyLabel("📋 Copy Details"), 1500);
+            }}
+            className="ml-auto shrink-0 text-xs font-medium text-stone-400 hover:text-stone-600"
+          >
+            {copyLabel}
+          </button>
         </div>
+        {showFields && (
+          <p className="mt-1 text-xs text-stone-400">{template.fields.map((f) => f.label).join(", ")}</p>
+        )}
 
         <div className="mt-6 flex items-center justify-between gap-2">
           {onDelete ? (
