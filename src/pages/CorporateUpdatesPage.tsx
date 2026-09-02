@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   fetchCorporateUpdates,
   postCorporateUpdate,
+  updateCorporateUpdate,
   deleteCorporateUpdate,
   setCorporateUpdatePinned,
   fetchReactionsForUpdates,
@@ -11,6 +12,9 @@ import {
 } from "../lib/corporateUpdates";
 import { fetchCompanyMembers, awardMoney, awardXp } from "../lib/company";
 import { rollCorporateEvent } from "../data/corporateEvents";
+import { downloadCsv } from "../lib/csv";
+import { loadStarredUpdates, saveStarredUpdates } from "../lib/storage";
+import { relativeTime } from "../lib/time";
 import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../types/database";
 
@@ -46,6 +50,15 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
   const [categoryFilter, setCategoryFilter] = useState<UpdateCategory | "">("");
   const [postCategory, setPostCategory] = useState<UpdateCategory>("announcement");
   const [reactions, setReactions] = useState<UpdateReactionRow[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editBody, setEditBody] = useState("");
+  const [editCategory, setEditCategory] = useState<UpdateCategory>("announcement");
+  const [saving, setSaving] = useState(false);
+  const [sortMode, setSortMode] = useState<"newest" | "trending">("newest");
+  const [starred, setStarred] = useState<Set<string>>(() => loadStarredUpdates());
+  const [starredOnly, setStarredOnly] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const isOwner = profile.id === company.owner_id;
 
@@ -171,6 +184,75 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
     }
   }
 
+  function startEdit(u: CorporateUpdateRow) {
+    setEditingId(u.id);
+    setEditTitle(u.title);
+    setEditBody(u.body);
+    setEditCategory(u.category);
+  }
+
+  async function handleSaveEdit() {
+    if (!editingId || !editTitle.trim() || !editBody.trim()) return;
+    setSaving(true);
+    try {
+      await updateCorporateUpdate(editingId, { title: editTitle.trim(), body: editBody.trim(), category: editCategory });
+      setEditingId(null);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't save that edit.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function toggleStar(id: string) {
+    setStarred((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      saveStarredUpdates(next);
+      return next;
+    });
+  }
+
+  function handleCopyText(u: CorporateUpdateRow) {
+    navigator.clipboard?.writeText(`${u.title}\n\n${u.body}`).catch(() => {});
+    setCopiedId(u.id);
+    setTimeout(() => setCopiedId(null), 1500);
+  }
+
+  function handleExportCsv() {
+    downloadCsv(
+      "corporate-updates.csv",
+      [
+        ["Title", "Category", "Author", "Posted At", "Pinned"],
+        ...updates.map((u) => [
+          u.title,
+          u.category,
+          members.find((m) => m.id === u.posted_by)?.display_name ?? "Leadership",
+          new Date(u.created_at).toLocaleString(),
+          u.pinned ? "Yes" : "No",
+        ]),
+      ],
+    );
+  }
+
+  const activeFilterCount =
+    (query ? 1 : 0) + (authorFilter ? 1 : 0) + (categoryFilter ? 1 : 0) + (starredOnly ? 1 : 0);
+  function clearAllFilters() {
+    setQuery("");
+    setAuthorFilter("");
+    setCategoryFilter("");
+    setStarredOnly(false);
+  }
+
+  const categoryCounts = updates.reduce<Record<string, number>>((acc, u) => {
+    acc[u.category] = (acc[u.category] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const reactionCountFor = (updateId: string) => reactions.filter((r) => r.update_id === updateId).length;
+
   if (loading) {
     return <div className="flex-1 p-6 text-sm text-stone-400">Loading updates…</div>;
   }
@@ -183,28 +265,46 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
             <h1 className="text-lg font-semibold text-stone-900">📰 Corporate Updates</h1>
             <p className="text-sm text-stone-500">Company-wide news and announcements.</p>
           </div>
-          {isOwner && (
-            <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            {updates.length > 0 && (
               <button
                 type="button"
-                onClick={handleRollEvent}
-                disabled={rolling}
-                className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                onClick={handleExportCsv}
+                className="rounded-md border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-600 hover:bg-stone-100"
               >
-                {rolling ? "Rolling…" : "🎲 Trigger Event"}
+                ⬇ CSV
               </button>
-              <button
-                type="button"
-                onClick={() => setShowCompose(true)}
-                className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800"
-              >
-                📢 Post Update
-              </button>
-            </div>
-          )}
+            )}
+            {isOwner && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleRollEvent}
+                  disabled={rolling}
+                  className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                >
+                  {rolling ? "Rolling…" : "🎲 Trigger Event"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCompose(true)}
+                  className="rounded-md bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-800"
+                >
+                  📢 Post Update
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {error && !showCompose && <p className="text-sm text-red-600">{error}</p>}
+
+        {updates.length > 0 && (
+          <p className="text-xs text-stone-400">
+            {updates.length} update{updates.length === 1 ? "" : "s"}
+            {updates.some((u) => u.pinned) && ` · ${updates.filter((u) => u.pinned).length} pinned`}
+          </p>
+        )}
 
         {updates.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -228,17 +328,50 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
               ))}
             </select>
             <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value as UpdateCategory | "")}
+              value={sortMode}
+              onChange={(e) => setSortMode(e.target.value as typeof sortMode)}
               className="rounded-md border border-stone-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none"
             >
-              <option value="">All Categories</option>
-              {(Object.keys(CATEGORY_LABELS) as UpdateCategory[]).map((c) => (
-                <option key={c} value={c}>
-                  {CATEGORY_LABELS[c]}
-                </option>
-              ))}
+              <option value="newest">Newest</option>
+              <option value="trending">Most Reacted</option>
             </select>
+            <button
+              type="button"
+              onClick={() => setStarredOnly((v) => !v)}
+              className={`shrink-0 rounded-full px-2.5 py-1.5 text-xs font-medium ${
+                starredOnly ? "bg-amber-500 text-white" : "border border-stone-300 text-stone-500 hover:bg-stone-100"
+              }`}
+            >
+              ⭐ Saved only
+            </button>
+            {activeFilterCount > 0 && (
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="shrink-0 rounded-full border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+              >
+                ✕ Clear
+              </button>
+            )}
+          </div>
+        )}
+
+        {updates.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {(Object.keys(CATEGORY_LABELS) as UpdateCategory[])
+              .filter((c) => categoryCounts[c] > 0)
+              .map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCategoryFilter(categoryFilter === c ? "" : c)}
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    categoryFilter === c ? "bg-stone-800 text-white" : "border border-stone-300 text-stone-500 hover:bg-stone-100"
+                  }`}
+                >
+                  {CATEGORY_LABELS[c]} ({categoryCounts[c]})
+                </button>
+              ))}
           </div>
         )}
 
@@ -253,12 +386,17 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
             {updates
               .filter((u) => !authorFilter || u.posted_by === authorFilter)
               .filter((u) => !categoryFilter || u.category === categoryFilter)
+              .filter((u) => !starredOnly || starred.has(u.id))
               .filter((u) => {
                 const q = query.trim().toLowerCase();
                 return !q || u.title.toLowerCase().includes(q) || u.body.toLowerCase().includes(q);
               })
               .slice()
-              .sort((a, b) => Number(b.pinned) - Number(a.pinned))
+              .sort((a, b) => {
+                if (Number(b.pinned) !== Number(a.pinned)) return Number(b.pinned) - Number(a.pinned);
+                if (sortMode === "trending") return reactionCountFor(b.id) - reactionCountFor(a.id);
+                return 0;
+              })
               .map((u) => (
               <article
                 key={u.id}
@@ -273,17 +411,78 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
                     </span>
                     {u.pinned && <span className="text-xs" title="Pinned">📌</span>}
                   </span>
-                  <span className="text-xs text-stone-400">
-                    {new Date(u.created_at).toLocaleString()}
+                  <span className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleStar(u.id)}
+                      title={starred.has(u.id) ? "Remove from saved" : "Save for later"}
+                      className={`text-sm leading-none ${starred.has(u.id) ? "text-amber-500" : "text-stone-300 hover:text-stone-400"}`}
+                    >
+                      {starred.has(u.id) ? "★" : "☆"}
+                    </button>
+                    <span className="text-xs text-stone-400" title={new Date(u.created_at).toLocaleString()}>
+                      {relativeTime(u.created_at)}
+                    </span>
                   </span>
                 </div>
-                <h2 className="mt-2 text-base font-semibold text-stone-900">{u.title}</h2>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-stone-700">
-                  {u.body}
-                </p>
+                {editingId === u.id ? (
+                  <div className="mt-2 flex flex-col gap-2">
+                    <select
+                      value={editCategory}
+                      onChange={(e) => setEditCategory(e.target.value as UpdateCategory)}
+                      className="rounded-md border border-stone-300 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none"
+                    >
+                      {(Object.keys(CATEGORY_LABELS) as UpdateCategory[]).map((c) => (
+                        <option key={c} value={c}>
+                          {CATEGORY_LABELS[c]}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="rounded-md border border-stone-300 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none"
+                    />
+                    <textarea
+                      rows={4}
+                      value={editBody}
+                      onChange={(e) => setEditBody(e.target.value)}
+                      className="rounded-md border border-stone-300 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingId(null)}
+                        className="rounded-md px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveEdit}
+                        disabled={saving}
+                        className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+                      >
+                        {saving ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <h2 className="mt-2 text-base font-semibold text-stone-900">{u.title}</h2>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-stone-700">
+                      {u.body}
+                    </p>
+                  </>
+                )}
                 <div className="mt-3 flex flex-wrap items-center gap-1.5">
                   {REACTION_EMOJIS.map((emoji) => {
-                    const count = reactions.filter((r) => r.update_id === u.id && r.emoji === emoji).length;
+                    const reactors = reactions
+                      .filter((r) => r.update_id === u.id && r.emoji === emoji)
+                      .map((r) => (r.member_id === profile.id ? "You" : members.find((m) => m.id === r.member_id)?.display_name))
+                      .filter(Boolean);
+                    const count = reactors.length;
                     const mine = reactions.some(
                       (r) => r.update_id === u.id && r.member_id === profile.id && r.emoji === emoji,
                     );
@@ -304,6 +503,7 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
                         key={emoji}
                         type="button"
                         onClick={() => handleToggleReaction(u.id, emoji)}
+                        title={reactors.join(", ")}
                         className={`rounded-full border px-1.5 py-0.5 text-xs ${
                           mine ? "border-emerald-400 bg-emerald-50" : "border-stone-200 hover:bg-stone-100"
                         }`}
@@ -313,11 +513,31 @@ export function CorporateUpdatesPage({ profile, company }: CorporateUpdatesPageP
                     );
                   })}
                 </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <p className="text-xs font-medium text-stone-400">
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAuthorFilter(u.posted_by ?? "")}
+                    className="text-xs font-medium text-stone-400 hover:text-stone-600"
+                  >
                     — {members.find((m) => m.id === u.posted_by)?.display_name ?? "Leadership"}
-                  </p>
+                  </button>
                   <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyText(u)}
+                      className="text-xs font-medium text-stone-400 hover:text-stone-600"
+                    >
+                      {copiedId === u.id ? "Copied!" : "📋 Copy"}
+                    </button>
+                    {isOwner && (
+                      <button
+                        type="button"
+                        onClick={() => startEdit(u)}
+                        className="text-xs font-medium text-stone-500 hover:text-stone-700"
+                      >
+                        ✏️ Edit
+                      </button>
+                    )}
                     {isOwner && (
                       <button
                         type="button"

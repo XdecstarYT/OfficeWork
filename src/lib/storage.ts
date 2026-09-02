@@ -354,6 +354,25 @@ export function saveSnoozedUntil(map: Record<string, number>) {
   }
 }
 
+const STARRED_UPDATES_KEY = "officequest.starredUpdates";
+
+export function loadStarredUpdates(): Set<string> {
+  try {
+    const raw = localStorage.getItem(STARRED_UPDATES_KEY);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function saveStarredUpdates(starred: Set<string>) {
+  try {
+    localStorage.setItem(STARRED_UPDATES_KEY, JSON.stringify([...starred]));
+  } catch {
+    // ignore storage failures
+  }
+}
+
 /** Wipes every local (per-browser) preference this app has ever written -
  * favorites, recents, font size, sound toggle, drafts, etc. Server-stored
  * data (money, documents, company state) is untouched. */
