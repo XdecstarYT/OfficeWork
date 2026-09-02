@@ -18,6 +18,17 @@ type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 const BOARD_MEETING_MINUTES_TEMPLATE_ID = "meeting-minutes-08";
 const NOTIFY_PREF_KEY = "officequest.meetingNotify";
+const NOTIFY_LEAD_KEY = "officequest.meetingNotifyLeadMinutes";
+
+function startsInLabel(iso: string): string {
+  const diffMs = new Date(iso).getTime() - Date.now();
+  if (diffMs <= 0) return "starting now";
+  const mins = Math.round(diffMs / 60_000);
+  if (mins < 60) return `in ${mins}m`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `in ${hours}h`;
+  return `in ${Math.round(hours / 24)}d`;
+}
 
 function meetingToIcs(meeting: BoardMeetingRow): string {
   const start = new Date(meeting.scheduled_at);
@@ -73,6 +84,10 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
   const [notifyEnabled, setNotifyEnabled] = useState(
     () => typeof window !== "undefined" && localStorage.getItem(NOTIFY_PREF_KEY) === "1",
   );
+  const [notifyLeadMinutes, setNotifyLeadMinutes] = useState(
+    () => Number(localStorage.getItem(NOTIFY_LEAD_KEY)) || 15,
+  );
+  const [todayOnly, setTodayOnly] = useState(false);
   const notifiedIdsRef = useRef(new Set<string>());
 
   const load = useCallback(async () => {
@@ -164,7 +179,7 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
       const now = Date.now();
       for (const m of meetings) {
         const startsIn = new Date(m.scheduled_at).getTime() - now;
-        if (startsIn > 0 && startsIn <= 15 * 60 * 1000 && !notifiedIdsRef.current.has(m.id)) {
+        if (startsIn > 0 && startsIn <= notifyLeadMinutes * 60 * 1000 && !notifiedIdsRef.current.has(m.id)) {
           notifiedIdsRef.current.add(m.id);
           new Notification(`📅 ${m.title} starts soon`, {
             body: `Starting at ${new Date(m.scheduled_at).toLocaleTimeString()}`,
@@ -175,7 +190,51 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
     checkUpcoming();
     const interval = setInterval(checkUpcoming, 60 * 1000);
     return () => clearInterval(interval);
-  }, [notifyEnabled, meetings]);
+  }, [notifyEnabled, meetings, notifyLeadMinutes]);
+
+  function handleChangeLeadMinutes(minutes: number) {
+    setNotifyLeadMinutes(minutes);
+    localStorage.setItem(NOTIFY_LEAD_KEY, String(minutes));
+  }
+
+  function handleDuplicate(meeting: BoardMeetingRow) {
+    setTitle(meeting.title);
+    setAgenda(meeting.agenda ?? "");
+    setScheduledAt("");
+    setRepeatWeekly(false);
+    setShowSchedule(true);
+  }
+
+  function handleCopySummary(meeting: BoardMeetingRow, attendingCount: number) {
+    const text = [
+      meeting.title,
+      new Date(meeting.scheduled_at).toLocaleString(),
+      meeting.agenda ? `Agenda: ${meeting.agenda}` : null,
+      `${attendingCount} attending`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    navigator.clipboard?.writeText(text).catch(() => {});
+    setStatusMessage("Meeting summary copied.");
+    setTimeout(() => setStatusMessage(null), 2500);
+  }
+
+  function handleExportAllUpcoming(upcomingMeetings: BoardMeetingRow[]) {
+    if (upcomingMeetings.length === 0) return;
+    const events = upcomingMeetings.map((m) => meetingToIcs(m).split("\r\n").slice(3, -1).join("\r\n"));
+    const combined = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Office Quest//Board Meetings//EN", ...events, "END:VCALENDAR"].join(
+      "\r\n",
+    );
+    const blob = new Blob([combined], { type: "text/calendar" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "upcoming-meetings.ics";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
 
   async function handleRsvp(meetingId: string, status: "attending" | "declined") {
     await setRsvp(meetingId, profile.id, status);
@@ -232,8 +291,14 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
   const now = Date.now();
   const q = query.trim().toLowerCase();
   const matchesQuery = (m: BoardMeetingRow) => !q || m.title.toLowerCase().includes(q);
-  const upcoming = meetings.filter((m) => new Date(m.scheduled_at).getTime() >= now && matchesQuery(m));
-  const past = meetings.filter((m) => new Date(m.scheduled_at).getTime() < now && matchesQuery(m));
+  const isToday = (m: BoardMeetingRow) => new Date(m.scheduled_at).toDateString() === new Date().toDateString();
+  const upcoming = meetings.filter(
+    (m) => new Date(m.scheduled_at).getTime() >= now && matchesQuery(m) && (!todayOnly || isToday(m)),
+  );
+  const past = meetings
+    .filter((m) => new Date(m.scheduled_at).getTime() < now && matchesQuery(m) && (!todayOnly || isToday(m)))
+    .slice()
+    .sort((a, b) => b.scheduled_at.localeCompare(a.scheduled_at));
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
@@ -243,7 +308,19 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
             <h1 className="text-lg font-semibold text-stone-900">Board Meetings</h1>
             <p className="text-sm text-stone-500">Schedule a meeting and see who's attending.</p>
           </div>
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            {notifyEnabled && (
+              <select
+                value={notifyLeadMinutes}
+                onChange={(e) => handleChangeLeadMinutes(Number(e.target.value))}
+                className="rounded-md border border-stone-300 px-2 py-1.5 text-xs text-stone-500 focus:border-emerald-500 focus:outline-none"
+                title="How far ahead to notify"
+              >
+                <option value={5}>5 min before</option>
+                <option value={15}>15 min before</option>
+                <option value={30}>30 min before</option>
+              </select>
+            )}
             <button
               type="button"
               onClick={handleToggleNotify}
@@ -252,10 +329,20 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
                   ? "border-sky-300 bg-sky-50 text-sky-700"
                   : "border-stone-300 text-stone-600 hover:bg-stone-100"
               }`}
-              title="Browser-notify me 15 minutes before a meeting (this tab must stay open)"
+              title="Browser-notify me before a meeting (this tab must stay open)"
             >
               {notifyEnabled ? "🔔 Reminders on" : "🔕 Reminders off"}
             </button>
+            {upcoming.length > 0 && (
+              <button
+                type="button"
+                onClick={() => handleExportAllUpcoming(upcoming)}
+                className="rounded-md border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-600 hover:bg-stone-100"
+                title="Download all upcoming meetings as one .ics file"
+              >
+                📆 Export All
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setShowSchedule(true)}
@@ -271,13 +358,24 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
         )}
 
         {meetings.length > 3 && (
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search meetings by title…"
-            className="rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search meetings by title…"
+              className="min-w-0 flex-1 rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <button
+              type="button"
+              onClick={() => setTodayOnly((v) => !v)}
+              className={`shrink-0 rounded-full px-2.5 py-1.5 text-xs font-medium ${
+                todayOnly ? "bg-sky-600 text-white" : "border border-stone-300 text-stone-500 hover:bg-stone-100"
+              }`}
+            >
+              Today only
+            </button>
+          </div>
         )}
 
         <MeetingList
@@ -289,7 +387,10 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
           onRsvp={handleRsvp}
           onGenerateMinutes={handleGenerateMinutes}
           onCancel={handleCancel}
+          onDuplicate={handleDuplicate}
+          onCopySummary={handleCopySummary}
           emptyLabel="No upcoming meetings."
+          isUpcoming
         />
         <MeetingList
           title="Past"
@@ -300,6 +401,8 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
           onRsvp={handleRsvp}
           onGenerateMinutes={handleGenerateMinutes}
           onCancel={handleCancel}
+          onDuplicate={handleDuplicate}
+          onCopySummary={handleCopySummary}
           emptyLabel="No past meetings yet."
         />
       </div>
@@ -388,7 +491,10 @@ function MeetingList({
   onRsvp,
   onGenerateMinutes,
   onCancel,
+  onDuplicate,
+  onCopySummary,
   emptyLabel,
+  isUpcoming,
 }: {
   title: string;
   meetings: BoardMeetingRow[];
@@ -398,11 +504,18 @@ function MeetingList({
   onRsvp: (meetingId: string, status: "attending" | "declined") => void;
   onGenerateMinutes: (meeting: BoardMeetingRow) => void;
   onCancel: (meeting: BoardMeetingRow) => void;
+  onDuplicate: (meeting: BoardMeetingRow) => void;
+  onCopySummary: (meeting: BoardMeetingRow, attendingCount: number) => void;
   emptyLabel: string;
+  isUpcoming?: boolean;
 }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-400">{title}</h2>
+      <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-400">
+        {title}
+        {meetings.length > 0 && ` (${meetings.length})`}
+      </h2>
       {meetings.length === 0 ? (
         <p className="rounded-lg border border-dashed border-stone-200 bg-stone-50 p-4 text-sm text-stone-400">
           {emptyLabel}
@@ -415,6 +528,8 @@ function MeetingList({
           const declinedCount = meetingRsvps.filter((r) => r.status === "declined").length;
           const canCancel = meeting.created_by === profile.id || profile.level >= 100;
           const isToday = new Date(meeting.scheduled_at).toDateString() === new Date().toDateString();
+          const noResponse = meetingRsvps.filter((r) => r.status === "invited");
+          const isExpanded = expandedId === meeting.id;
           return (
             <div key={meeting.id} className="rounded-md border border-stone-100 p-3">
               <div className="flex items-center justify-between">
@@ -428,7 +543,9 @@ function MeetingList({
                 </p>
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-stone-400">
+                    {new Date(meeting.scheduled_at).toLocaleDateString(undefined, { weekday: "short" })}{" "}
                     {new Date(meeting.scheduled_at).toLocaleString()}
+                    {isUpcoming && <span className="ml-1 font-medium text-sky-600">({startsInLabel(meeting.scheduled_at)})</span>}
                   </p>
                   {canCancel && (
                     <button
@@ -442,10 +559,31 @@ function MeetingList({
                 </div>
               </div>
               {meeting.agenda && <p className="mt-1 text-xs text-stone-500">{meeting.agenda}</p>}
-              <p className="mt-1 text-xs text-stone-400">
-                ✅ {attendingCount} attending · ❌ {declinedCount} declined · organized by{" "}
+              <button
+                type="button"
+                onClick={() => setExpandedId(isExpanded ? null : meeting.id)}
+                className="mt-1 text-xs text-stone-400 hover:text-stone-600"
+              >
+                ✅ {attendingCount} attending · ❌ {declinedCount} declined
+                {noResponse.length > 0 && ` · 🙈 ${noResponse.length} haven't responded`} · organized by{" "}
                 {members.find((m) => m.id === meeting.created_by)?.display_name}
-              </p>
+              </button>
+              {isExpanded && (
+                <div className="mt-1.5 flex flex-col gap-0.5 rounded-md bg-stone-50 p-2 text-xs text-stone-500">
+                  {meetingRsvps
+                    .filter((r) => r.status !== "invited")
+                    .map((r) => (
+                      <span key={r.id}>
+                        {r.status === "attending" ? "✅" : "❌"} {members.find((m) => m.id === r.user_id)?.display_name ?? "Someone"}
+                      </span>
+                    ))}
+                  {noResponse.map((r) => (
+                    <span key={r.id} className="text-stone-400">
+                      🙈 {members.find((m) => m.id === r.user_id)?.display_name ?? "Someone"} — no response yet
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="mt-2 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -483,6 +621,21 @@ function MeetingList({
                   title="Download a .ics file for your calendar app"
                 >
                   📥 .ics
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onCopySummary(meeting, attendingCount)}
+                  className="rounded-md border border-stone-300 px-3 py-1 text-xs font-medium text-stone-600 hover:bg-stone-100"
+                >
+                  📋 Copy Summary
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDuplicate(meeting)}
+                  className="rounded-md border border-stone-300 px-3 py-1 text-xs font-medium text-stone-600 hover:bg-stone-100"
+                  title="Schedule another meeting with the same title/agenda"
+                >
+                  🧬 Duplicate
                 </button>
               </div>
             </div>
