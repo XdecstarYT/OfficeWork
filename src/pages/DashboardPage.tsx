@@ -176,7 +176,8 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
     return <div className="flex-1 p-6 text-sm text-stone-400">Loading dashboard…</div>;
   }
 
-  const notificationTotal = notifications.pendingApproval + notifications.unreadEmail + notifications.overdue;
+  const notificationTotal =
+    notifications.pendingApproval + notifications.unreadEmail + notifications.overdue + notifications.pendingTimeOff;
   const hour = new Date().getHours();
   const timeGreeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const topByMoney = [...members].sort((a, b) => b.money - a.money);
@@ -386,6 +387,15 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
                   className="rounded-full bg-white px-3 py-1 text-xs font-medium text-amber-800 shadow-sm hover:bg-amber-100"
                 >
                   ⏰ {notifications.overdue} overdue
+                </button>
+              )}
+              {notifications.pendingTimeOff > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate("company")}
+                  className="rounded-full bg-white px-3 py-1 text-xs font-medium text-amber-800 shadow-sm hover:bg-amber-100"
+                >
+                  🌴 {notifications.pendingTimeOff} time off request{notifications.pendingTimeOff === 1 ? "" : "s"}
                 </button>
               )}
             </div>

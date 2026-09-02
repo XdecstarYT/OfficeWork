@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchCompanyDocuments } from "../lib/documents";
 import { fetchCompanyMembers } from "../lib/company";
+import { fetchTimeOffRequests } from "../lib/timeOff";
 import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../types/database";
 
@@ -10,9 +11,10 @@ export interface NotificationCounts {
   pendingApproval: number;
   unreadEmail: number;
   overdue: number;
+  pendingTimeOff: number;
 }
 
-const EMPTY: NotificationCounts = { pendingApproval: 0, unreadEmail: 0, overdue: 0 };
+const EMPTY: NotificationCounts = { pendingApproval: 0, unreadEmail: 0, overdue: 0, pendingTimeOff: 0 };
 
 export function useNotifications(profile: Profile | null) {
   const [counts, setCounts] = useState<NotificationCounts>(EMPTY);
@@ -22,10 +24,11 @@ export function useNotifications(profile: Profile | null) {
       setCounts(EMPTY);
       return;
     }
-    const [docs, members, unreadEmails] = await Promise.all([
+    const [docs, members, unreadEmails, timeOffRequests] = await Promise.all([
       fetchCompanyDocuments(profile.company_id),
       fetchCompanyMembers(profile.company_id),
       supabase.from("emails").select("id").eq("recipient_id", profile.id).is("read_at", null),
+      fetchTimeOffRequests(profile.company_id),
     ]);
     const levelOf = (id: string | null) => members.find((m) => m.id === id)?.level ?? 0;
     const now = Date.now();
@@ -40,8 +43,11 @@ export function useNotifications(profile: Profile | null) {
         !!d.due_at &&
         new Date(d.due_at).getTime() < now,
     ).length;
+    const pendingTimeOff = timeOffRequests.filter(
+      (r) => r.status === "pending" && profile.level > levelOf(r.member_id),
+    ).length;
 
-    setCounts({ pendingApproval, unreadEmail: unreadEmails.data?.length ?? 0, overdue });
+    setCounts({ pendingApproval, unreadEmail: unreadEmails.data?.length ?? 0, overdue, pendingTimeOff });
   }, [profile?.id, profile?.company_id, profile?.level]);
 
   useEffect(() => {
@@ -60,6 +66,11 @@ export function useNotifications(profile: Profile | null) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "emails", filter: `recipient_id=eq.${profile.id}` },
+        () => refresh(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "time_off_requests", filter: `company_id=eq.${profile.company_id}` },
         () => refresh(),
       )
       .subscribe();

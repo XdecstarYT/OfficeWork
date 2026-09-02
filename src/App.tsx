@@ -129,7 +129,8 @@ function App() {
   const lastActivityRef = useRef(Date.now());
   const paletteInputRef = useRef<HTMLInputElement>(null);
 
-  const notificationTotal = notifications.pendingApproval + notifications.unreadEmail + notifications.overdue;
+  const notificationTotal =
+    notifications.pendingApproval + notifications.unreadEmail + notifications.overdue + notifications.pendingTimeOff;
 
   useEffect(() => {
     const prefix = isAway ? "(Away) " : notificationTotal > 0 ? `(${notificationTotal > 99 ? "99+" : notificationTotal}) ` : "";
@@ -355,6 +356,15 @@ function App() {
                     count={notifications.overdue}
                     onClick={() => {
                       setTab("work");
+                      setShowNotifications(false);
+                    }}
+                  />
+                  <NotificationRow
+                    emoji="🌴"
+                    label="Time off awaiting your decision"
+                    count={notifications.pendingTimeOff}
+                    onClick={() => {
+                      setTab("company");
                       setShowNotifications(false);
                     }}
                   />
