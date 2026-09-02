@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ClientPersona } from "../data/clients";
 import type { ChatMessage, ClientRequest } from "../types/template";
 import { sendNegotiationMessage, type NegotiationOffer } from "../lib/aiClient";
 import type { LlmConfig } from "../lib/llmConfig";
+
+const QUICK_REPLIES = ["Can you raise the payout?", "Could I get more time on this?", "Deal, I'll take it!"];
 
 interface NegotiationChatProps {
   clientPersona: ClientPersona;
@@ -17,9 +19,14 @@ export function NegotiationChat({ clientPersona, request, llmConfig, onAcceptOff
   const [pendingOffer, setPendingOffer] = useState<NegotiationOffer | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
-  async function handleSend() {
-    const text = input.trim();
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
+  }, [history, loading]);
+
+  async function handleSend(overrideText?: string) {
+    const text = (overrideText ?? input).trim();
     if (!text || loading) return;
     setInput("");
     setError(null);
@@ -39,7 +46,7 @@ export function NegotiationChat({ clientPersona, request, llmConfig, onAcceptOff
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex max-h-64 flex-col gap-2 overflow-y-auto rounded-lg border border-stone-200 bg-stone-50 p-3">
+      <div ref={listRef} className="flex max-h-64 flex-col gap-2 overflow-y-auto rounded-lg border border-stone-200 bg-stone-50 p-3">
         {history.length === 0 && (
           <p className="text-sm text-stone-400">
             Say hi to {clientPersona.name}, or ask about the payout or deadline.
@@ -70,16 +77,41 @@ export function NegotiationChat({ clientPersona, request, llmConfig, onAcceptOff
             </p>
             <p className="text-emerald-700">{pendingOffer.note}</p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              onAcceptOffer(pendingOffer);
-              setPendingOffer(null);
-            }}
-            className="shrink-0 rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
-          >
-            Accept
-          </button>
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={() => setPendingOffer(null)}
+              className="rounded-md border border-emerald-300 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+            >
+              Keep Negotiating
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onAcceptOffer(pendingOffer);
+                setPendingOffer(null);
+              }}
+              className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800"
+            >
+              Accept
+            </button>
+          </div>
+        </div>
+      )}
+
+      {history.length === 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {QUICK_REPLIES.map((reply) => (
+            <button
+              key={reply}
+              type="button"
+              onClick={() => handleSend(reply)}
+              disabled={loading}
+              className="rounded-full border border-stone-300 px-2.5 py-1 text-xs text-stone-500 hover:bg-stone-100 disabled:opacity-50"
+            >
+              {reply}
+            </button>
+          ))}
         </div>
       )}
 
@@ -94,8 +126,8 @@ export function NegotiationChat({ clientPersona, request, llmConfig, onAcceptOff
         />
         <button
           type="button"
-          onClick={handleSend}
-          disabled={loading}
+          onClick={() => handleSend()}
+          disabled={loading || !input.trim()}
           className="rounded-md bg-stone-800 px-4 py-2 text-sm font-medium text-white hover:bg-stone-900 disabled:opacity-50"
         >
           Send
