@@ -16,8 +16,10 @@ import { loadDraftFieldValues, saveDraftFieldValues, clearDraftFieldValues } fro
 import { fetchCompanyEquipment } from "../lib/equipment";
 import { totalPayoutBonusPercent } from "../data/equipment";
 import { draftDocumentFields } from "../lib/aiClient";
+import { sendEmailToCoworker } from "../lib/emails";
 import { supabase } from "../lib/supabaseClient";
 import { renderBody } from "../lib/renderTemplate";
+import { relativeTime, dueLabel, isDueSoon } from "../lib/time";
 import { DocumentFieldForm } from "../components/DocumentFieldForm";
 import { DocumentPreview } from "../components/DocumentPreview";
 import type { Database } from "../types/database";
@@ -47,6 +49,25 @@ const STATUS_LABEL: Record<string, string> = {
   completed: "Completed",
 };
 
+const STATUS_COLOR: Record<string, string> = {
+  requested: "bg-stone-100 text-stone-600",
+  assigned: "bg-sky-100 text-sky-700",
+  in_progress: "bg-sky-100 text-sky-700",
+  submitted: "bg-violet-100 text-violet-700",
+  pending_approval: "bg-amber-100 text-amber-700",
+  approved: "bg-emerald-100 text-emerald-700",
+  rejected: "bg-red-100 text-red-700",
+  completed: "bg-emerald-100 text-emerald-700",
+};
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-medium ${STATUS_COLOR[status] ?? "bg-stone-100 text-stone-600"}`}>
+      {STATUS_LABEL[status] ?? status}
+    </span>
+  );
+}
+
 export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps) {
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [members, setMembers] = useState<Profile[]>([]);
@@ -64,6 +85,10 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
   const [workSortMode, setWorkSortMode] = useState<"due" | "payout" | "newest">("due");
   const [approvingAll, setApprovingAll] = useState(false);
   const [dismissedOverdueIds, setDismissedOverdueIds] = useState<Set<string>>(new Set());
+  const [dueSoonOnly, setDueSoonOnly] = useState(false);
+  const [titleFilter, setTitleFilter] = useState("");
+  const [remindedIds, setRemindedIds] = useState<Set<string>>(new Set());
+  const [previewDoc, setPreviewDoc] = useState<DocumentRow | null>(null);
 
   const memberLevel = (id: string | null) => members.find((m) => m.id === id)?.level ?? 0;
 
@@ -128,6 +153,18 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
     if (!openDoc) return;
     saveDraftFieldValues(openDoc.id, fieldValues);
   }, [openDoc, fieldValues]);
+
+  useEffect(() => {
+    if (!openDoc && !previewDoc) return;
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setOpenDoc(null);
+        setPreviewDoc(null);
+      }
+    }
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [openDoc, previewDoc]);
 
   async function handleAiDraft() {
     if (!openDoc) return;
@@ -210,9 +247,25 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
     load();
   }
 
+  async function handleRemind(d: DocumentRow) {
+    if (!profile.company_id || !d.assigned_to) return;
+    await sendEmailToCoworker({
+      companyId: profile.company_id,
+      senderId: profile.id,
+      recipientId: d.assigned_to,
+      subject: `Reminder: ${d.title}`,
+      body: `Hey — just a friendly reminder that "${d.title}" is still waiting on you${
+        d.due_at ? ` (${dueLabel(d.due_at)})` : ""
+      }. Thanks!`,
+    });
+    setRemindedIds((prev) => new Set(prev).add(d.id));
+  }
+
   const myOpenWork = documents
     .filter((d) => d.assigned_to === profile.id && ["requested", "assigned"].includes(d.status))
     .filter((d) => !overdueOnly || isOverdue(d))
+    .filter((d) => !dueSoonOnly || (d.due_at && isDueSoon(d.due_at)))
+    .filter((d) => !titleFilter.trim() || d.title.toLowerCase().includes(titleFilter.trim().toLowerCase()))
     .slice()
     .sort((a, b) => {
       if (workSortMode === "payout") {
@@ -244,6 +297,13 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
     });
   const completed = documents.filter((d) => d.status === "completed").slice(0, 10);
   const overdueCount = documents.filter(isOverdue).length;
+  const dueSoonCount = myOpenWork.filter((d) => d.due_at && isDueSoon(d.due_at)).length;
+
+  const weekAgo = Date.now() - 7 * 86_400_000;
+  const completedThisWeek = documents.filter(
+    (d) => d.status === "completed" && d.assigned_to === profile.id && new Date(d.updated_at ?? d.created_at).getTime() >= weekAgo,
+  );
+  const weeklyEarnings = completedThisWeek.reduce((sum, d) => sum + payoutFor(d, asTemplate(d), bonusPercent), 0);
 
   if (loading) {
     return <div className="flex-1 p-6 text-sm text-stone-400">Loading work…</div>;
@@ -252,39 +312,62 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
-        <h1 className="flex flex-wrap items-center gap-2 text-lg font-semibold text-stone-900">
-          My Work
-          {overdueCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setOverdueOnly((v) => !v)}
-              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                overdueOnly ? "bg-red-600 text-white" : "bg-red-100 text-red-700 hover:bg-red-200"
-              }`}
-            >
-              ⏰ {overdueCount} overdue{overdueOnly ? " · showing only" : ""}
-            </button>
-          )}
-        </h1>
+        <div className="flex flex-col gap-1">
+          <h1 className="flex flex-wrap items-center gap-2 text-lg font-semibold text-stone-900">
+            My Work
+            {overdueCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setOverdueOnly((v) => !v)}
+                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                  overdueOnly ? "bg-red-600 text-white" : "bg-red-100 text-red-700 hover:bg-red-200"
+                }`}
+              >
+                ⏰ {overdueCount} overdue{overdueOnly ? " · showing only" : ""}
+              </button>
+            )}
+            {dueSoonCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setDueSoonOnly((v) => !v)}
+                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                  dueSoonOnly ? "bg-amber-600 text-white" : "bg-amber-100 text-amber-700 hover:bg-amber-200"
+                }`}
+              >
+                🕑 {dueSoonCount} due soon{dueSoonOnly ? " · showing only" : ""}
+              </button>
+            )}
+          </h1>
+          <p className="text-xs text-stone-400">
+            This week: {completedThisWeek.length} completed · 💵 ${Math.round(weeklyEarnings)} earned
+          </p>
+        </div>
 
         <Section
           title="📥 Your Open Work"
           empty="Nothing assigned right now."
           headerExtra={
-            myOpenWork.length > 0 ? (
-              <div className="flex items-center gap-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              {myOpenWork.length > 0 && (
                 <span className="font-medium text-emerald-700">💵 ${Math.round(myOpenWorkTotal)} total</span>
-                <select
-                  value={workSortMode}
-                  onChange={(e) => setWorkSortMode(e.target.value as typeof workSortMode)}
-                  className="rounded-md border border-stone-300 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
-                >
-                  <option value="due">Sort: Due Date</option>
-                  <option value="payout">Sort: Payout</option>
-                  <option value="newest">Sort: Newest</option>
-                </select>
-              </div>
-            ) : undefined
+              )}
+              <input
+                type="text"
+                value={titleFilter}
+                onChange={(e) => setTitleFilter(e.target.value)}
+                placeholder="🔍 Filter by title…"
+                className="w-32 rounded-md border border-stone-300 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+              />
+              <select
+                value={workSortMode}
+                onChange={(e) => setWorkSortMode(e.target.value as typeof workSortMode)}
+                className="rounded-md border border-stone-300 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+              >
+                <option value="due">Sort: Due Date</option>
+                <option value="payout">Sort: Payout</option>
+                <option value="newest">Sort: Newest</option>
+              </select>
+            </div>
           }
         >
           {myOpenWork.map((d) => {
@@ -315,15 +398,16 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
                     </span>
                   )}
                 </p>
-                <p className="text-xs text-stone-400">
-                  {STATUS_LABEL[d.status]} · assigned by{" "}
+                <p className="flex flex-wrap items-center gap-1 text-xs text-stone-400">
+                  <StatusBadge status={d.status} /> · assigned by{" "}
                   {members.find((m) => m.id === d.created_by)?.display_name ?? "someone"}
                   {" · "}💵 ${Math.round(payoutFor(d, asTemplate(d), bonusPercent))}
+                  {" · "}⭐ {estimateXp(asTemplate(d))} XP
                   {d.due_at && (
                     <>
                       {" · "}
-                      <span className={isOverdue(d) ? "font-medium text-red-600" : ""}>
-                        ⏱ due {new Date(d.due_at).toLocaleDateString()}
+                      <span className={isOverdue(d) ? "font-medium text-red-600" : ""} title={new Date(d.due_at).toLocaleDateString()}>
+                        ⏱ {dueLabel(d.due_at)}
                       </span>
                     </>
                   )}
@@ -370,7 +454,7 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
         </Section>
 
         <Section
-          title="✅ Needs Your Approval"
+          title={`✅ Needs Your Approval${needsMyApproval.length > 0 ? ` (${needsMyApproval.length})` : ""}`}
           empty="Nothing waiting on you."
           headerExtra={
             needsMyApproval.length > 1 ? (
@@ -436,7 +520,10 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
           ))}
         </Section>
 
-        <Section title="👀 Assigned to Others" empty="You haven't assigned anything.">
+        <Section
+          title={`👀 Assigned to Others${iAssignedToOthers.length > 0 ? ` (${iAssignedToOthers.length})` : ""}`}
+          empty="You haven't assigned anything."
+        >
           {iAssignedToOthers.map((d) => (
             <div
               key={d.id}
@@ -448,29 +535,50 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
                 <p className="text-sm font-medium text-stone-800">
                   {d.title} {isOverdue(d) && <span className="text-xs font-semibold text-red-600">⏰ Overdue</span>}
                 </p>
-                <p className="text-xs text-stone-400">
-                  {STATUS_LABEL[d.status]} · {members.find((m) => m.id === d.assigned_to)?.display_name}
+                <p className="flex flex-wrap items-center gap-1 text-xs text-stone-400">
+                  <StatusBadge status={d.status} /> · {members.find((m) => m.id === d.assigned_to)?.display_name}
+                  {" · "}assigned {relativeTime(d.created_at)}
                   {d.due_at && (
                     <>
                       {" · "}
-                      <span className={isOverdue(d) ? "font-medium text-red-600" : ""}>
-                        ⏱ due {new Date(d.due_at).toLocaleDateString()}
+                      <span className={isOverdue(d) ? "font-medium text-red-600" : ""} title={new Date(d.due_at).toLocaleDateString()}>
+                        ⏱ {dueLabel(d.due_at)}
                       </span>
                     </>
                   )}
                 </p>
               </div>
+              {d.status !== "completed" && (
+                <button
+                  type="button"
+                  onClick={() => handleRemind(d)}
+                  disabled={remindedIds.has(d.id)}
+                  className="shrink-0 rounded-md border border-stone-300 px-2.5 py-1 text-xs font-medium text-stone-600 hover:bg-stone-100 disabled:opacity-50"
+                >
+                  {remindedIds.has(d.id) ? "Reminded" : "🔔 Remind"}
+                </button>
+              )}
             </div>
           ))}
         </Section>
 
-        <Section title="🗄 Recently Completed" empty="Nothing completed yet.">
+        <Section title={`🗄 Recently Completed${completed.length > 0 ? ` (${completed.length})` : ""}`} empty="Nothing completed yet.">
           {completed.map((d) => (
             <div key={d.id} className="flex items-center justify-between rounded-md border border-stone-100 p-3 opacity-70">
-              <p className="text-sm text-stone-700">{d.title}</p>
-              <p className="text-xs text-stone-400">
-                {members.find((m) => m.id === d.assigned_to)?.display_name}
-              </p>
+              <div>
+                <p className="text-sm text-stone-700">{d.title}</p>
+                <p className="text-xs text-stone-400">
+                  {members.find((m) => m.id === d.assigned_to)?.display_name}
+                  {" · "}💵 ${Math.round(payoutFor(d, asTemplate(d), bonusPercent))}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewDoc(d)}
+                className="shrink-0 text-xs font-medium text-stone-500 hover:text-stone-800"
+              >
+                👁 View
+              </button>
             </div>
           ))}
         </Section>
@@ -487,7 +595,30 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
           >
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold text-stone-900">{openDoc.title}</h2>
-              <div className="flex shrink-0 gap-2">
+              <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard?.writeText(JSON.stringify(fieldValues, null, 2)).catch(() => {});
+                  }}
+                  className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+                  title="Copy field values as JSON"
+                >
+                  {"{ }"} Copy JSON
+                </button>
+                {openDoc.status !== "pending_approval" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const saved = (openDoc.field_values as Record<string, string>) ?? {};
+                      setFieldValues(saved);
+                      clearDraftFieldValues(openDoc.id);
+                    }}
+                    className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+                  >
+                    ↺ Clear Draft
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -512,6 +643,9 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
                 )}
               </div>
             </div>
+            <p className="mt-1 text-xs text-stone-400">
+              {Object.values(fieldValues).filter((v) => v?.trim()).length}/{asTemplate(openDoc).fields.length} fields filled
+            </p>
             {draftError && <p className="mt-1 text-xs text-red-600">{draftError}</p>}
 
             {referenceDataFor(openDoc).length > 0 && (
@@ -565,6 +699,35 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {previewDoc && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+          onClick={() => setPreviewDoc(null)}
+        >
+          <div
+            className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-stone-900">{previewDoc.title}</h2>
+            <p className="text-xs text-stone-400">Completed by {members.find((m) => m.id === previewDoc.assigned_to)?.display_name}</p>
+            <div className="mt-3 rounded-md border border-stone-100">
+              <DocumentPreview
+                title={previewDoc.title}
+                bodyTemplate={asTemplate(previewDoc).bodyTemplate}
+                values={(previewDoc.field_values as Record<string, string>) ?? {}}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setPreviewDoc(null)}
+              className="mt-4 self-end rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
