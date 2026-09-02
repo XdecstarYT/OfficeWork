@@ -24,6 +24,22 @@ html[data-font-size="large"] {
   font-size: 18px;
 }
 
+/* Preferences panel's High Contrast setting - additive-only tweaks (never
+   removes an existing style) so it can't break a page that hasn't been
+   individually audited for contrast. */
+html[data-contrast="high"] {
+  --tw-text-opacity: 1;
+}
+html[data-contrast="high"] button,
+html[data-contrast="high"] input,
+html[data-contrast="high"] select,
+html[data-contrast="high"] textarea {
+  border-width: 2px !important;
+}
+html[data-contrast="high"] body {
+  text-shadow: 0 0 0.01px currentColor;
+}
+
 .font-doc-serif {
   font-family: "Times New Roman", Times, Georgia, serif;
 }

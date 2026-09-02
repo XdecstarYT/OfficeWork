@@ -185,6 +185,86 @@ export function clearDraftFieldValues(documentId: string) {
   }
 }
 
+export type ContrastMode = "normal" | "high";
+const CONTRAST_KEY = "officequest.contrast";
+
+export function loadContrastMode(): ContrastMode {
+  try {
+    return localStorage.getItem(CONTRAST_KEY) === "high" ? "high" : "normal";
+  } catch {
+    return "normal";
+  }
+}
+
+export function saveContrastMode(mode: ContrastMode) {
+  try {
+    localStorage.setItem(CONTRAST_KEY, mode);
+  } catch {
+    // ignore storage failures
+  }
+}
+
+const COMPACT_NAV_KEY = "officequest.compactNav";
+
+export function loadCompactNav(): boolean {
+  try {
+    return localStorage.getItem(COMPACT_NAV_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function saveCompactNav(enabled: boolean) {
+  try {
+    localStorage.setItem(COMPACT_NAV_KEY, enabled ? "1" : "0");
+  } catch {
+    // ignore storage failures
+  }
+}
+
+const DISMISSED_CHANGELOG_KEY = "officequest.dismissedChangelogVersion";
+
+export function loadDismissedChangelogVersion(): string | null {
+  try {
+    return localStorage.getItem(DISMISSED_CHANGELOG_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function saveDismissedChangelogVersion(version: string) {
+  try {
+    localStorage.setItem(DISMISSED_CHANGELOG_KEY, version);
+  } catch {
+    // ignore storage failures
+  }
+}
+
+const PLAYTIME_KEY_PREFIX = "officequest.playtimeMinutes.";
+
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export function loadPlaytimeToday(): number {
+  try {
+    const raw = localStorage.getItem(PLAYTIME_KEY_PREFIX + todayKey());
+    return raw ? Number(raw) || 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function addPlaytimeMinute() {
+  try {
+    const key = PLAYTIME_KEY_PREFIX + todayKey();
+    const current = Number(localStorage.getItem(key)) || 0;
+    localStorage.setItem(key, String(current + 1));
+  } catch {
+    // ignore storage failures
+  }
+}
+
 /** Wipes every local (per-browser) preference this app has ever written -
  * favorites, recents, font size, sound toggle, drafts, etc. Server-stored
  * data (money, documents, company state) is untouched. */
