@@ -16,12 +16,23 @@ import { BLANK_PAGE_TEMPLATE } from "../data/blankPage";
 import { fetchCompanyMembers } from "../lib/company";
 import { assignWork, fetchCompanyDocuments } from "../lib/documents";
 import { pickBestAssignee, type AssigneeCandidate } from "../lib/aiClient";
+import { estimatePayout } from "../lib/documents";
+import { downloadCsv } from "../lib/csv";
+import {
+  loadCabinetViewMode,
+  saveCabinetViewMode,
+  loadCabinetSortMode,
+  saveCabinetSortMode,
+  type CabinetViewMode,
+} from "../lib/storage";
+import { TAXONOMY } from "../data/taxonomy";
 import type { Database } from "../types/database";
 import type { Difficulty, DocumentTemplate } from "../types/template";
 import type { LlmConfig } from "../lib/llmConfig";
 
-type SortMode = "relevance" | "name" | "time" | "difficulty";
+type SortMode = "relevance" | "name" | "time" | "difficulty" | "payout";
 const DIFFICULTY_ORDER: Record<Difficulty, number> = { quick: 0, standard: 1, detailed: 2 };
+type TimeFilter = "all" | "short" | "medium" | "long";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
@@ -50,8 +61,15 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
     setStatusMessage(message);
     statusTimeoutRef.current = setTimeout(() => setStatusMessage(null), ms);
   }, []);
-  const [sortMode, setSortMode] = useState<SortMode>("relevance");
+  const [sortMode, setSortMode] = useState<SortMode>(() => {
+    const saved = loadCabinetSortMode();
+    return saved === "relevance" || saved === "name" || saved === "time" || saved === "difficulty" || saved === "payout"
+      ? saved
+      : "relevance";
+  });
   const [difficultyFilter, setDifficultyFilter] = useState<Difficulty | "all">("all");
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
+  const [viewMode, setViewMode] = useState<CabinetViewMode>(() => loadCabinetViewMode());
   const { favorites, toggleFavorite } = useFavorites();
   const { recentIds, clearRecent } = useRecent();
   const [companyDocsForStats, setCompanyDocsForStats] = useState<DocumentRow[]>([]);
@@ -73,15 +91,29 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key !== "/") return;
-      const target = e.target as HTMLElement;
-      if (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable) return;
-      e.preventDefault();
-      searchInputRef.current?.focus();
+      if (e.key === "/") {
+        const target = e.target as HTMLElement;
+        if (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable) return;
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+      if (e.key === "Escape" && document.activeElement === searchInputRef.current && query) {
+        setQuery("");
+        searchInputRef.current?.blur();
+      }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [query]);
+
+  useEffect(() => {
+    saveCabinetSortMode(sortMode);
+  }, [sortMode]);
+
+  useEffect(() => {
+    saveCabinetViewMode(viewMode);
+  }, [viewMode]);
 
   function handleStart(template: DocumentTemplate) {
     setActiveTemplate(null);
@@ -200,6 +232,19 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
     return counts;
   }, []);
 
+  const difficultyCounts = useMemo(() => {
+    const counts: Record<Difficulty, number> = { quick: 0, standard: 0, detailed: 0 };
+    for (const t of ALL_TEMPLATES) counts[t.difficulty]++;
+    return counts;
+  }, []);
+
+  const inTimeRange = (t: DocumentTemplate, filter: TimeFilter) => {
+    if (filter === "all") return true;
+    if (filter === "short") return t.estimatedMinutes < 5;
+    if (filter === "medium") return t.estimatedMinutes >= 5 && t.estimatedMinutes <= 15;
+    return t.estimatedMinutes > 15;
+  };
+
   const scoped = useMemo(() => {
     let templates = ALL_TEMPLATES;
     if (selection.subcategoryId) {
@@ -210,8 +255,11 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
     if (difficultyFilter !== "all") {
       templates = templates.filter((t) => t.difficulty === difficultyFilter);
     }
+    if (timeFilter !== "all") {
+      templates = templates.filter((t) => inTimeRange(t, timeFilter));
+    }
     return templates;
-  }, [selection, difficultyFilter]);
+  }, [selection, difficultyFilter, timeFilter]);
 
   const filtered = useMemo(() => {
     const results = searchTemplates(scoped, query);
@@ -221,8 +269,41 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
     else if (sortMode === "time") sorted.sort((a, b) => a.estimatedMinutes - b.estimatedMinutes);
     else if (sortMode === "difficulty")
       sorted.sort((a, b) => DIFFICULTY_ORDER[a.difficulty] - DIFFICULTY_ORDER[b.difficulty]);
+    else if (sortMode === "payout") sorted.sort((a, b) => estimatePayout(b) - estimatePayout(a));
     return sorted;
   }, [scoped, query, sortMode]);
+
+  const activeFilterCount =
+    (query ? 1 : 0) + (difficultyFilter !== "all" ? 1 : 0) + (timeFilter !== "all" ? 1 : 0) +
+    (selection.categoryId ? 1 : 0);
+
+  function clearAllFilters() {
+    setQuery("");
+    setDifficultyFilter("all");
+    setTimeFilter("all");
+    setSelection({ categoryId: null, subcategoryId: null });
+  }
+
+  function handleJumpToRandomCategory() {
+    const cat = TAXONOMY[Math.floor(Math.random() * TAXONOMY.length)];
+    setSelection({ categoryId: cat.id, subcategoryId: null });
+  }
+
+  function handleExportCsv() {
+    downloadCsv(
+      "filing-cabinet-templates.csv",
+      [
+        ["Title", "Category", "Subcategory", "Difficulty", "Est. Minutes", "Est. Payout"],
+        ...filtered.map((t) => [t.title, t.category, t.subcategory, t.difficulty, t.estimatedMinutes, estimatePayout(t)]),
+      ],
+    );
+  }
+
+  const categoryName = selection.categoryId ? TAXONOMY.find((c) => c.id === selection.categoryId)?.name : null;
+  const subcategoryName =
+    selection.categoryId && selection.subcategoryId
+      ? TAXONOMY.find((c) => c.id === selection.categoryId)?.subcategories.find((s) => s.id === selection.subcategoryId)?.name
+      : null;
 
   // Rendering 1000+ cards at once is what actually makes browsing feel
   // laggy (huge DOM, hover/focus style recalculation on every one). Page it.
@@ -297,9 +378,17 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
 
       {/* Desktop: always-visible sidebar */}
       <aside className="hidden w-72 shrink-0 overflow-y-auto border-r border-stone-200 bg-stone-50 p-4 md:block">
-        <h2 className="mb-3 px-1 text-xs font-semibold uppercase tracking-wider text-stone-400">
+        <h2 className="mb-1 px-1 text-xs font-semibold uppercase tracking-wider text-stone-400">
           Filing Cabinet
         </h2>
+        <p className="mb-3 px-1 text-xs text-stone-400">{ALL_TEMPLATES.length.toLocaleString()} templates total</p>
+        <button
+          type="button"
+          onClick={handleJumpToRandomCategory}
+          className="mb-3 flex w-full items-center gap-2 rounded-md border border-dashed border-stone-300 bg-white px-2.5 py-2 text-left text-sm font-medium text-stone-700 hover:bg-stone-100"
+        >
+          🔀 Jump to Random Category
+        </button>
         {sidebarContent}
       </aside>
 
@@ -333,28 +422,114 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
                   }`}
                 >
                   {d}
+                  {d !== "all" && <span className="ml-1 opacity-70">({difficultyCounts[d]})</span>}
                 </button>
               ))}
             </div>
-            <label className="ml-auto flex items-center gap-1.5 text-xs text-stone-500">
-              Sort
-              <select
-                value={sortMode}
-                onChange={(e) => setSortMode(e.target.value as SortMode)}
-                className="rounded-md border border-stone-300 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+            <div className="flex items-center gap-1.5">
+              {([
+                ["all", "Any time"],
+                ["short", "<5m"],
+                ["medium", "5-15m"],
+                ["long", "15m+"],
+              ] as [TimeFilter, string][]).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setTimeFilter(value)}
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    timeFilter === value
+                      ? "bg-stone-800 text-white"
+                      : "border border-stone-300 text-stone-500 hover:bg-stone-100"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {activeFilterCount > 0 && (
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="rounded-full border border-red-200 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
               >
-                <option value="relevance">Relevance</option>
-                <option value="name">Name (A-Z)</option>
-                <option value="time">Est. Time</option>
-                <option value="difficulty">Difficulty</option>
-              </select>
-            </label>
+                ✕ Clear filters
+              </button>
+            )}
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                className="rounded-md border border-stone-300 px-2 py-1 text-xs font-medium text-stone-600 hover:bg-stone-100"
+                title="Export the current list as CSV"
+              >
+                ⬇ CSV
+              </button>
+              <div className="flex overflow-hidden rounded-md border border-stone-300 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  className={`px-2 py-1 font-medium ${viewMode === "grid" ? "bg-stone-800 text-white" : "text-stone-500 hover:bg-stone-100"}`}
+                  title="Grid view"
+                >
+                  ▦
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  className={`px-2 py-1 font-medium ${viewMode === "list" ? "bg-stone-800 text-white" : "text-stone-500 hover:bg-stone-100"}`}
+                  title="List view"
+                >
+                  ☰
+                </button>
+              </div>
+              <label className="flex items-center gap-1.5 text-xs text-stone-500">
+                Sort
+                <select
+                  value={sortMode}
+                  onChange={(e) => setSortMode(e.target.value as SortMode)}
+                  className="rounded-md border border-stone-300 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+                >
+                  <option value="relevance">Relevance</option>
+                  <option value="name">Name (A-Z)</option>
+                  <option value="time">Est. Time</option>
+                  <option value="difficulty">Difficulty</option>
+                  <option value="payout">Payout (High-Low)</option>
+                </select>
+              </label>
+            </div>
           </div>
+
+          {(categoryName || subcategoryName) && (
+            <div className="flex items-center gap-1 text-xs text-stone-500">
+              <button type="button" onClick={() => setSelection({ categoryId: null, subcategoryId: null })} className="hover:text-stone-800 hover:underline">
+                All Documents
+              </button>
+              {categoryName && (
+                <>
+                  <span>/</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelection({ categoryId: selection.categoryId, subcategoryId: null })}
+                    className="hover:text-stone-800 hover:underline"
+                  >
+                    {categoryName}
+                  </button>
+                </>
+              )}
+              {subcategoryName && (
+                <>
+                  <span>/</span>
+                  <span className="font-medium text-stone-700">{subcategoryName}</span>
+                </>
+              )}
+            </div>
+          )}
 
           {isBrowsingRoot && (
             <>
               <Section
-                title="🧩 Custom Templates (shared with your team)"
+                title={`🧩 Custom Templates (shared with your team)${customTemplates.length > 0 ? ` (${customTemplates.length})` : ""}`}
                 emptyLabel="Build one with the drag-and-drop template builder, top-left — anyone on your team can use it."
               >
                 {customTemplates.map((t) => (
@@ -368,7 +543,10 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
                 ))}
               </Section>
 
-              <Section title="⭐ Favorites" emptyLabel="Star a template to pin it here.">
+              <Section
+                title={`⭐ Favorites${favoriteTemplates.length > 0 ? ` (${favoriteTemplates.length})` : ""}`}
+                emptyLabel="Star a template to pin it here."
+              >
                 {favoriteTemplates.map((t) => (
                   <TemplateCard
                     key={t.id}
@@ -440,7 +618,7 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
               </p>
             ) : (
               <>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className={viewMode === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-2"}>
                   {visibleFiltered.map((t) => (
                     <TemplateCard
                       key={t.id}
@@ -448,6 +626,7 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
                       isFavorite={favorites.has(t.id)}
                       onToggleFavorite={toggleFavorite}
                       onOpen={setActiveTemplate}
+                      compact={viewMode === "list"}
                     />
                   ))}
                 </div>

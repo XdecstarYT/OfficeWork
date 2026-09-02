@@ -265,6 +265,43 @@ export function addPlaytimeMinute() {
   }
 }
 
+export type CabinetViewMode = "grid" | "list";
+const CABINET_VIEW_KEY = "officequest.cabinetView";
+
+export function loadCabinetViewMode(): CabinetViewMode {
+  try {
+    return localStorage.getItem(CABINET_VIEW_KEY) === "list" ? "list" : "grid";
+  } catch {
+    return "grid";
+  }
+}
+
+export function saveCabinetViewMode(mode: CabinetViewMode) {
+  try {
+    localStorage.setItem(CABINET_VIEW_KEY, mode);
+  } catch {
+    // ignore storage failures
+  }
+}
+
+const CABINET_SORT_KEY = "officequest.cabinetSort";
+
+export function loadCabinetSortMode(): string | null {
+  try {
+    return localStorage.getItem(CABINET_SORT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function saveCabinetSortMode(mode: string) {
+  try {
+    localStorage.setItem(CABINET_SORT_KEY, mode);
+  } catch {
+    // ignore storage failures
+  }
+}
+
 /** Wipes every local (per-browser) preference this app has ever written -
  * favorites, recents, font size, sound toggle, drafts, etc. Server-stored
  * data (money, documents, company state) is untouched. */

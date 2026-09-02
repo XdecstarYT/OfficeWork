@@ -1,4 +1,5 @@
 import type { DocumentTemplate } from "../types/template";
+import { estimatePayout } from "../lib/documents";
 
 const DIFFICULTY_STYLES: Record<DocumentTemplate["difficulty"], string> = {
   quick: "bg-emerald-100 text-emerald-800",
@@ -11,9 +12,58 @@ interface TemplateCardProps {
   isFavorite: boolean;
   onToggleFavorite: (id: string) => void;
   onOpen: (template: DocumentTemplate) => void;
+  compact?: boolean;
 }
 
-export function TemplateCard({ template, isFavorite, onToggleFavorite, onOpen }: TemplateCardProps) {
+export function TemplateCard({ template, isFavorite, onToggleFavorite, onOpen, compact }: TemplateCardProps) {
+  const favoriteToggle = (
+    <span
+      role="button"
+      tabIndex={0}
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggleFavorite(template.id);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.stopPropagation();
+          onToggleFavorite(template.id);
+        }
+      }}
+      className={`shrink-0 text-lg leading-none ${
+        isFavorite ? "text-amber-500" : "text-stone-300 hover:text-stone-400"
+      }`}
+      aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+    >
+      {isFavorite ? "★" : "☆"}
+    </span>
+  );
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={() => onOpen(template)}
+        className="group flex w-full items-center justify-between gap-3 rounded-lg border border-stone-200 bg-white px-4 py-2.5 text-left shadow-sm transition-shadow hover:shadow-md hover:border-stone-300"
+      >
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-sm font-semibold text-stone-900 group-hover:text-emerald-800">
+            {template.title}
+          </h3>
+          <p className="truncate text-xs text-stone-400">{template.subcategory}</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2 text-xs">
+          <span className={`rounded-full px-2 py-0.5 font-medium ${DIFFICULTY_STYLES[template.difficulty]}`}>
+            {template.difficulty}
+          </span>
+          <span className="text-emerald-700">💵 ${estimatePayout(template)}</span>
+          <span className="hidden text-stone-400 sm:inline">~{template.estimatedMinutes}m</span>
+          {favoriteToggle}
+        </div>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -24,26 +74,7 @@ export function TemplateCard({ template, isFavorite, onToggleFavorite, onOpen }:
         <span className="text-xs font-medium uppercase tracking-wide text-stone-400">
           {template.subcategory}
         </span>
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleFavorite(template.id);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.stopPropagation();
-              onToggleFavorite(template.id);
-            }
-          }}
-          className={`shrink-0 text-lg leading-none ${
-            isFavorite ? "text-amber-500" : "text-stone-300 hover:text-stone-400"
-          }`}
-          aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-        >
-          {isFavorite ? "★" : "☆"}
-        </span>
+        {favoriteToggle}
       </div>
 
       <h3 className="text-[15px] font-semibold leading-snug text-stone-900 group-hover:text-emerald-800">
@@ -57,6 +88,7 @@ export function TemplateCard({ template, isFavorite, onToggleFavorite, onOpen }:
           {template.difficulty}
         </span>
         <span className="text-stone-400">~{template.estimatedMinutes} min</span>
+        <span className="text-emerald-700">💵 ${estimatePayout(template)}</span>
       </div>
     </button>
   );
