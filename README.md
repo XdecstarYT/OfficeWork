@@ -355,6 +355,48 @@ A large QoL and small-feature pass across nearly every tab:
 - **Your Rank** — a quick "#X of N by Money" summary with a link to the full Leaderboard.
 - **What's Next** — combines your next Board Meeting and your next due document into one card.
 
+### ~190 more features
+
+A much larger follow-up pass, organized by area. Roughly 20 batches, each typechecked, built, and committed independently.
+
+**Global (app shell)**
+- Local clock, session/daily playtime tracking, About + What's New (auto-shown once per version) modals.
+- High-contrast mode, compact (icon-only) nav, Alt+←/→ tab cycling, Esc closes whichever dialog is open, away badge in the tab title after 10 idle minutes, copy-debug-info button.
+- Pending time-off decisions now count toward the notification bell (🌴, deep-links to Company).
+
+**My Work**
+- Due-soon filter, relative due-date labels (`lib/time.ts`), title search, section header counts, est. XP per row, colored status pills, this-week completed/earnings summary.
+- Remind (email nudge) on work you assigned to others; Clear Draft, field-completion progress, Copy JSON, and a read-only viewer for completed docs.
+
+**Filing Cabinet**
+- Estimated payout on every card, sort by payout, time-range filters, difficulty counts, grid/list view toggle, category breadcrumb, CSV export, Jump to Random Category, Expand/Collapse-all category tree, search-box clear button.
+
+**Inbox**
+- Reply/Forward (with quoting), a persisted compose draft, 1-day snooze, sender-type filter, sort order, Archive All Read, print/copy/mark-unread on an open email.
+
+**Company**
+- Export roster CSV, copy company summary/invite message, team money/level/streak/on-leave stats, streak + last-active badges per member, click a department chip to filter, Office Shop and Time Off header counts.
+
+**Board Meetings**
+- Countdown labels, who-hasn't-responded + expandable attendee list, copy summary, duplicate/reschedule, today-only filter, bulk .ics export, configurable reminder lead time.
+
+**Corporate Updates**
+- In-place editing (owner), reactor-name tooltips, category quick-filters with counts, trending sort, save/star an update locally, click a byline to filter by author.
+
+**Activity Feed / Leaderboard / Archive**
+- Relative timestamps, today-only and event-count filters, streak and badge-count leaderboards, an AI-coworker leaderboard, a "you're #1" banner, quick date-range presets, a Random document button, category badges.
+
+**AI Clients**
+- Client search/sort/"my clients only", typical payout range on every card, contract history modal, duplicate a custom client, total-earned stat, CSV export.
+
+**Dashboard / Calendar**
+- Team mood-of-the-day, streak-milestone callout, This Month stat tile, calendar filter chips ("only mine"), days-until labels, copy-agenda.
+
+**Shared building blocks**
+- `TemplateBuilder` gained per-field help text, default values, duplicate-field, and a live field-count/time/difficulty summary; `DocumentFieldForm` renders that help text and a textarea character counter everywhere it's used.
+- Negotiation chat auto-scrolls and offers quick-reply chips; the assign/template/client-request modals all got Esc-to-close, copy-summary buttons, and (where relevant) a due-date preset row.
+- The sign-up flow gained step-progress dots, a random company-name suggester, and a warning before closing the tab with an unsaved login code.
+
 Not yet built: an avatar/office world, cosmetics.
 
 ## Getting started
