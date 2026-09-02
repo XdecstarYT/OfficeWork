@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DocumentFieldForm } from "./DocumentFieldForm";
 import { DocumentPreview } from "./DocumentPreview";
 import { estimatePayout, type ReferenceRow } from "../lib/documents";
@@ -43,9 +43,18 @@ export function AssignTaskModal({
   const [prefillValues, setPrefillValues] = useState<Record<string, string>>({});
   const [referenceRows, setReferenceRows] = useState<ReferenceRow[]>([]);
   const [confirming, setConfirming] = useState(false);
+  const [summaryCopyLabel, setSummaryCopyLabel] = useState("📋 Copy Summary");
 
   const filledReferenceRows = referenceRows.filter((r) => r.label.trim() !== "" || r.value.trim() !== "");
   const filledValues = Object.fromEntries(Object.entries(prefillValues).filter(([, v]) => v.trim() !== ""));
+
+  useEffect(() => {
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [onClose]);
 
   async function handleFinalConfirm() {
     setConfirming(true);
@@ -68,6 +77,10 @@ export function AssignTaskModal({
         className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="mb-3 flex items-center gap-1.5">
+          <span className={`h-1.5 flex-1 rounded-full ${step === "details" ? "bg-emerald-600" : "bg-emerald-300"}`} />
+          <span className={`h-1.5 flex-1 rounded-full ${step === "review" ? "bg-emerald-600" : "bg-stone-200"}`} />
+        </div>
         {step === "details" ? (
           <>
             <h2 className="text-lg font-semibold text-stone-900">Set Task Details</h2>
@@ -106,12 +119,38 @@ export function AssignTaskModal({
                   onChange={(e) => setDueDays(Number(e.target.value))}
                   className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {[
+                    ["Today", 0],
+                    ["3d", 3],
+                    ["1w", 7],
+                    ["2w", 14],
+                  ].map(([label, days]) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setDueDays(days as number)}
+                      className="rounded-full border border-stone-200 px-2 py-0.5 text-[11px] text-stone-500 hover:bg-stone-100"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
                 <p className="mt-1 text-xs text-stone-400">0 = no deadline.</p>
               </div>
               <div className="flex-1">
-                <label className="block text-xs font-medium uppercase tracking-wide text-stone-400">
-                  Payout ($)
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-medium uppercase tracking-wide text-stone-400">
+                    Payout ($)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setPayout(estimatePayout(template))}
+                    className="text-[11px] text-stone-400 hover:text-stone-600"
+                  >
+                    ↺ Reset
+                  </button>
+                </div>
                 <input
                   type="number"
                   min={0}
@@ -245,8 +284,29 @@ export function AssignTaskModal({
           </>
         ) : (
           <>
-            <h2 className="text-lg font-semibold text-stone-900">Review Task</h2>
-            <p className="mt-1 text-sm text-stone-500">Check everything before it goes out.</p>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h2 className="text-lg font-semibold text-stone-900">Review Task</h2>
+                <p className="mt-1 text-sm text-stone-500">Check everything before it goes out.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const text = [
+                    `${template.title} for ${targetLabel}`,
+                    `Due: ${dueDays > 0 ? `in ${dueDays} day${dueDays === 1 ? "" : "s"}` : "No deadline"}`,
+                    `Payout: $${payout.toFixed(2)}`,
+                    `Boss review required: ${forceApproval ? "Yes" : "No"}`,
+                  ].join("\n");
+                  navigator.clipboard?.writeText(text).catch(() => {});
+                  setSummaryCopyLabel("Copied!");
+                  setTimeout(() => setSummaryCopyLabel("📋 Copy Summary"), 1500);
+                }}
+                className="shrink-0 rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+              >
+                {summaryCopyLabel}
+              </button>
+            </div>
 
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-3">
