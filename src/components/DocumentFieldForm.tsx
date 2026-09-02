@@ -15,15 +15,19 @@ export function DocumentFieldForm({ fields, values, onChange, readOnly }: Docume
           <label className="text-xs font-medium text-stone-500">
             {f.label} {f.required && <span className="text-emerald-600">*</span>}
           </label>
+          {f.helpText && <p className="text-[11px] text-stone-400">{f.helpText}</p>}
           {f.type === "textarea" ? (
-            <textarea
-              rows={3}
-              disabled={readOnly}
-              value={values[f.id] ?? ""}
-              onChange={(e) => onChange(f.id, e.target.value)}
-              placeholder={f.placeholder}
-              className="rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-stone-50"
-            />
+            <>
+              <textarea
+                rows={3}
+                disabled={readOnly}
+                value={values[f.id] ?? f.defaultValue ?? ""}
+                onChange={(e) => onChange(f.id, e.target.value)}
+                placeholder={f.placeholder}
+                className="rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-stone-50"
+              />
+              <p className="self-end text-[10px] text-stone-300">{(values[f.id] ?? "").length} characters</p>
+            </>
           ) : f.type === "select" ? (
             <select
               disabled={readOnly}
@@ -50,7 +54,7 @@ export function DocumentFieldForm({ fields, values, onChange, readOnly }: Docume
             <input
               type={f.type === "date" ? "date" : f.type === "number" || f.type === "currency" ? "number" : "text"}
               disabled={readOnly}
-              value={values[f.id] ?? ""}
+              value={values[f.id] ?? f.defaultValue ?? ""}
               onChange={(e) => onChange(f.id, e.target.value)}
               placeholder={f.placeholder}
               className="rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-stone-50"

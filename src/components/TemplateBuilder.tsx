@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DocumentPreview } from "./DocumentPreview";
 import { generateCustomTemplate } from "../lib/aiClient";
 import type { LlmConfig } from "../lib/llmConfig";
@@ -156,6 +156,29 @@ export function TemplateBuilder({
     setFields((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function duplicateField(index: number) {
+    const seq = nextSeq.current++;
+    setFields((prev) => {
+      const next = [...prev];
+      next.splice(index + 1, 0, { ...prev[index], id: `field_${seq}` });
+      return next;
+    });
+  }
+
+  function clearAllFields() {
+    if (fields.length === 0) return;
+    if (!window.confirm("Remove all fields? This can't be undone.")) return;
+    setFields([]);
+  }
+
+  useEffect(() => {
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [onClose]);
+
   function handleDropAt(e: React.DragEvent, index: number) {
     e.preventDefault();
     e.stopPropagation();
@@ -176,6 +199,8 @@ export function TemplateBuilder({
       type: f.type,
       required: f.required,
       placeholder: f.placeholder || undefined,
+      helpText: f.helpText?.trim() || undefined,
+      defaultValue: f.defaultValue?.trim() || undefined,
       options:
         f.type === "select"
           ? (f.optionsText ?? "")
@@ -314,6 +339,19 @@ export function TemplateBuilder({
               className="mt-2 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
 
+            <div className="mt-2 flex items-center justify-between text-xs text-stone-400">
+              <span>
+                {fields.length} field{fields.length === 1 ? "" : "s"} · ~
+                {Math.max(2, fields.length * 2)} min ·{" "}
+                {fields.length <= 3 ? "quick" : fields.length <= 7 ? "standard" : "detailed"}
+              </span>
+              {fields.length > 0 && (
+                <button type="button" onClick={clearAllFields} className="font-medium text-red-500 hover:text-red-700">
+                  Clear all fields
+                </button>
+              )}
+            </div>
+
             <div
               onDragOver={(e) => {
                 e.preventDefault();
@@ -390,6 +428,15 @@ export function TemplateBuilder({
                       </label>
                       <button
                         type="button"
+                        onClick={() => duplicateField(index)}
+                        className="shrink-0 text-stone-300 hover:text-stone-600"
+                        aria-label="Duplicate field"
+                        title="Duplicate field"
+                      >
+                        🧬
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => removeField(index)}
                         className="shrink-0 text-stone-300 hover:text-red-500"
                         aria-label="Remove field"
@@ -410,6 +457,28 @@ export function TemplateBuilder({
                         className="ml-6 rounded border border-stone-200 px-2 py-1 text-xs text-stone-600 focus:border-emerald-500 focus:outline-none"
                       />
                     )}
+
+                    {(f.type === "text" ||
+                      f.type === "textarea" ||
+                      f.type === "number" ||
+                      f.type === "currency" ||
+                      f.type === "date") && (
+                      <input
+                        type="text"
+                        value={f.defaultValue ?? ""}
+                        onChange={(e) => updateField(index, { defaultValue: e.target.value })}
+                        placeholder="Default value (optional)"
+                        className="ml-6 rounded border border-stone-200 px-2 py-1 text-xs text-stone-600 focus:border-emerald-500 focus:outline-none"
+                      />
+                    )}
+
+                    <input
+                      type="text"
+                      value={f.helpText ?? ""}
+                      onChange={(e) => updateField(index, { helpText: e.target.value })}
+                      placeholder="Help text shown under the label (optional)"
+                      className="ml-6 rounded border border-stone-200 px-2 py-1 text-xs text-stone-600 focus:border-emerald-500 focus:outline-none"
+                    />
 
                     {f.type === "select" && (
                       <input
