@@ -27,21 +27,31 @@ export function CategoryTree({ selection, onSelect, counts }: CategoryTreeProps)
   };
 
   const totalCount = Object.values(counts).reduce((a, b) => a + b, 0);
+  const allExpanded = expanded.size === TAXONOMY.length;
 
   return (
     <nav className="flex flex-col gap-0.5 text-sm">
-      <button
-        type="button"
-        onClick={() => onSelect({ categoryId: null, subcategoryId: null })}
-        className={`flex items-center justify-between rounded-md px-2.5 py-1.5 text-left font-medium transition-colors ${
-          selection.categoryId === null
-            ? "bg-stone-200 text-stone-900"
-            : "text-stone-700 hover:bg-stone-100"
-        }`}
-      >
-        <span>📁 All Documents</span>
-        <span className="text-xs text-stone-400 tabular-nums">{totalCount}</span>
-      </button>
+      <div className="flex items-center justify-between px-1">
+        <button
+          type="button"
+          onClick={() => onSelect({ categoryId: null, subcategoryId: null })}
+          className={`flex flex-1 items-center justify-between rounded-md px-2.5 py-1.5 text-left font-medium transition-colors ${
+            selection.categoryId === null
+              ? "bg-stone-200 text-stone-900"
+              : "text-stone-700 hover:bg-stone-100"
+          }`}
+        >
+          <span>📁 All Documents</span>
+          <span className="text-xs text-stone-400 tabular-nums">{totalCount}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setExpanded(allExpanded ? new Set() : new Set(TAXONOMY.map((c) => c.id)))}
+          className="ml-1 shrink-0 text-xs text-stone-400 hover:text-stone-600"
+        >
+          {allExpanded ? "Collapse all" : "Expand all"}
+        </button>
+      </div>
 
       {TAXONOMY.map((category) => {
         const isExpanded = expanded.has(category.id);
