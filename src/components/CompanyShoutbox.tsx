@@ -41,7 +41,10 @@ export function CompanyShoutbox({ companyId, profile, members }: CompanyShoutbox
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "company_chat_messages", filter: `company_id=eq.${companyId}` },
-        (payload) => setMessages((prev) => [...prev, payload.new as ChatMessageRow]),
+        (payload) => {
+          const incoming = payload.new as ChatMessageRow;
+          setMessages((prev) => (prev.some((m) => m.id === incoming.id) ? prev : [...prev, incoming]));
+        },
       )
       .subscribe();
     return () => {
@@ -63,11 +66,20 @@ export function CompanyShoutbox({ companyId, profile, members }: CompanyShoutbox
     if (!text) return;
     setSending(true);
     setDraft("");
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("company_chat_messages")
-      .insert({ company_id: companyId, sender_id: profile.id, body: text.slice(0, 500) });
+      .insert({ company_id: companyId, sender_id: profile.id, body: text.slice(0, 500) })
+      .select()
+      .single();
     setSending(false);
-    if (error) setDraft(text);
+    if (error) {
+      setDraft(text);
+      return;
+    }
+    // Append immediately rather than waiting on the realtime echo - the
+    // INSERT subscription below already de-dupes by id, so this is safe
+    // even if that event arrives a moment later.
+    setMessages((prev) => (prev.some((m) => m.id === data.id) ? prev : [...prev, data]));
   }
 
   return (
