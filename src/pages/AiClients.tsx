@@ -21,6 +21,7 @@ import {
   type ClientContractRow,
 } from "../lib/clientContracts";
 import { awardMoney } from "../lib/company";
+import { downloadCsv } from "../lib/csv";
 import { ClientRequestModal } from "../components/ClientRequestModal";
 import { supabase } from "../lib/supabaseClient";
 import type { LlmConfig } from "../lib/llmConfig";
@@ -93,6 +94,10 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
   const [contractTasks, setContractTasks] = useState(5);
   const [contractBonus, setContractBonus] = useState(50);
   const [creatingContract, setCreatingContract] = useState(false);
+  const [clientQuery, setClientQuery] = useState("");
+  const [clientSort, setClientSort] = useState<"default" | "name" | "payout" | "familiarity">("default");
+  const [relationshipsOnly, setRelationshipsOnly] = useState(false);
+  const [historyForClient, setHistoryForClient] = useState<ClientPersona | null>(null);
 
   const companyId = profile.company_id;
 
@@ -131,10 +136,29 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
   }, [companyId, loadClientData]);
 
   const allClients: ClientPersona[] = [...CLIENTS, ...customClients.map(customRowToClientPersona)];
+  const categoryCounts = allClients.reduce<Record<string, number>>((acc, c) => {
+    for (const cat of c.categoryAffinity) acc[cat] = (acc[cat] ?? 0) + 1;
+    return acc;
+  }, {});
   const visibleClients = allClients
     .filter((c) => categoryFilter === "all" || c.categoryAffinity.includes(categoryFilter))
+    .filter((c) => !relationshipsOnly || (relationships[c.id] ?? 0) > 0)
+    .filter((c) => {
+      const q = clientQuery.trim().toLowerCase();
+      return !q || c.name.toLowerCase().includes(q) || c.company.toLowerCase().includes(q);
+    })
     .slice()
-    .sort((a, b) => Number(favoriteClients.has(b.id)) - Number(favoriteClients.has(a.id)));
+    .sort((a, b) => {
+      if (favoriteClients.has(a.id) !== favoriteClients.has(b.id)) {
+        return Number(favoriteClients.has(b.id)) - Number(favoriteClients.has(a.id));
+      }
+      if (clientSort === "name") return a.name.localeCompare(b.name);
+      if (clientSort === "payout") return b.payoutRange[1] - a.payoutRange[1];
+      if (clientSort === "familiarity") return (relationships[b.id] ?? 0) - (relationships[a.id] ?? 0);
+      return 0;
+    });
+
+  const totalClientEarnings = Object.values(earnings).reduce((sum, v) => sum + v, 0);
 
   async function handleGenerateClientIdea() {
     setClientAiBusy(true);
@@ -193,6 +217,42 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
     if (!window.confirm("Delete this custom client? Its active/past requests aren't affected.")) return;
     await deleteCustomAiClient(id);
     await loadClientData();
+  }
+
+  async function handleDuplicateClient(row: CustomAiClientRow) {
+    if (!companyId) return;
+    const newName = window.prompt("Name for the duplicate client?", `${row.name} Jr.`);
+    if (!newName?.trim()) return;
+    await createCustomAiClient({
+      companyId,
+      createdBy: profile.id,
+      name: newName.trim(),
+      companyName: row.company_name,
+      avatar: row.avatar,
+      personality: row.personality,
+      categoryAffinity: row.category_affinity,
+      payoutMin: row.payout_min,
+      payoutMax: row.payout_max,
+    });
+    await loadClientData();
+  }
+
+  function handleExportClients() {
+    downloadCsv(
+      "ai-clients.csv",
+      [
+        ["Name", "Company", "Completions", "Earnings", "Satisfaction %"],
+        ...allClients
+          .filter((c) => (relationships[c.id] ?? 0) > 0)
+          .map((c) => [
+            c.name,
+            c.company,
+            relationships[c.id] ?? 0,
+            (earnings[c.id] ?? 0).toFixed(2),
+            satisfactionFor(c.id, contracts, relationships[c.id] ?? 0),
+          ]),
+      ],
+    );
   }
 
   async function handleGetWork(clientId: string) {
@@ -272,6 +332,19 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
     }
   }
 
+  useEffect(() => {
+    if (!showCreateClient && !offeringContractFor && !extendingContract && !historyForClient) return;
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      setShowCreateClient(false);
+      setOfferingContractFor(null);
+      setExtendingContract(null);
+      setHistoryForClient(null);
+    }
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [showCreateClient, offeringContractFor, extendingContract, historyForClient]);
+
   const openClient = openClientId ? allClients.find((c) => c.id === openClientId) : null;
   const openRequest = openClientId ? requests[openClientId] : null;
 
@@ -285,32 +358,76 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
               Take on real work from recurring clients — dynamic requests you can negotiate.
             </p>
           </div>
-          {isOwner && companyId && (
-            <button
-              type="button"
-              onClick={() => setShowCreateClient(true)}
-              className="shrink-0 self-start rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
-            >
-              🎨 Add Custom Client
-            </button>
-          )}
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            {totalClientEarnings > 0 && (
+              <button
+                type="button"
+                onClick={handleExportClients}
+                className="self-start rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+                title="Export client relationships as CSV"
+              >
+                ⬇ Export
+              </button>
+            )}
+            {isOwner && companyId && (
+              <button
+                type="button"
+                onClick={() => setShowCreateClient(true)}
+                className="self-start rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+              >
+                🎨 Add Custom Client
+              </button>
+            )}
+          </div>
         </div>
 
-        <label className="flex w-fit items-center gap-1.5 text-xs text-stone-500">
-          Category
+        {totalClientEarnings > 0 && (
+          <p className="text-xs text-stone-400">💵 ${totalClientEarnings.toFixed(2)} total earned from clients</p>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="search"
+            value={clientQuery}
+            onChange={(e) => setClientQuery(e.target.value)}
+            placeholder="Search clients…"
+            className="min-w-0 flex-1 rounded-md border border-stone-300 px-2.5 py-1.5 text-xs focus:border-emerald-500 focus:outline-none"
+          />
+          <label className="flex items-center gap-1.5 text-xs text-stone-500">
+            Category
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="rounded-md border border-stone-300 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+            >
+              <option value="all">All</option>
+              {TAXONOMY.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({categoryCounts[c.id] ?? 0})
+                </option>
+              ))}
+            </select>
+          </label>
           <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
+            value={clientSort}
+            onChange={(e) => setClientSort(e.target.value as typeof clientSort)}
             className="rounded-md border border-stone-300 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
           >
-            <option value="all">All</option>
-            {TAXONOMY.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
+            <option value="default">Sort: Default</option>
+            <option value="name">Sort: Name</option>
+            <option value="payout">Sort: Highest Payout</option>
+            <option value="familiarity">Sort: Most Familiar</option>
           </select>
-        </label>
+          <button
+            type="button"
+            onClick={() => setRelationshipsOnly((v) => !v)}
+            className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
+              relationshipsOnly ? "bg-stone-800 text-white" : "border border-stone-300 text-stone-500 hover:bg-stone-100"
+            }`}
+          >
+            My Clients Only
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visibleClients.map((c) => {
@@ -347,6 +464,16 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
                   >
                     ★
                   </button>
+                  {customRow && isOwner && (
+                    <button
+                      type="button"
+                      onClick={() => handleDuplicateClient(customRow)}
+                      title="Duplicate this client"
+                      className="shrink-0 text-xs text-stone-300 hover:text-stone-600"
+                    >
+                      🧬
+                    </button>
+                  )}
                   {customRow && (customRow.created_by === profile.id || isOwner) && (
                     <button
                       type="button"
@@ -358,6 +485,7 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
                   )}
                 </div>
                 <p className="text-xs text-stone-500">{c.personality}</p>
+                <p className="text-[10px] text-stone-400">💵 ${c.payoutRange[0]}–${c.payoutRange[1]} typical payout</p>
 
                 {(() => {
                   const tier = relationshipTier(relationships[c.id] ?? 0);
@@ -395,7 +523,7 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
                   return (
                     <div className="rounded-md border border-indigo-200 bg-indigo-50/50 p-2">
                       <p className="text-xs font-medium text-indigo-700">
-                        📜 {contract.title} — {contract.completed_tasks}/{contract.total_tasks} · $
+                        📜 {contract.title} — {contract.completed_tasks}/{contract.total_tasks} ({Math.round(pct)}%) · $
                         {contract.bonus_payout.toFixed(2)} bonus
                       </p>
                       <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-indigo-100">
@@ -424,6 +552,16 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
                     className="w-fit text-xs font-medium text-indigo-600 hover:text-indigo-800"
                   >
                     📜 Offer a Contract
+                  </button>
+                )}
+
+                {contracts.some((ct) => ct.client_id === c.id) && (
+                  <button
+                    type="button"
+                    onClick={() => setHistoryForClient(c)}
+                    className="w-fit text-xs font-medium text-stone-400 hover:text-stone-600"
+                  >
+                    📖 Contract History
                   </button>
                 )}
 
@@ -685,6 +823,37 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
                 {extending ? "Extending…" : "Extend"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {historyForClient && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+          onClick={() => setHistoryForClient(null)}
+        >
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-stone-900">📖 {historyForClient.name}'s Contracts</h2>
+            <div className="mt-3 flex flex-col gap-2">
+              {contracts
+                .filter((ct) => ct.client_id === historyForClient.id)
+                .map((ct) => (
+                  <div key={ct.id} className="rounded-md border border-stone-200 p-2 text-sm">
+                    <p className="font-medium text-stone-800">{ct.title}</p>
+                    <p className="text-xs text-stone-400">
+                      {ct.completed_tasks}/{ct.total_tasks} tasks · ${ct.bonus_payout.toFixed(2)} bonus ·{" "}
+                      <span className={ct.status === "completed" ? "text-emerald-600" : "text-stone-500"}>{ct.status}</span>
+                    </p>
+                  </div>
+                ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setHistoryForClient(null)}
+              className="mt-4 w-full rounded-md bg-stone-800 px-4 py-2 text-sm font-medium text-white hover:bg-stone-900"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
