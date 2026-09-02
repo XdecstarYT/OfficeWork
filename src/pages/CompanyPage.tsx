@@ -64,6 +64,7 @@ import { TemplateBuilder } from "../components/TemplateBuilder";
 import { AssignTaskModal, type AssignTaskDetails } from "../components/AssignTaskModal";
 import { useCustomTemplates } from "../hooks/useCustomTemplates";
 import { useNpcWorkAssignment } from "../hooks/useNpcWorkAssignment";
+import { downloadCsv } from "../lib/csv";
 import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../types/database";
 import type { DocumentTemplate } from "../types/template";
@@ -87,6 +88,15 @@ interface CompanyPageProps {
   profile: Profile;
   onProfileChanged: () => void;
   llmConfig: LlmConfig;
+}
+
+function lastActiveLabel(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  if (dateStr === today) return "active today";
+  if (dateStr === yesterday) return "active yesterday";
+  return `active ${dateStr}`;
 }
 
 export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPageProps) {
@@ -173,6 +183,8 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
   const [npcCompletedCounts, setNpcCompletedCounts] = useState<Record<string, number>>({});
   const [equipment, setEquipment] = useState<CompanyEquipmentRow[]>([]);
   const [buyingEquipment, setBuyingEquipment] = useState<string | null>(null);
+  const [summaryCopyLabel, setSummaryCopyLabel] = useState("📋 Copy Summary");
+  const [inviteCopyLabel, setInviteCopyLabel] = useState("📤 Copy Invite Message");
   const { addCustomTemplate } = useCustomTemplates(profile.company_id, profile.id);
   const { npcs, customNpcPersonas, assigningNpc, setAssigningNpc, npcWorking, assignTemplateToNpc, reloadNpcs } =
     useNpcWorkAssignment(profile, llmConfig);
@@ -867,6 +879,53 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     setShowBuilder(true);
   }
 
+  function handleExportRoster() {
+    if (!company) return;
+    downloadCsv(
+      "team-roster.csv",
+      [
+        ["Name", "Title", "Level", "Department", "Money", "Streak", "Overdue"],
+        ...members.map((m) => [
+          m.display_name,
+          m.job_title,
+          m.level,
+          m.department ?? "",
+          m.money.toFixed(2),
+          m.streak_count,
+          memberOverdueCounts[m.id] ?? 0,
+        ]),
+      ],
+    );
+  }
+
+  function handleCopySummary() {
+    if (!company) return;
+    const text = [
+      `${company.emoji} ${company.name}`,
+      company.motto ? `"${company.motto}"` : null,
+      `${members.length} member${members.length === 1 ? "" : "s"} · Day ${company.current_day} · ${totalCompletedDocs} documents completed`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    navigator.clipboard?.writeText(text).catch(() => {});
+    setSummaryCopyLabel("Copied!");
+    setTimeout(() => setSummaryCopyLabel("📋 Copy Summary"), 1500);
+  }
+
+  function handleCopyInviteMessage() {
+    if (!company) return;
+    const text = `Join ${company.name} on Office Quest! Use invite code ${company.invite_code} to sign up.`;
+    navigator.clipboard?.writeText(text).catch(() => {});
+    setInviteCopyLabel("Copied!");
+    setTimeout(() => setInviteCopyLabel("📤 Copy Invite Message"), 1500);
+  }
+
+  function handleResetBranding() {
+    if (!window.confirm("Reset the company emoji and motto to the defaults?")) return;
+    setEmojiDraft("🏢");
+    setMottoDraft("");
+  }
+
   function startEdit(m: Profile) {
     setEditingId(m.id);
     setEditTitle(m.job_title);
@@ -916,7 +975,14 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
               <strong>{profile.job_title}</strong> (level {profile.level})
             </p>
           </div>
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={handleCopySummary}
+              className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+            >
+              {summaryCopyLabel}
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -969,6 +1035,22 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                 🔒 {badge.name}
               </span>
             ))}
+        </div>
+
+        <div className="flex flex-wrap gap-4 text-xs text-stone-500">
+          <span>
+            💰 ${members.reduce((sum, m) => sum + m.money, 0).toFixed(2)} total team money
+          </span>
+          <span>
+            📈 avg level{" "}
+            {members.length > 0 ? (members.reduce((sum, m) => sum + m.level, 0) / members.length).toFixed(1) : "0"}
+          </span>
+          {members.some((m) => m.streak_count > 0) && (
+            <span>🔥 best streak {Math.max(...members.map((m) => m.streak_count))} days</span>
+          )}
+          {timeOffRequests.some((r) => isOnLeaveToday(timeOffRequests, r.member_id)) && (
+            <span>🌴 {new Set(members.filter((m) => isOnLeaveToday(timeOffRequests, m.id)).map((m) => m.id)).size} on leave today</span>
+          )}
         </div>
 
         {(() => {
@@ -1050,6 +1132,13 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                 </button>
                 <button
                   type="button"
+                  onClick={handleResetBranding}
+                  className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+                >
+                  ↺ Reset
+                </button>
+                <button
+                  type="button"
                   onClick={handleSaveBranding}
                   disabled={savingBranding}
                   className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
@@ -1062,7 +1151,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
               <label className="block text-xs font-medium uppercase tracking-wide text-stone-400">
                 Main Invite Code
               </label>
-              <div className="mt-1 flex items-center gap-2">
+              <div className="mt-1 flex flex-wrap items-center gap-2">
                 <span className="rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium text-stone-700">
                   {company.invite_code}
                 </span>
@@ -1073,6 +1162,13 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                   className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
                 >
                   {regenerating ? "Regenerating…" : "🔄 Regenerate"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyInviteMessage}
+                  className="rounded-md border border-stone-300 px-3 py-2 text-xs font-medium text-stone-600 hover:bg-stone-100"
+                >
+                  {inviteCopyLabel}
                 </button>
               </div>
               <p className="mt-1 text-xs text-stone-400">
@@ -1288,6 +1384,15 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                   🗂 {showOrgChart ? "Hide" : "Show"} Org Chart
                 </button>
               )}
+              {isOwner && (
+                <button
+                  type="button"
+                  onClick={handleExportRoster}
+                  className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+                >
+                  ⬇ Export Roster
+                </button>
+              )}
             </div>
           </div>
 
@@ -1387,6 +1492,11 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                         ⏰ {memberOverdueCounts[m.id]} overdue
                       </span>
                     )}
+                    {m.streak_count > 1 && (
+                      <span className="ml-1.5 rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-medium text-orange-700">
+                        🔥 {m.streak_count}d streak
+                      </span>
+                    )}
                     <button
                       type="button"
                       onClick={() => setViewingBioFor(m.id)}
@@ -1396,6 +1506,9 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                       ℹ️
                     </button>
                   </p>
+                  {lastActiveLabel(m.last_active_date) && (
+                    <p className="text-[11px] text-stone-400">{lastActiveLabel(m.last_active_date)}</p>
+                  )}
                   {isEditing ? (
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                       <input
@@ -1443,9 +1556,14 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                     <p className="text-xs text-stone-400">
                       {m.job_title} · level {m.level} · ${m.money.toFixed(2)}
                       {m.department && (
-                        <span className="ml-1.5 rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-600">
+                        <button
+                          type="button"
+                          onClick={() => setMemberDeptFilter(m.department ?? "")}
+                          title={`Filter team by ${m.department}`}
+                          className="ml-1.5 rounded-full bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-600 hover:bg-stone-200"
+                        >
                           {m.department}
-                        </span>
+                        </button>
                       )}
                     </p>
                   )}
@@ -1651,7 +1769,12 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
 
         <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50/40 p-4">
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-amber-700">🛒 Office Shop</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-amber-700">
+              🛒 Office Shop{" "}
+              <span className="font-normal normal-case text-amber-500">
+                ({equipment.length}/{EQUIPMENT_CATALOG.length} owned)
+              </span>
+            </h2>
             <p className="text-xs text-amber-600">
               One-time purchases that permanently boost everyone's task payouts, company-wide.
               {equipment.length > 0 && (
@@ -1701,7 +1824,14 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
         {(timeOffRequests.some((r) => r.member_id === profile.id) ||
           timeOffRequests.some((r) => r.status === "pending" && profile.level > memberLevelFor(r.member_id))) && (
           <div className="flex flex-col gap-2 rounded-lg border border-sky-200 bg-sky-50/40 p-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-sky-700">🌴 Time Off</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-sky-700">
+              🌴 Time Off
+              {timeOffRequests.filter((r) => r.status === "pending" && profile.level > memberLevelFor(r.member_id)).length > 0 && (
+                <span className="ml-1.5 rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-medium normal-case text-sky-700">
+                  {timeOffRequests.filter((r) => r.status === "pending" && profile.level > memberLevelFor(r.member_id)).length} pending
+                </span>
+              )}
+            </h2>
             <div className="flex flex-col gap-1.5">
               {timeOffRequests
                 .filter(
