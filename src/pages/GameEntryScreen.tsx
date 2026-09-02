@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createSessionAccount, loginWithCode } from "../lib/sessionAuth";
 import { createCompany, joinCompany } from "../lib/company";
 import { supabase } from "../lib/supabaseClient";
@@ -7,6 +7,28 @@ const EMAIL_SUFFIX = "@officequest.mail";
 
 type Step = "choose" | "create-details" | "join-details" | "solo-details" | "identity" | "code" | "login";
 type Intent = "create" | "join" | "solo" | null;
+
+const NAME_ADJECTIVES = ["Northwind", "Summit", "Cedar", "Harbor", "Bright", "Silverline", "Riverside", "Granite"];
+const NAME_NOUNS = ["Logistics", "Ventures", "Partners", "Solutions", "Holdings", "Collective", "& Co", "Group"];
+
+function randomCompanyName(): string {
+  const adj = NAME_ADJECTIVES[Math.floor(Math.random() * NAME_ADJECTIVES.length)];
+  const noun = NAME_NOUNS[Math.floor(Math.random() * NAME_NOUNS.length)];
+  return `${adj} ${noun}`;
+}
+
+function ProgressDots({ current }: { current: 0 | 1 | 2 }) {
+  return (
+    <div className="mb-3 flex items-center gap-1.5">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className={`h-1.5 flex-1 rounded-full ${i <= current ? "bg-emerald-600" : "bg-stone-200"}`}
+        />
+      ))}
+    </div>
+  );
+}
 
 interface GameEntryScreenProps {
   /** Called after sign-in and company create/join settle, so App.tsx's
@@ -82,6 +104,19 @@ export function GameEntryScreen({ onAccountReady }: GameEntryScreenProps) {
       setLoading(false);
     }
   }
+
+  // Warns before an accidental close/refresh while the just-generated login
+  // code hasn't been acknowledged yet - it's the only way back into the
+  // account, so losing it here would be unrecoverable.
+  useEffect(() => {
+    if (step !== "code") return;
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [step]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -168,16 +203,27 @@ export function GameEntryScreen({ onAccountReady }: GameEntryScreenProps) {
           }}
           className="flex flex-col gap-3"
         >
+          <ProgressDots current={0} />
           <p className="text-sm text-stone-500">Name your new game/company. You'll be the Owner.</p>
-          <input
-            type="text"
-            placeholder="Company name (e.g. Northwind Logistics)"
-            required
-            autoFocus
-            value={gameName}
-            onChange={(e) => setGameName(e.target.value)}
-            className="rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Company name (e.g. Northwind Logistics)"
+              required
+              autoFocus
+              value={gameName}
+              onChange={(e) => setGameName(e.target.value)}
+              className="flex-1 rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <button
+              type="button"
+              onClick={() => setGameName(randomCompanyName())}
+              title="Suggest a name"
+              className="shrink-0 rounded-md border border-stone-300 px-3 py-2 text-sm hover:bg-stone-100"
+            >
+              🎲
+            </button>
+          </div>
           <div className="flex gap-2">
             <button
               type="button"
@@ -208,6 +254,7 @@ export function GameEntryScreen({ onAccountReady }: GameEntryScreenProps) {
           }}
           className="flex flex-col gap-3"
         >
+          <ProgressDots current={0} />
           <p className="text-sm text-stone-500">Enter the invite code your friend shared with you.</p>
           <input
             type="text"
@@ -248,19 +295,30 @@ export function GameEntryScreen({ onAccountReady }: GameEntryScreenProps) {
           }}
           className="flex flex-col gap-3"
         >
+          <ProgressDots current={0} />
           <p className="text-sm text-stone-500">
             Play by yourself — no waiting room, no invite code needed. Name your office (or keep
             the default).
           </p>
-          <input
-            type="text"
-            placeholder="Office name"
-            required
-            autoFocus
-            value={gameName}
-            onChange={(e) => setGameName(e.target.value)}
-            className="rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Office name"
+              required
+              autoFocus
+              value={gameName}
+              onChange={(e) => setGameName(e.target.value)}
+              className="flex-1 rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <button
+              type="button"
+              onClick={() => setGameName(randomCompanyName())}
+              title="Suggest a name"
+              className="shrink-0 rounded-md border border-stone-300 px-3 py-2 text-sm hover:bg-stone-100"
+            >
+              🎲
+            </button>
+          </div>
           <p className="text-xs text-stone-400">
             You can still share your invite code later if you want friends to join.
           </p>
@@ -288,6 +346,7 @@ export function GameEntryScreen({ onAccountReady }: GameEntryScreenProps) {
     return (
       <Shell>
         <form onSubmit={handleCreateAccount} className="flex flex-col gap-3">
+          <ProgressDots current={1} />
           <p className="text-sm text-stone-500">
             Now set up your player — a display name and an email handle. No real email or
             password needed.
@@ -341,6 +400,7 @@ export function GameEntryScreen({ onAccountReady }: GameEntryScreenProps) {
     return (
       <Shell>
         <div className="text-center">
+          <ProgressDots current={2} />
           <span className="text-2xl">🎉</span>
           <h2 className="mt-2 text-base font-semibold text-stone-900">You're in, {displayName}!</h2>
           <p className="mt-1 text-sm text-stone-500">
@@ -360,6 +420,24 @@ export function GameEntryScreen({ onAccountReady }: GameEntryScreenProps) {
               className="rounded-md border border-stone-300 px-3 py-2 text-xs font-medium text-stone-600 hover:bg-stone-100"
             >
               {copyLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const blob = new Blob([`Office Quest login code for ${displayName}:\n${generatedCode}`], {
+                  type: "text/plain",
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "office-quest-code.txt";
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              title="Download as a text file"
+              className="rounded-md border border-stone-300 px-3 py-2 text-xs font-medium text-stone-600 hover:bg-stone-100"
+            >
+              ⬇
             </button>
           </div>
           {resolvedHandle && (
