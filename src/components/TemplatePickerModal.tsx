@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ALL_TEMPLATES, searchTemplates } from "../lib/templates";
 import { useCustomTemplates } from "../hooks/useCustomTemplates";
 import type { DocumentTemplate } from "../types/template";
@@ -17,7 +17,16 @@ export function TemplatePickerModal({ title, companyId, onPick, onClose }: Templ
     () => [...customTemplates, ...ALL_TEMPLATES],
     [customTemplates],
   );
-  const results = useMemo(() => searchTemplates(allTemplates, query).slice(0, 30), [allTemplates, query]);
+  const allResults = useMemo(() => searchTemplates(allTemplates, query), [allTemplates, query]);
+  const results = allResults.slice(0, 30);
+
+  useEffect(() => {
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [onClose]);
 
   return (
     <div
@@ -34,9 +43,18 @@ export function TemplatePickerModal({ title, companyId, onPick, onClose }: Templ
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search templates…"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && results[0]) onPick(results[0]);
+          }}
+          placeholder="Search templates… (Enter picks the first result)"
           className="mt-3 rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
         />
+        {query && (
+          <p className="mt-1 text-xs text-stone-400">
+            {allResults.length} result{allResults.length === 1 ? "" : "s"}
+            {allResults.length > 30 && " (showing first 30)"}
+          </p>
+        )}
         <div className="mt-3 min-h-0 flex-1 overflow-y-auto">
           {results.length === 0 ? (
             <p className="p-4 text-center text-sm text-stone-400">No templates found.</p>
