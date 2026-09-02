@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ClientPersona } from "../data/clients";
 import type { ClientRequest } from "../types/template";
 import { NegotiationChat } from "./NegotiationChat";
@@ -25,10 +25,25 @@ export function ClientRequestModal({
   onUpdateRequest,
 }: ClientRequestModalProps) {
   const [showChat, setShowChat] = useState(false);
+  const [showFields, setShowFields] = useState(false);
+  const [copyLabel, setCopyLabel] = useState("📋 Copy");
 
   function handleAcceptOffer(offer: NegotiationOffer) {
     onUpdateRequest({ ...request, payout: offer.payout, deadlineDays: offer.deadlineDays });
   }
+
+  function handleDecline() {
+    if (!window.confirm(`Decline "${request.title}"? You'd need to ask for work again to get it back.`)) return;
+    onDecline();
+  }
+
+  useEffect(() => {
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [onClose]);
 
   return (
     <div
@@ -61,8 +76,25 @@ export function ClientRequestModal({
           <span>·</span>
           <span>⏱ due in {request.deadlineDays}d</span>
           <span>·</span>
-          <span>{request.fields.length} fields</span>
+          <button type="button" onClick={() => setShowFields((v) => !v)} className="underline decoration-dotted hover:text-stone-800">
+            {request.fields.length} fields
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const text = `${request.title}\n${request.description}\n$${request.payout} · due in ${request.deadlineDays}d`;
+              navigator.clipboard?.writeText(text).catch(() => {});
+              setCopyLabel("Copied!");
+              setTimeout(() => setCopyLabel("📋 Copy"), 1500);
+            }}
+            className="ml-auto shrink-0 text-xs font-medium text-stone-400 hover:text-stone-600"
+          >
+            {copyLabel}
+          </button>
         </div>
+        {showFields && (
+          <p className="mt-1 text-xs text-stone-400">{request.fields.map((f) => f.label).join(", ")}</p>
+        )}
 
         {request.isPreview && (
           <p className="mt-2 text-xs text-stone-400">
@@ -95,7 +127,7 @@ export function ClientRequestModal({
         <div className="mt-6 flex justify-between gap-2">
           <button
             type="button"
-            onClick={onDecline}
+            onClick={handleDecline}
             className="rounded-md px-4 py-2 text-sm font-medium text-stone-500 hover:bg-stone-100"
           >
             Decline

@@ -50,6 +50,10 @@ export function GameLobby({ profile, company, onProfileChanged, onStarted }: Gam
   const [creating, setCreating] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
+  const [inviteMsgCopied, setInviteMsgCopied] = useState(false);
+
+  const COMMON_JOB_TITLES = ["Manager", "Team Lead", "Analyst", "Coordinator", "Specialist", "Associate"];
 
   const isOwner = profile.id === company.owner_id;
 
@@ -142,6 +146,19 @@ export function GameLobby({ profile, company, onProfileChanged, onStarted }: Gam
           <p className="text-xs text-stone-400">
             Anyone with this code can join as an Employee. Share it with friends.
           </p>
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard
+                ?.writeText(`Join ${company.name} on Office Quest! Use invite code ${company.invite_code} to sign up.`)
+                .catch(() => {});
+              setInviteMsgCopied(true);
+              setTimeout(() => setInviteMsgCopied(false), 1500);
+            }}
+            className="self-start text-xs font-medium text-stone-500 hover:text-stone-700"
+          >
+            {inviteMsgCopied ? "Copied!" : "📤 Copy shareable invite message"}
+          </button>
         </div>
 
         <div className="mt-5">
@@ -155,6 +172,7 @@ export function GameLobby({ profile, company, onProfileChanged, onStarted }: Gam
                 className="flex items-center justify-between rounded-md border border-stone-100 px-3 py-1.5 text-sm"
               >
                 <span className="text-stone-800">
+                  {m.id === company.owner_id && "👑 "}
                   {m.display_name} {m.id === profile.id && <span className="text-stone-400">(you)</span>}
                 </span>
                 <span className="text-xs text-stone-400">{m.job_title}</span>
@@ -190,10 +208,14 @@ export function GameLobby({ profile, company, onProfileChanged, onStarted }: Gam
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => navigator.clipboard?.writeText(c.code).catch(() => {})}
+                        onClick={() => {
+                          navigator.clipboard?.writeText(c.code).catch(() => {});
+                          setCopiedCodeId(c.id);
+                          setTimeout(() => setCopiedCodeId(null), 1500);
+                        }}
                         className="text-xs text-stone-400 hover:text-stone-600"
                       >
-                        Copy
+                        {copiedCodeId === c.id ? "Copied!" : "Copy"}
                       </button>
                       <button
                         type="button"
@@ -213,11 +235,17 @@ export function GameLobby({ profile, company, onProfileChanged, onStarted }: Gam
                 <label className="text-xs font-medium text-stone-500">Job title</label>
                 <input
                   type="text"
+                  list="lobby-job-titles"
                   value={newJobTitle}
                   onChange={(e) => setNewJobTitle(e.target.value)}
                   placeholder="e.g. Manager"
                   className="mt-1 w-full rounded-md border border-stone-300 px-2.5 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
+                <datalist id="lobby-job-titles">
+                  {COMMON_JOB_TITLES.map((title) => (
+                    <option key={title} value={title} />
+                  ))}
+                </datalist>
               </div>
               <div className="w-20">
                 <label className="text-xs font-medium text-stone-500">Level</label>
@@ -247,6 +275,7 @@ export function GameLobby({ profile, company, onProfileChanged, onStarted }: Gam
           <button
             type="button"
             onClick={async () => {
+              if (!window.confirm("Leave this waiting room?")) return;
               await leaveCompany(profile.id);
               onProfileChanged();
             }}
