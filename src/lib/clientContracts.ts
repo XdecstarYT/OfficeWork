@@ -64,3 +64,24 @@ export async function incrementContractProgress(
 
   return justFinished ? { title: contract.title, bonusPayout: contract.bonus_payout } : null;
 }
+
+/** Renegotiates an existing contract by adding tasks and/or bonus on top of
+ * what's already there - used to extend one that's about to (or already
+ * did) wrap up, rather than closing it out and starting a fresh one. */
+export async function extendContract(contractId: string, addTasks: number, addBonus: number) {
+  const { data: contract, error } = await supabase
+    .from("client_contracts")
+    .select("total_tasks, bonus_payout, completed_tasks")
+    .eq("id", contractId)
+    .single();
+  if (error) throw error;
+  const { error: updateError } = await supabase
+    .from("client_contracts")
+    .update({
+      total_tasks: contract.total_tasks + Math.max(0, addTasks),
+      bonus_payout: contract.bonus_payout + Math.max(0, addBonus),
+      status: "active",
+    })
+    .eq("id", contractId);
+  if (updateError) throw updateError;
+}

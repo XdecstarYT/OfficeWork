@@ -17,6 +17,7 @@ import {
   fetchClientContracts,
   createClientContract,
   incrementContractProgress,
+  extendContract,
   type ClientContractRow,
 } from "../lib/clientContracts";
 import { awardMoney } from "../lib/company";
@@ -45,11 +46,30 @@ function relationshipTier(completions: number) {
   return RELATIONSHIP_TIERS.find((t) => completions >= t.threshold) ?? null;
 }
 
+/** A rough "how happy is this client" percentage - if they've ever had a
+ * contract, it's their most recent one's completion rate (a contract with
+ * every task delivered on time reads as fully satisfied); otherwise it
+ * scales off the relationship-tier completion count, capping at 100%. */
+function satisfactionFor(clientId: string, contracts: ClientContractRow[], relationshipCount: number): number {
+  const clientContracts = contracts
+    .filter((ct) => ct.client_id === clientId)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  if (clientContracts.length > 0) {
+    const latest = clientContracts[0];
+    return Math.round((latest.completed_tasks / Math.max(1, latest.total_tasks)) * 100);
+  }
+  return Math.min(100, Math.round((relationshipCount / 10) * 100));
+}
+
 const EMPTY_CATEGORY_TEXT = TAXONOMY.map((c) => c.id).slice(0, 2).join(", ");
 
 export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: AiClientsProps) {
   const { requests, setRequest, clearRequest } = useClientRequests();
-  const { relationships, recordCompletion } = useClientRelationships();
+  const { relationships, earnings, recordCompletion } = useClientRelationships();
+  const [extendingContract, setExtendingContract] = useState<ClientContractRow | null>(null);
+  const [extendTasks, setExtendTasks] = useState(5);
+  const [extendBonus, setExtendBonus] = useState(50);
+  const [extending, setExtending] = useState(false);
   const { favoriteClients, toggleFavoriteClient } = useFavoriteClients();
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [loadingClientId, setLoadingClientId] = useState<string | null>(null);
@@ -225,6 +245,20 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
     }
   }
 
+  async function handleExtendContract() {
+    if (!extendingContract) return;
+    setExtending(true);
+    try {
+      await extendContract(extendingContract.id, extendTasks, extendBonus);
+      setExtendingContract(null);
+      setExtendTasks(5);
+      setExtendBonus(50);
+      await loadClientData();
+    } finally {
+      setExtending(false);
+    }
+  }
+
   /** After a client task is completed: bump any active contract for that
    * client and pay out the bonus once it's finished. Not awaited by the
    * caller (matches the existing fire-and-forget onCompleteRequest/
@@ -334,6 +368,26 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
                   ) : null;
                 })()}
 
+                {(relationships[c.id] ?? 0) > 0 && (
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between text-[10px] text-stone-400">
+                      <span>😊 Satisfaction</span>
+                      <span>{satisfactionFor(c.id, contracts, relationships[c.id] ?? 0)}%</span>
+                    </div>
+                    <div className="h-1 w-full overflow-hidden rounded-full bg-stone-100">
+                      <div
+                        className="h-full rounded-full bg-emerald-400"
+                        style={{ width: `${satisfactionFor(c.id, contracts, relationships[c.id] ?? 0)}%` }}
+                      />
+                    </div>
+                    {(earnings[c.id] ?? 0) > 0 && (
+                      <p className="text-[10px] text-stone-400">
+                        💵 ${(earnings[c.id] ?? 0).toFixed(2)} earned from this client
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {(() => {
                   const contract = contracts.find((ct) => ct.client_id === c.id && ct.status === "active");
                   if (!contract) return null;
@@ -347,6 +401,15 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
                       <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-indigo-100">
                         <div className="h-full rounded-full bg-indigo-500" style={{ width: `${pct}%` }} />
                       </div>
+                      {isOwner && (
+                        <button
+                          type="button"
+                          onClick={() => setExtendingContract(contract)}
+                          className="mt-1 text-[10px] font-medium text-indigo-600 hover:text-indigo-800"
+                        >
+                          ➕ Extend Contract
+                        </button>
+                      )}
                     </div>
                   );
                 })()}
@@ -569,6 +632,63 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
         </div>
       )}
 
+      {extendingContract && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+          onClick={() => setExtendingContract(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-stone-900">➕ Extend "{extendingContract.title}"</h2>
+            <p className="mt-1 text-xs text-stone-500">
+              Adds on top of the {extendingContract.total_tasks - extendingContract.completed_tasks} task(s)
+              and ${extendingContract.bonus_payout.toFixed(2)} bonus already left.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <label className="flex-1 text-xs text-stone-500">
+                Add tasks
+                <input
+                  type="number"
+                  min={0}
+                  value={extendTasks}
+                  onChange={(e) => setExtendTasks(Number(e.target.value))}
+                  className="mt-1 w-full rounded-md border border-stone-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none"
+                />
+              </label>
+              <label className="flex-1 text-xs text-stone-500">
+                Add bonus $
+                <input
+                  type="number"
+                  min={0}
+                  value={extendBonus}
+                  onChange={(e) => setExtendBonus(Number(e.target.value))}
+                  className="mt-1 w-full rounded-md border border-stone-300 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none"
+                />
+              </label>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setExtendingContract(null)}
+                className="rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExtendContract}
+                disabled={extending}
+                className="rounded-md bg-indigo-700 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-800 disabled:opacity-50"
+              >
+                {extending ? "Extending…" : "Extend"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {openClient && openRequest && (
         <ClientRequestModal
           clientPersona={openClient}
@@ -582,7 +702,7 @@ export function AiClients({ profile, isOwner, llmConfig, onCompleteRequest }: Ai
           onUpdateRequest={(updated) => setRequest(openClient.id, updated)}
           onComplete={(finalRequest) => {
             onCompleteRequest(finalRequest);
-            recordCompletion(openClient.id);
+            recordCompletion(openClient.id, finalRequest.payout);
             handleContractProgress(openClient.id);
             clearRequest(openClient.id);
             setOpenClientId(null);

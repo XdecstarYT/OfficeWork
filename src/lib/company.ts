@@ -159,6 +159,27 @@ export async function updateMyBio(userId: string, bio: string) {
   if (error) throw error;
 }
 
+/** Bumps the caller's daily activity streak - call once per Dashboard visit.
+ * Same calendar day: no-op. The very next day: streak+1. Any bigger gap:
+ * resets to 1. Returns the resulting streak so the caller can render it
+ * immediately without waiting on a refetch. */
+export async function touchActivityStreak(
+  userId: string,
+  lastActiveDate: string | null,
+  currentStreak: number,
+): Promise<number> {
+  const today = new Date().toISOString().slice(0, 10);
+  if (lastActiveDate === today) return currentStreak;
+  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const nextStreak = lastActiveDate === yesterday ? currentStreak + 1 : 1;
+  const { error } = await supabase
+    .from("profiles")
+    .update({ last_active_date: today, streak_count: nextStreak })
+    .eq("id", userId);
+  if (error) throw error;
+  return nextStreak;
+}
+
 /**
  * Credits `amount` to userId's money. Allowed by RLS when userId is the
  * caller themselves (self-serve completion) or a coworker the caller

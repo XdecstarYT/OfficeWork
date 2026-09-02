@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchCompanyMembers, awardMoney, awardXp, claimMilestone } from "../lib/company";
-import { fetchCompanyDocuments } from "../lib/documents";
+import { fetchCompanyMembers, awardMoney, awardXp, claimMilestone, touchActivityStreak } from "../lib/company";
+import { fetchCompanyDocuments, type DocumentRow } from "../lib/documents";
 import { fetchCompanyActivity, type ActivityItem } from "../lib/activity";
 import { fetchCorporateUpdates, type CorporateUpdateRow } from "../lib/corporateUpdates";
 import { fetchCompanyNpcs } from "../lib/npcs";
 import { fetchMeetings, type BoardMeetingRow } from "../lib/boardMeetings";
 import { CAREER_MILESTONES, isMilestoneComplete } from "../data/careerMilestones";
+import { quoteOfTheDay } from "../data/quotes";
 import type { NotificationCounts } from "../hooks/useNotifications";
 import { careerProgress } from "../lib/careerLevel";
 import { supabase } from "../lib/supabaseClient";
@@ -54,9 +55,11 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
   const [npcCount, setNpcCount] = useState(0);
   const [tasksThisWeek, setTasksThisWeek] = useState(0);
   const [nextMeeting, setNextMeeting] = useState<BoardMeetingRow | null>(null);
+  const [nextDueDoc, setNextDueDoc] = useState<DocumentRow | null>(null);
   const [members, setMembers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [claimingId, setClaimingId] = useState<string | null>(null);
+  const [streak, setStreak] = useState(profile.streak_count);
   const careerXp = careerProgress(profile.xp);
 
   const load = useCallback(async () => {
@@ -90,8 +93,12 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
       .filter((mt) => new Date(mt.scheduled_at).getTime() >= now)
       .sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
     setNextMeeting(upcoming[0] ?? null);
+    const myDue = docs
+      .filter((d) => d.assigned_to === profile.id && d.status !== "completed" && d.due_at)
+      .sort((a, b) => (a.due_at as string).localeCompare(b.due_at as string));
+    setNextDueDoc(myDue[0] ?? null);
     setLoading(false);
-  }, [profile.company_id]);
+  }, [profile.id, profile.company_id]);
 
   async function handleClaimMilestone(milestoneId: string, rewardMoney: number, rewardXp: number) {
     setClaimingId(milestoneId);
@@ -113,6 +120,14 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
   useEffect(() => {
     load();
   }, [load]);
+
+  // Bumps the streak once per real-world day this page is visited - the
+  // hook itself no-ops server-side if today's already been recorded, so
+  // remounts/realtime refreshes never double-count.
+  useEffect(() => {
+    touchActivityStreak(profile.id, profile.last_active_date, profile.streak_count).then(setStreak);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.id]);
 
   useEffect(() => {
     if (!profile.company_id) return;
@@ -148,6 +163,8 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
   const notificationTotal = notifications.pendingApproval + notifications.unreadEmail + notifications.overdue;
   const hour = new Date().getHours();
   const timeGreeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const topByMoney = [...members].sort((a, b) => b.money - a.money);
+  const myMoneyRank = topByMoney.findIndex((m) => m.id === profile.id) + 1;
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
@@ -159,9 +176,10 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
           <p className="text-sm text-stone-500">
             {profile.job_title} at {company?.name ?? "your company"} · Rank {profile.level}
           </p>
+          <p className="mt-1 text-xs italic text-stone-400">"{quoteOfTheDay()}"</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
           <StatTile emoji="💵" label="Money" value={`$${profile.money.toFixed(2)}`} />
           <StatTile
             emoji="⭐"
@@ -172,22 +190,58 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
           <StatTile emoji="🏢" label="Team Size" value={String(memberCount)} />
           <StatTile emoji="✅" label="Tasks Completed" value={String(tasksCompleted)} />
           <StatTile emoji="📆" label="This Week" value={String(tasksThisWeek)} sub="tasks completed" />
+          <StatTile emoji="🔥" label="Streak" value={`${streak} day${streak === 1 ? "" : "s"}`} />
         </div>
 
-        {nextMeeting && (
-          <section className="rounded-lg border border-sky-200 bg-sky-50/50 p-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-sky-700">
-              📅 Upcoming Meeting
-            </h2>
-            <h3 className="mt-1 text-sm font-semibold text-stone-900">{nextMeeting.title}</h3>
-            <p className="mt-0.5 text-xs text-stone-500">{new Date(nextMeeting.scheduled_at).toLocaleString()}</p>
+        {members.length > 1 && (
+          <section className="rounded-lg border border-stone-200 bg-white p-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-stone-400">🏆 Your Rank</h2>
+            <p className="mt-1 text-sm text-stone-700">
+              You're <strong>#{myMoneyRank}</strong> of {members.length} by Money.
+              {topByMoney.slice(0, 3).some((m) => m.id === profile.id) && " Top 3! 🎉"}
+            </p>
             <button
               type="button"
-              onClick={() => onNavigate("meetings")}
-              className="mt-2 text-xs font-medium text-sky-700 hover:text-sky-800"
+              onClick={() => onNavigate("leaderboard")}
+              className="mt-1 text-xs font-medium text-emerald-700 hover:text-emerald-800"
             >
-              View & RSVP →
+              View full leaderboard →
             </button>
+          </section>
+        )}
+
+        {(nextMeeting || nextDueDoc) && (
+          <section className="rounded-lg border border-sky-200 bg-sky-50/50 p-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-sky-700">⏭ What's Next</h2>
+            <div className="mt-2 flex flex-col gap-2">
+              {nextMeeting && (
+                <div>
+                  <p className="text-sm font-semibold text-stone-900">📅 {nextMeeting.title}</p>
+                  <p className="text-xs text-stone-500">{new Date(nextMeeting.scheduled_at).toLocaleString()}</p>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate("meetings")}
+                    className="text-xs font-medium text-sky-700 hover:text-sky-800"
+                  >
+                    View & RSVP →
+                  </button>
+                </div>
+              )}
+              {nextDueDoc && (
+                <div>
+                  <p className="text-sm font-semibold text-stone-900">
+                    📄 "{nextDueDoc.title}" due {new Date(nextDueDoc.due_at as string).toLocaleDateString()}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate("work")}
+                    className="text-xs font-medium text-sky-700 hover:text-sky-800"
+                  >
+                    Go to My Work →
+                  </button>
+                </div>
+              )}
+            </div>
           </section>
         )}
 
