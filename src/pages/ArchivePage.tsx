@@ -4,6 +4,7 @@ import { fetchCompanyMembers } from "../lib/company";
 import { fetchCompanyNpcs, resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
 import { fetchCustomNpcPersonas, type CustomNpcPersonaRow } from "../lib/customNpcPersonas";
 import { downloadCsv } from "../lib/csv";
+import { loadStarredDocuments, saveStarredDocuments } from "../lib/storage";
 import { supabase } from "../lib/supabaseClient";
 import { DocumentPreview } from "../components/DocumentPreview";
 import type { Database } from "../types/database";
@@ -31,6 +32,18 @@ export function ArchivePage({ profile }: ArchivePageProps) {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [openDoc, setOpenDoc] = useState<DocumentRow | null>(null);
+  const [starred, setStarred] = useState<Set<string>>(() => loadStarredDocuments());
+  const [starredOnly, setStarredOnly] = useState(false);
+
+  function toggleStar(id: string) {
+    setStarred((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      saveStarredDocuments(next);
+      return next;
+    });
+  }
 
   const load = useCallback(async () => {
     if (!profile.company_id) return;
@@ -86,6 +99,7 @@ export function ArchivePage({ profile }: ArchivePageProps) {
         if (personFilter === "__npc__") return !!d.assigned_to_npc_id;
         return d.assigned_to === personFilter;
       })
+      .filter((d) => !starredOnly || starred.has(d.id))
       .filter((d) => !q || d.title.toLowerCase().includes(q))
       .filter((d) => {
         if (!fromTime && !toTime) return true;
@@ -98,7 +112,12 @@ export function ArchivePage({ profile }: ArchivePageProps) {
     else if (sortMode === "payout")
       sorted.sort((a, b) => payoutFor(b, asTemplate(b)) - payoutFor(a, asTemplate(a)));
     return sorted;
-  }, [documents, query, personFilter, sortMode, dateFrom, dateTo]);
+  }, [documents, query, personFilter, sortMode, dateFrom, dateTo, starredOnly, starred]);
+
+  const filteredPayoutTotal = useMemo(
+    () => filtered.reduce((sum, d) => sum + (d.assigned_to_npc_id ? 0 : payoutFor(d, asTemplate(d))), 0),
+    [filtered],
+  );
 
   if (loading) {
     return <div className="flex-1 p-6 text-sm text-stone-400">Loading archive…</div>;
@@ -115,25 +134,60 @@ export function ArchivePage({ profile }: ArchivePageProps) {
             </p>
           </div>
           {documents.length > 0 && (
-            <button
-              type="button"
-              onClick={() =>
-                downloadCsv("archive.csv", [
-                  ["Title", "Completed By", "Payout", "Completed At"],
-                  ...filtered.map((d) => [
-                    d.title,
-                    completedByLabel(d),
-                    d.assigned_to_npc_id ? 0 : payoutFor(d, asTemplate(d)),
-                    d.completed_at ? new Date(d.completed_at).toLocaleString() : "",
-                  ]),
-                ])
-              }
-              className="shrink-0 rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
-            >
-              ⬇ Export CSV
-            </button>
+            <div className="flex shrink-0 gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  downloadCsv("archive.csv", [
+                    ["Title", "Completed By", "Payout", "Completed At"],
+                    ...filtered.map((d) => [
+                      d.title,
+                      completedByLabel(d),
+                      d.assigned_to_npc_id ? 0 : payoutFor(d, asTemplate(d)),
+                      d.completed_at ? new Date(d.completed_at).toLocaleString() : "",
+                    ]),
+                  ])
+                }
+                className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+              >
+                ⬇ Export CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const json = JSON.stringify(
+                    filtered.map((d) => ({
+                      title: d.title,
+                      completedBy: completedByLabel(d),
+                      payout: d.assigned_to_npc_id ? 0 : payoutFor(d, asTemplate(d)),
+                      completedAt: d.completed_at,
+                      fieldValues: d.field_values,
+                    })),
+                    null,
+                    2,
+                  );
+                  const blob = new Blob([json], { type: "application/json" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "archive-backup.json";
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+              >
+                ⬇ Export JSON
+              </button>
+            </div>
           )}
         </div>
+
+        {filtered.length > 0 && (
+          <p className="text-xs text-stone-400">
+            {filtered.length} document{filtered.length === 1 ? "" : "s"} · 💵 $
+            {filteredPayoutTotal.toFixed(2)} total payout
+          </p>
+        )}
 
         <div className="flex flex-wrap gap-2">
           <input
@@ -183,6 +237,15 @@ export function ArchivePage({ profile }: ArchivePageProps) {
               className="rounded-md border border-stone-300 px-2 py-1.5 text-xs focus:border-emerald-500 focus:outline-none"
             />
           </label>
+          <button
+            type="button"
+            onClick={() => setStarredOnly((v) => !v)}
+            className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+              starredOnly ? "bg-amber-500 text-white" : "border border-stone-300 text-stone-500 hover:bg-stone-100"
+            }`}
+          >
+            ⭐ Starred only
+          </button>
         </div>
 
         {filtered.length === 0 ? (
@@ -194,21 +257,32 @@ export function ArchivePage({ profile }: ArchivePageProps) {
         ) : (
           <div className="flex flex-col gap-1">
             {filtered.map((d) => (
-              <button
+              <div
                 key={d.id}
-                type="button"
-                onClick={() => setOpenDoc(d)}
-                className="flex items-center justify-between rounded-md border border-stone-100 px-3 py-2 text-left hover:bg-stone-50"
+                className="flex items-center justify-between rounded-md border border-stone-100 px-3 py-2 hover:bg-stone-50"
               >
-                <div>
-                  <p className="text-sm font-medium text-stone-800">{d.title}</p>
+                <button type="button" onClick={() => setOpenDoc(d)} className="flex-1 text-left">
+                  <p className="text-sm font-medium text-stone-800">
+                    {starred.has(d.id) && "⭐ "}
+                    {d.title}
+                  </p>
                   <p className="text-xs text-stone-400">
                     {completedByLabel(d)}
                     {!d.assigned_to_npc_id && ` · 💵 $${payoutFor(d, asTemplate(d))}`} ·{" "}
                     {d.completed_at ? new Date(d.completed_at).toLocaleDateString() : "—"}
                   </p>
-                </div>
-              </button>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleStar(d.id)}
+                  title={starred.has(d.id) ? "Unstar" : "Star as important"}
+                  className={`shrink-0 pl-2 text-lg leading-none ${
+                    starred.has(d.id) ? "text-amber-500" : "text-stone-300 hover:text-stone-400"
+                  }`}
+                >
+                  {starred.has(d.id) ? "★" : "☆"}
+                </button>
+              </div>
             ))}
           </div>
         )}

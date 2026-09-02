@@ -86,6 +86,8 @@ export function LeaderboardPage({ profile }: LeaderboardPageProps) {
   const [npcsHiredCounts, setNpcsHiredCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [departmentFilter, setDepartmentFilter] = useState("");
+  const [completedCountsThisWeek, setCompletedCountsThisWeek] = useState<Record<string, number>>({});
+  const [rangeMode, setRangeMode] = useState<"all" | "week">("all");
 
   const load = useCallback(async () => {
     if (!profile.company_id) return;
@@ -97,12 +99,18 @@ export function LeaderboardPage({ profile }: LeaderboardPageProps) {
     ]);
     setMembers(m);
     const counts: Record<string, number> = {};
+    const weekCounts: Record<string, number> = {};
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     for (const d of docs) {
       if (d.status === "completed" && d.assigned_to) {
         counts[d.assigned_to] = (counts[d.assigned_to] ?? 0) + 1;
+        if (d.completed_at && new Date(d.completed_at).getTime() >= weekAgo) {
+          weekCounts[d.assigned_to] = (weekCounts[d.assigned_to] ?? 0) + 1;
+        }
       }
     }
     setCompletedCounts(counts);
+    setCompletedCountsThisWeek(weekCounts);
     const hireCounts: Record<string, number> = {};
     for (const n of npcs) {
       hireCounts[n.hired_by] = (hireCounts[n.hired_by] ?? 0) + 1;
@@ -143,13 +151,18 @@ export function LeaderboardPage({ profile }: LeaderboardPageProps) {
     .map((m) => ({ id: m.id, display_name: m.display_name, value: m.money }))
     .sort((a, b) => b.value - a.value);
 
+  const activeCompletedCounts = rangeMode === "week" ? completedCountsThisWeek : completedCounts;
   const byCompleted = [...members]
-    .map((m) => ({ id: m.id, display_name: m.display_name, value: completedCounts[m.id] ?? 0 }))
+    .map((m) => ({ id: m.id, display_name: m.display_name, value: activeCompletedCounts[m.id] ?? 0 }))
     .sort((a, b) => b.value - a.value);
 
   const byCareerLevel = [...members]
     .map((m) => ({ id: m.id, display_name: m.display_name, value: careerLevelFromXp(m.xp) }))
     .sort((a, b) => b.value - a.value);
+
+  const myMoneyRank = byMoney.findIndex((r) => r.id === profile.id) + 1;
+  const myCompletedRank = byCompleted.findIndex((r) => r.id === profile.id) + 1;
+  const myCareerRank = byCareerLevel.findIndex((r) => r.id === profile.id) + 1;
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
@@ -179,9 +192,38 @@ export function LeaderboardPage({ profile }: LeaderboardPageProps) {
           </button>
         </div>
 
+        {members.length > 0 && (
+          <p className="rounded-md bg-stone-50 px-3 py-2 text-xs text-stone-500">
+            Your rank: <strong className="text-stone-700">#{myMoneyRank}</strong> in Money ·{" "}
+            <strong className="text-stone-700">#{myCompletedRank}</strong> in Tasks ·{" "}
+            <strong className="text-stone-700">#{myCareerRank}</strong> in Career Level
+          </p>
+        )}
+
+        <div className="flex items-center gap-1.5 self-start rounded-md border border-stone-200 p-0.5 text-xs">
+          <button
+            type="button"
+            onClick={() => setRangeMode("all")}
+            className={`rounded px-2.5 py-1 font-medium ${
+              rangeMode === "all" ? "bg-stone-800 text-white" : "text-stone-500 hover:bg-stone-100"
+            }`}
+          >
+            All Time
+          </button>
+          <button
+            type="button"
+            onClick={() => setRangeMode("week")}
+            className={`rounded px-2.5 py-1 font-medium ${
+              rangeMode === "week" ? "bg-stone-800 text-white" : "text-stone-500 hover:bg-stone-100"
+            }`}
+          >
+            This Week
+          </button>
+        </div>
+
         <Rankings title="💵 Richest" rows={byMoney} profile={profile} formatValue={(v) => `$${v.toFixed(2)}`} />
         <Rankings
-          title="✅ Most Tasks Completed"
+          title={`✅ Most Tasks Completed${rangeMode === "week" ? " (This Week)" : ""}`}
           rows={byCompleted}
           profile={profile}
           formatValue={(v) => `${v}`}
