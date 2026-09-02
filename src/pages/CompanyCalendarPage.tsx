@@ -13,13 +13,19 @@ interface CompanyCalendarPageProps {
   profile: Profile;
 }
 
+type AgendaKind = "meeting" | "due" | "leave";
+
 interface AgendaItem {
   id: string;
   date: string;
   time: string | null;
   emoji: string;
   label: string;
+  kind: AgendaKind;
+  mine: boolean;
 }
+
+const KIND_LABEL: Record<AgendaKind, string> = { meeting: "Meetings", due: "Due Work", leave: "Time Off" };
 
 export function CompanyCalendarPage({ profile }: CompanyCalendarPageProps) {
   const [company, setCompany] = useState<Company | null>(null);
@@ -28,6 +34,9 @@ export function CompanyCalendarPage({ profile }: CompanyCalendarPageProps) {
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [timeOff, setTimeOff] = useState<TimeOffRequestRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [kindFilter, setKindFilter] = useState<AgendaKind | "all">("all");
+  const [mineOnly, setMineOnly] = useState(false);
+  const [copyLabel, setCopyLabel] = useState("📋 Copy Agenda");
 
   const load = useCallback(async () => {
     if (!profile.company_id) return;
@@ -99,6 +108,8 @@ export function CompanyCalendarPage({ profile }: CompanyCalendarPageProps) {
       time: d.toISOString().slice(11, 16),
       emoji: "📅",
       label: `Board Meeting: "${mt.title}"`,
+      kind: "meeting",
+      mine: mt.created_by === profile.id,
     });
   }
   for (const d of documents) {
@@ -112,6 +123,8 @@ export function CompanyCalendarPage({ profile }: CompanyCalendarPageProps) {
       time: due.toISOString().slice(11, 16),
       emoji: "📄",
       label: `"${d.title}" due — ${d.assigned_to ? nameFor(d.assigned_to) : "unassigned"}`,
+      kind: "due",
+      mine: d.assigned_to === profile.id,
     });
   }
   for (const r of timeOff) {
@@ -124,33 +137,110 @@ export function CompanyCalendarPage({ profile }: CompanyCalendarPageProps) {
       time: null,
       emoji: "🌴",
       label: `${nameFor(r.member_id)} on leave through ${r.end_date}`,
+      kind: "leave",
+      mine: r.member_id === profile.id,
     });
   }
 
   items.sort((a, b) => (a.date === b.date ? (a.time ?? "").localeCompare(b.time ?? "") : a.date.localeCompare(b.date)));
+
+  const kindCounts = items.reduce<Record<AgendaKind, number>>(
+    (acc, item) => {
+      acc[item.kind]++;
+      return acc;
+    },
+    { meeting: 0, due: 0, leave: 0 },
+  );
+
+  const visibleItems = items
+    .filter((item) => kindFilter === "all" || item.kind === kindFilter)
+    .filter((item) => !mineOnly || item.mine);
+
   const grouped = new Map<string, AgendaItem[]>();
-  for (const item of items) {
+  for (const item of visibleItems) {
     if (!grouped.has(item.date)) grouped.set(item.date, []);
     grouped.get(item.date)!.push(item);
   }
   const dates = [...grouped.keys()].sort();
 
+  function daysUntilLabel(date: string): string {
+    const diffDays = Math.round((new Date(`${date}T00:00:00`).getTime() - new Date(`${todayIso}T00:00:00`).getTime()) / 86_400_000);
+    if (diffDays === 0) return "";
+    if (diffDays === 1) return "in 1 day";
+    return `in ${diffDays} days`;
+  }
+
+  function handleCopyAgenda() {
+    const text = dates
+      .map((date) => {
+        const header = date === todayIso ? "Today" : new Date(`${date}T00:00:00`).toLocaleDateString();
+        const lines = grouped.get(date)!.map((item) => `  ${item.emoji} ${item.label}`);
+        return [header, ...lines].join("\n");
+      })
+      .join("\n\n");
+    navigator.clipboard?.writeText(text).catch(() => {});
+    setCopyLabel("Copied!");
+    setTimeout(() => setCopyLabel("📋 Copy Agenda"), 1500);
+  }
+
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="mx-auto flex max-w-2xl flex-col gap-6">
-        <div>
-          <h1 className="text-lg font-semibold text-stone-900">🗓 Company Calendar</h1>
-          <p className="text-sm text-stone-500">
-            Day {company.current_day} · upcoming board meetings, work due dates, and time off.
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h1 className="text-lg font-semibold text-stone-900">🗓 Company Calendar</h1>
+            <p className="text-sm text-stone-500">
+              Day {company.current_day} · {items.length} item{items.length === 1 ? "" : "s"} across {new Set(items.map((i) => i.date)).size} day
+              {new Set(items.map((i) => i.date)).size === 1 ? "" : "s"} — 📅 {kindCounts.meeting} · 📄 {kindCounts.due} · 🌴 {kindCounts.leave}
+            </p>
+          </div>
+          {items.length > 0 && (
+            <button
+              type="button"
+              onClick={handleCopyAgenda}
+              className="shrink-0 rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+            >
+              {copyLabel}
+            </button>
+          )}
         </div>
+
+        {items.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {(["all", "meeting", "due", "leave"] as const).map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setKindFilter(k)}
+                className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                  kindFilter === k ? "bg-stone-800 text-white" : "border border-stone-300 text-stone-500 hover:bg-stone-100"
+                }`}
+              >
+                {k === "all" ? "All" : KIND_LABEL[k]}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setMineOnly((v) => !v)}
+              className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                mineOnly ? "bg-sky-600 text-white" : "border border-stone-300 text-stone-500 hover:bg-stone-100"
+              }`}
+            >
+              Only mine
+            </button>
+          </div>
+        )}
 
         {dates.length === 0 ? (
           <p className="text-sm text-stone-400">Nothing on the calendar right now.</p>
         ) : (
           dates.map((date) => (
             <div key={date} className="flex flex-col gap-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-stone-400">
+              <h2
+                className={`text-xs font-semibold uppercase tracking-wider ${
+                  date === todayIso ? "text-sky-600" : "text-stone-400"
+                }`}
+              >
                 {date === todayIso
                   ? "Today"
                   : new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
@@ -158,15 +248,21 @@ export function CompanyCalendarPage({ profile }: CompanyCalendarPageProps) {
                       month: "short",
                       day: "numeric",
                     })}
+                {daysUntilLabel(date) && <span className="ml-1.5 font-normal normal-case text-stone-400">({daysUntilLabel(date)})</span>}
               </h2>
               <div className="flex flex-col gap-1.5">
                 {grouped.get(date)!.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center gap-2 rounded-md border border-stone-100 bg-white px-3 py-2 text-sm text-stone-700"
+                    className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm text-stone-700 ${
+                      date === todayIso ? "border-sky-200 bg-sky-50/40" : "border-stone-100 bg-white"
+                    }`}
                   >
                     <span>{item.emoji}</span>
-                    <span className="flex-1">{item.label}</span>
+                    <span className="flex-1">
+                      {item.label}
+                      {item.mine && <span className="ml-1.5 text-[10px] font-medium text-emerald-600">YOU</span>}
+                    </span>
                     {item.time && <span className="text-xs text-stone-400">{item.time}</span>}
                   </div>
                 ))}

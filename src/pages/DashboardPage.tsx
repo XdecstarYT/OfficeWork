@@ -7,6 +7,8 @@ import { fetchCompanyNpcs } from "../lib/npcs";
 import { fetchMeetings, type BoardMeetingRow } from "../lib/boardMeetings";
 import { CAREER_MILESTONES, isMilestoneComplete } from "../data/careerMilestones";
 import { quoteOfTheDay } from "../data/quotes";
+import { fetchMemberMoods } from "../lib/memberMoods";
+import { relativeTime } from "../lib/time";
 import type { NotificationCounts } from "../hooks/useNotifications";
 import { careerProgress } from "../lib/careerLevel";
 import { supabase } from "../lib/supabaseClient";
@@ -26,7 +28,8 @@ type Tab =
   | "updates"
   | "activity"
   | "leaderboard"
-  | "archive";
+  | "archive"
+  | "calendar";
 
 interface DashboardPageProps {
   profile: Profile;
@@ -60,6 +63,9 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
   const [loading, setLoading] = useState(true);
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [streak, setStreak] = useState(profile.streak_count);
+  const [tasksThisMonth, setTasksThisMonth] = useState(0);
+  const [teamMoodEmoji, setTeamMoodEmoji] = useState<string | null>(null);
+  const [dashboardCopyLabel, setDashboardCopyLabel] = useState("📋 Copy Summary");
   const careerXp = careerProgress(profile.xp);
 
   const load = useCallback(async () => {
@@ -68,13 +74,14 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
       return;
     }
     setLoading(true);
-    const [m, docs, activity, updates, npcs, meetings] = await Promise.all([
+    const [m, docs, activity, updates, npcs, meetings, moods] = await Promise.all([
       fetchCompanyMembers(profile.company_id),
       fetchCompanyDocuments(profile.company_id),
       fetchCompanyActivity(profile.company_id, 5),
       fetchCorporateUpdates(profile.company_id),
       fetchCompanyNpcs(profile.company_id),
       fetchMeetings(profile.company_id),
+      fetchMemberMoods(profile.company_id),
     ]);
     setMembers(m);
     setMemberCount(m.length);
@@ -84,8 +91,17 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
       docs.filter((d) => d.status === "completed" && d.completed_at && new Date(d.completed_at).getTime() >= weekAgo)
         .length,
     );
+    const monthAgo = Date.now() - 30 * 86_400_000;
+    setTasksThisMonth(
+      docs.filter((d) => d.status === "completed" && d.completed_at && new Date(d.completed_at).getTime() >= monthAgo)
+        .length,
+    );
+    const moodCounts = new Map<string, number>();
+    for (const mood of moods) moodCounts.set(mood.emoji, (moodCounts.get(mood.emoji) ?? 0) + 1);
+    const topMood = [...moodCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+    setTeamMoodEmoji(topMood ? topMood[0] : null);
     setRecentActivity(activity);
-    setLatestUpdate(updates[0] ?? null);
+    setLatestUpdate(updates.find((u) => u.pinned) ?? updates[0] ?? null);
     setUpdatesPosted(updates.length);
     setNpcCount(npcs.length);
     const now = Date.now();
@@ -169,17 +185,38 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
-        <div>
-          <h1 className="text-lg font-semibold text-stone-900">
-            👋 {timeGreeting}, {profile.display_name}
-          </h1>
-          <p className="text-sm text-stone-500">
-            {profile.job_title} at {company?.name ?? "your company"} · Rank {profile.level}
-          </p>
-          <p className="mt-1 text-xs italic text-stone-400">"{quoteOfTheDay()}"</p>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h1 className="text-lg font-semibold text-stone-900">
+              👋 {timeGreeting}, {profile.display_name}
+            </h1>
+            <p className="text-sm text-stone-500">
+              {profile.job_title} at {company?.name ?? "your company"} · Rank {profile.level}
+              {profile.department && ` · ${profile.department}`}
+              {company && ` · Day ${company.current_day}`}
+            </p>
+            <p className="mt-1 text-xs italic text-stone-400">"{quoteOfTheDay()}"</p>
+            {teamMoodEmoji && <p className="mt-1 text-xs text-stone-400">Team mood today: {teamMoodEmoji}</p>}
+            {streak >= 7 && <p className="mt-1 text-xs font-medium text-orange-600">🔥 {streak}-day streak — keep it going!</p>}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const text = [
+                `${profile.display_name} — ${profile.job_title} (Rank ${profile.level})`,
+                `💵 $${profile.money.toFixed(2)} · ⭐ Career Lvl ${careerXp.level} · ✅ ${tasksCompleted} completed · 🔥 ${streak}d streak`,
+              ].join("\n");
+              navigator.clipboard?.writeText(text).catch(() => {});
+              setDashboardCopyLabel("Copied!");
+              setTimeout(() => setDashboardCopyLabel("📋 Copy Summary"), 1500);
+            }}
+            className="shrink-0 rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100"
+          >
+            {dashboardCopyLabel}
+          </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
           <StatTile emoji="💵" label="Money" value={`$${profile.money.toFixed(2)}`} />
           <StatTile
             emoji="⭐"
@@ -190,7 +227,9 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
           <StatTile emoji="🏢" label="Team Size" value={String(memberCount)} />
           <StatTile emoji="✅" label="Tasks Completed" value={String(tasksCompleted)} />
           <StatTile emoji="📆" label="This Week" value={String(tasksThisWeek)} sub="tasks completed" />
+          <StatTile emoji="🗓" label="This Month" value={String(tasksThisMonth)} sub="tasks completed" />
           <StatTile emoji="🔥" label="Streak" value={`${streak} day${streak === 1 ? "" : "s"}`} />
+          {npcCount > 0 && <StatTile emoji="🤖" label="AI Coworkers" value={String(npcCount)} />}
         </div>
 
         {members.length > 1 && (
@@ -360,6 +399,7 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
             <QuickAction emoji="🤝" label="Ask AI Clients for Work" onClick={() => onNavigate("clients")} />
             <QuickAction emoji="📥" label="Check My Work" onClick={() => onNavigate("work")} />
             <QuickAction emoji="🏆" label="View Leaderboard" onClick={() => onNavigate("leaderboard")} />
+            <QuickAction emoji="🗓" label="View Calendar" onClick={() => onNavigate("calendar")} />
           </div>
         </section>
 
@@ -405,11 +445,14 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
                   className="flex items-start gap-3 rounded-md border border-stone-100 px-3 py-2"
                 >
                   <span className="text-base leading-none">{EVENT_ICON[item.event_type] ?? "•"}</span>
-                  <p className="flex-1 text-sm text-stone-700">
-                    <span className="font-medium text-stone-900">{actorName(item.actor_id)}</span>{" "}
-                    {item.event_type}{" "}
-                    <span className="font-medium text-stone-900">"{item.documentTitle}"</span>
-                  </p>
+                  <div className="flex-1">
+                    <p className="text-sm text-stone-700">
+                      <span className="font-medium text-stone-900">{actorName(item.actor_id)}</span>{" "}
+                      {item.event_type}{" "}
+                      <span className="font-medium text-stone-900">"{item.documentTitle}"</span>
+                    </p>
+                    <p className="text-xs text-stone-400">{relativeTime(item.created_at)}</p>
+                  </div>
                 </div>
               ))}
             </div>
