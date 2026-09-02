@@ -280,6 +280,81 @@ with real coworkers.
   date, and approved time off — into a single day-grouped agenda, so
   there's one place to see what's coming up instead of checking three tabs.
 
+### 50 more features
+
+A large QoL and small-feature pass across nearly every tab:
+
+**Global**
+- **Command palette** — ⌘/Ctrl+K opens a searchable list to jump straight to any tab.
+- **Keyboard shortcuts help** — press `?` for a cheat sheet (⌘K, N, /, Esc).
+- **Notification count in the browser tab title** — e.g. "(3) Office Quest", so it's visible from another tab/window.
+- **Preferences panel** (⚙️ in the header): a Text Size setting (Compact/Normal/Large, scales the whole app), a notification chime toggle (plays a short tone when your pending-approval/unread/overdue count goes up), and a "Reset local preferences" button that clears favorites/recents/drafts without touching your game data.
+- **Draft autosave** — field values you're typing into a document persist to this browser if you navigate away before submitting, and restore automatically next time you open it.
+
+**My Work**
+- **Approve All** — a manager with multiple pending approvals can clear them in one click.
+- **Sort** by due date, payout, or newest.
+- **Running payout total** for your open work, shown next to the sort control.
+- **Copy Text** — copies the rendered document body to your clipboard from the fill-out modal.
+- **Dismiss overdue** — hide the ⏰ badge on a specific item for the rest of your session.
+
+**Filing Cabinet**
+- **🎲 Surprise Me** — opens a random template from whatever's currently filtered.
+- **Clickable tags** — click a `#tag` in a template's detail view to filter the whole cabinet by it.
+- **🧬 Duplicate** — clones any template (built-in or custom) into the builder to edit as your own.
+- **🔥 Popular With Your Team** — a panel of the 5 most-completed templates company-wide.
+- **`/` to focus search**, from anywhere on the page.
+- **Clear** button for the Recently Used list.
+
+**Inbox**
+- **Flag** important emails (⭐, received mail only) and filter to Flagged Only.
+- **Archive** an email out of the main list, with a Show Archived toggle to bring it back.
+- **Quick-phrase picker** when composing — insert a canned line ("Thanks for the update", "On it", ...) instead of typing it out.
+
+**Company**
+- **💬 Shoutbox** — a lightweight realtime company-wide chat, separate from email and Corporate Updates.
+- **About Me** — a short bio anyone can set on themselves (ℹ️ next to their name) and everyone can view.
+- **Achievement progress bar** — how many documents until the next company badge.
+- **👋 Nudge** — email a canned reminder to a teammate who currently has overdue work.
+- **Week in Review** — a bonus Corporate Update summarizing the last 7 real-world days, posted automatically every 7th Day End.
+- **🗂 Org Chart** — a simple level-grouped view of the whole roster.
+- **Daily mood check-in** — pick an emoji each day, shown next to your name on the roster.
+- **All-time payroll paid** — a running total shown in Company Settings once payroll's been used.
+
+**Board Meetings**
+- **Repeat weekly** — schedule a recurring meeting for up to 52 weeks at once.
+- **Browser reminders** — opt in to a notification 15 minutes before a meeting starts (this tab needs to stay open).
+- **📥 .ics export** — download any meeting to import into an external calendar app.
+
+**Corporate Updates**
+- **Emoji reactions** (👍 🎉 ❤️ 😂) on any post.
+- **Category tag** (Announcement/Policy/Celebration/Other) chosen when posting, shown as a pill.
+- **Filter by category**, alongside the existing author filter.
+
+**Activity Feed**
+- **Export CSV** of whatever's currently filtered.
+- **Load More** — fetches the next page instead of stopping at a fixed cap.
+
+**Leaderboard**
+- **This Week / All Time** toggle for the Tasks Completed ranking.
+- **Your Rank** — a one-line summary of your position across Money, Tasks, and Career Level.
+
+**Archive**
+- **Star** documents as important, with a Starred Only filter.
+- **Export JSON** — a full backup of the currently-filtered documents (title, payout, who did it, field values), alongside the existing CSV export.
+- **Running payout total** for whatever's currently filtered.
+
+**AI Clients**
+- **Satisfaction meter** — an active contract's completion rate, or a scale based on your relationship tier if there's no contract yet.
+- **Extend a contract** — add more tasks and/or bonus on top of an active one instead of waiting for it to finish.
+- **Total earned from this client**, tracked locally per client.
+
+**Dashboard**
+- **Quote of the day** — the same one all day, for everyone.
+- **Streak** — consecutive real-world days you've visited, shown as a stat tile.
+- **Your Rank** — a quick "#X of N by Money" summary with a link to the full Leaderboard.
+- **What's Next** — combines your next Board Meeting and your next due document into one card.
+
 Not yet built: an avatar/office world, cosmetics.
 
 ## Getting started
