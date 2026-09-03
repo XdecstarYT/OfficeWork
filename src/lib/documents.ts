@@ -33,6 +33,13 @@ export function payoutFor(
   return base * (1 + bonusPercent / 100);
 }
 
+/** Payout for a stats row, which carries `difficulty` lifted out of the
+ * snapshot instead of the whole template. Same maths as payoutFor. */
+export function payoutForStat(row: DocumentStatRow, bonusPercent = 0): number {
+  const base = row.payout_override ?? (row.difficulty ? PAYOUT_BY_DIFFICULTY[row.difficulty] : 0);
+  return base * (1 + bonusPercent / 100);
+}
+
 const XP_BY_DIFFICULTY: Record<Difficulty, number> = {
   quick: 10,
   standard: 25,
@@ -193,6 +200,46 @@ export async function fetchCompanyDocuments(companyId: string): Promise<Document
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data ?? [];
+}
+
+/** Every column a counting/stats surface needs, and none of the heavy ones.
+ *
+ * `template_snapshot` is an entire template object (fields, body text)
+ * stored per document row, and `field_values`/`reference_data` hold whatever
+ * was typed into it. Selecting `*` meant the notification poller, Dashboard,
+ * Leaderboard, Company page, Calendar and Filing Cabinet each downloaded all
+ * of that for every document in the company just to count things - hundreds
+ * of KB per load, re-fetched on every realtime document change. Only
+ * `difficulty` is actually needed from the snapshot (for payout/XP maths),
+ * so it's lifted out server-side with a JSON accessor. */
+export interface DocumentStatRow {
+  id: string;
+  company_id: string;
+  title: string;
+  status: DocumentStatus;
+  template_id: string | null;
+  created_by: string;
+  assigned_to: string | null;
+  assigned_to_npc_id: string | null;
+  payout_override: number | null;
+  due_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  difficulty: Difficulty | null;
+}
+
+const STAT_COLUMNS =
+  "id,company_id,title,status,template_id,created_by,assigned_to,assigned_to_npc_id,payout_override,due_at,completed_at,created_at,updated_at,difficulty:template_snapshot->>difficulty";
+
+export async function fetchCompanyDocumentStats(companyId: string): Promise<DocumentStatRow[]> {
+  const { data, error } = await supabase
+    .from("documents")
+    .select(STAT_COLUMNS)
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as DocumentStatRow[];
 }
 
 export async function submitDocument(

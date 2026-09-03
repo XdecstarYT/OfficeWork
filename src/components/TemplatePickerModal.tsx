@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ALL_TEMPLATES, searchTemplates } from "../lib/templates";
+import { ALL_TEMPLATES, loadTemplate, metaFromTemplate, searchTemplates, type TemplateMeta } from "../lib/templates";
 import { useCustomTemplates } from "../hooks/useCustomTemplates";
 import type { DocumentTemplate } from "../types/template";
 
@@ -12,13 +12,32 @@ interface TemplatePickerModalProps {
 
 export function TemplatePickerModal({ title, companyId, onPick, onClose }: TemplatePickerModalProps) {
   const [query, setQuery] = useState("");
+  const [picking, setPicking] = useState(false);
   const { customTemplates } = useCustomTemplates(companyId, null);
+  // Browsing runs entirely on the lightweight index; the picked template's
+  // fields and body are fetched on demand.
   const allTemplates = useMemo(
-    () => [...customTemplates, ...ALL_TEMPLATES],
+    () => [...customTemplates.map(metaFromTemplate), ...ALL_TEMPLATES],
     [customTemplates],
   );
   const allResults = useMemo(() => searchTemplates(allTemplates, query), [allTemplates, query]);
   const results = allResults.slice(0, 30);
+
+  async function pick(meta: TemplateMeta) {
+    if (picking) return;
+    const custom = customTemplates.find((t) => t.id === meta.id);
+    if (custom) {
+      onPick(custom);
+      return;
+    }
+    setPicking(true);
+    try {
+      const full = await loadTemplate(meta.id);
+      if (full) onPick(full);
+    } finally {
+      setPicking(false);
+    }
+  }
 
   useEffect(() => {
     function handleEscape(e: KeyboardEvent) {
@@ -44,7 +63,7 @@ export function TemplatePickerModal({ title, companyId, onPick, onClose }: Templ
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && results[0]) onPick(results[0]);
+            if (e.key === "Enter" && results[0]) void pick(results[0]);
           }}
           placeholder="Search templates… (Enter picks the first result)"
           className="mt-3 rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -64,8 +83,9 @@ export function TemplatePickerModal({ title, companyId, onPick, onClose }: Templ
                 <li key={t.id}>
                   <button
                     type="button"
-                    onClick={() => onPick(t)}
-                    className="flex w-full flex-col rounded-md px-3 py-2 text-left hover:bg-stone-50"
+                    disabled={picking}
+                    onClick={() => void pick(t)}
+                    className="flex w-full flex-col rounded-md px-3 py-2 text-left hover:bg-stone-50 disabled:opacity-50"
                   >
                     <span className="text-sm font-medium text-stone-800">{t.title}</span>
                     <span className="text-xs text-stone-400">

@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { GameEntryScreen } from "./pages/GameEntryScreen";
 import { CompanyGate } from "./pages/CompanyGate";
 import { GameLobby } from "./pages/GameLobby";
-import { awardMoney } from "./lib/company";
+import { awardMoney, leaveCompany } from "./lib/company";
 import { DEFAULT_LLM_CONFIG } from "./lib/llmConfig";
 import { careerProgress } from "./lib/careerLevel";
 import { useSession } from "./hooks/useSession";
@@ -117,9 +117,19 @@ const TAB_META: { id: Tab; label: string; emoji: string }[] = [
 ];
 
 function App() {
-  const { session, user, loading: sessionLoading } = useSession();
-  const { profile, loading: profileLoading, refresh: refreshProfile } = useProfile(user?.id ?? null);
-  const { company, loading: companyLoading, refresh: refreshCompany } = useCompany(profile?.company_id ?? null);
+  const { session, user, loading: sessionLoading, error: sessionError, refresh: refreshSession } = useSession();
+  const {
+    profile,
+    loading: profileLoading,
+    error: profileError,
+    refresh: refreshProfile,
+  } = useProfile(user?.id ?? null);
+  const {
+    company,
+    loading: companyLoading,
+    error: companyError,
+    refresh: refreshCompany,
+  } = useCompany(profile?.company_id ?? null);
   const notifications = useNotifications(profile);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [showNotifications, setShowNotifications] = useState(false);
@@ -264,24 +274,66 @@ function App() {
     refreshProfile();
   }
 
+  if (sessionError) {
+    return <BootError title="Couldn't start up" detail={sessionError} onRetry={refreshSession} />;
+  }
+
   if (sessionLoading) {
-    return <div className="flex h-screen items-center justify-center text-stone-400">Loading…</div>;
+    return <BootScreen label="Loading…" />;
   }
 
   if (!session || !user) {
     return <GameEntryScreen onAccountReady={refreshProfile} />;
   }
 
-  if (profileLoading || !profile) {
-    return <div className="flex h-screen items-center justify-center text-stone-400">Loading profile…</div>;
+  if (profileError) {
+    return <BootError title="Couldn't load your profile" detail={profileError} onRetry={refreshProfile} />;
+  }
+
+  if (profileLoading) {
+    return <BootScreen label="Loading profile…" />;
+  }
+
+  // Signed in, nothing failed, but there's no profile row - a half-finished
+  // sign-up. Retrying is worth a shot; signing out and starting over is the
+  // real fix. Either way it's no longer an eternal spinner.
+  if (!profile) {
+    return (
+      <BootError
+        title="Your account isn't set up yet"
+        detail="We're signed in, but there's no player profile attached to this account."
+        onRetry={refreshProfile}
+      />
+    );
   }
 
   if (!profile.company_id) {
     return <CompanyGate userId={user.id} onDone={refreshProfile} />;
   }
 
-  if (companyLoading || !company) {
-    return <div className="flex h-screen items-center justify-center text-stone-400">Loading game…</div>;
+  if (companyError) {
+    return <BootError title="Couldn't load your company" detail={companyError} onRetry={refreshCompany} />;
+  }
+
+  if (companyLoading) {
+    return <BootScreen label="Loading game…" />;
+  }
+
+  // The profile points at a company we can't read - it was deleted, or this
+  // account was removed from it. Leaving is the only way forward, so offer it
+  // rather than hanging on "Loading game…" forever.
+  if (!company) {
+    return (
+      <BootError
+        title="That company is gone"
+        detail="Your profile points at a company that no longer exists or that you no longer have access to."
+        onRetry={refreshCompany}
+        onLeave={async () => {
+          await leaveCompany(profile.id);
+          refreshProfile();
+        }}
+      />
+    );
   }
 
   if (!company.started) {
@@ -743,6 +795,90 @@ function App() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** A boot spinner that stops pretending everything is fine after a few
+ * seconds - a stalled request used to sit here silently forever. */
+function BootScreen({ label }: { label: string }) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setSlow(true), 6000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div className="flex h-screen flex-col items-center justify-center gap-3 px-6 text-center">
+      <p className="text-sm text-stone-400">{label}</p>
+      {slow && (
+        <>
+          <p className="max-w-xs text-xs text-stone-400">
+            This is taking longer than usual. Your connection may be slow.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+          >
+            Reload
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function BootError({
+  title,
+  detail,
+  onRetry,
+  onLeave,
+}: {
+  title: string;
+  detail: string;
+  onRetry: () => void;
+  onLeave?: () => void;
+}) {
+  const [retrying, setRetrying] = useState(false);
+  return (
+    <div className="flex h-screen items-center justify-center bg-stone-50 p-4">
+      <div className="w-full max-w-sm rounded-xl border border-stone-200 bg-white p-6 text-center shadow-sm">
+        <span className="text-2xl">🚧</span>
+        <h1 className="mt-2 text-base font-semibold text-stone-900">{title}</h1>
+        <p className="mt-1 text-sm text-stone-500">{detail}</p>
+        <button
+          type="button"
+          onClick={async () => {
+            setRetrying(true);
+            try {
+              await onRetry();
+            } finally {
+              setRetrying(false);
+            }
+          }}
+          disabled={retrying}
+          className="mt-4 w-full rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+        >
+          {retrying ? "Retrying…" : "Try again"}
+        </button>
+        {onLeave && (
+          <button
+            type="button"
+            onClick={onLeave}
+            className="mt-2 w-full rounded-md border border-stone-300 px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+          >
+            Leave this company
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => signOut()}
+          className="mt-3 text-xs text-stone-400 hover:text-stone-600"
+        >
+          Sign out
+        </button>
+      </div>
     </div>
   );
 }

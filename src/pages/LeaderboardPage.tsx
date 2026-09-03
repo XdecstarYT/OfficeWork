@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchCompanyMembers } from "../lib/company";
-import { fetchCompanyDocuments } from "../lib/documents";
+import { fetchCompanyDocumentStats } from "../lib/documents";
 import { fetchCompanyNpcs, resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
 import { fetchCustomNpcPersonas, type CustomNpcPersonaRow } from "../lib/customNpcPersonas";
 import { careerLevelFromXp } from "../lib/careerLevel";
@@ -99,7 +99,7 @@ export function LeaderboardPage({ profile }: LeaderboardPageProps) {
     setLoading(true);
     const [m, docs, companyNpcs, customPersonas] = await Promise.all([
       fetchCompanyMembers(profile.company_id),
-      fetchCompanyDocuments(profile.company_id),
+      fetchCompanyDocumentStats(profile.company_id),
       fetchCompanyNpcs(profile.company_id),
       fetchCustomNpcPersonas(profile.company_id),
     ]);

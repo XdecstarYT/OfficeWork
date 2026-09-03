@@ -10,7 +10,7 @@ import {
 } from "../lib/boardMeetings";
 import { fetchCompanyMembers } from "../lib/company";
 import { assignWork } from "../lib/documents";
-import { getTemplate } from "../lib/templates";
+import { loadTemplate } from "../lib/templates";
 import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../types/database";
 
@@ -253,7 +253,8 @@ export function BoardMeetingsPage({ profile }: BoardMeetingsPageProps) {
 
   async function handleGenerateMinutes(meeting: BoardMeetingRow) {
     if (!profile.company_id) return;
-    const template = getTemplate(BOARD_MEETING_MINUTES_TEMPLATE_ID);
+    // Loaded on demand rather than from a fully-bundled library.
+    const template = await loadTemplate(BOARD_MEETING_MINUTES_TEMPLATE_ID);
     if (!template) {
       setError("Board Meeting Minutes template not found in the library.");
       return;

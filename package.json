@@ -4,11 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "npm run build:template-index && vite",
+    "build": "npm run build:template-index && tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "generate:templates": "tsx scripts/generate-templates.ts"
+    "generate:templates": "tsx scripts/generate-templates.ts",
+    "build:template-index": "tsx scripts/build-template-index.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.122.0",

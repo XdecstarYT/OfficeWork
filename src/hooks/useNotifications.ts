@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchCompanyDocuments } from "../lib/documents";
+import { fetchCompanyDocumentStats } from "../lib/documents";
 import { fetchCompanyMembers } from "../lib/company";
 import { fetchTimeOffRequests } from "../lib/timeOff";
 import { supabase } from "../lib/supabaseClient";
@@ -25,7 +25,7 @@ export function useNotifications(profile: Profile | null) {
       return;
     }
     const [docs, members, unreadEmails, timeOffRequests] = await Promise.all([
-      fetchCompanyDocuments(profile.company_id),
+      fetchCompanyDocumentStats(profile.company_id),
       fetchCompanyMembers(profile.company_id),
       supabase.from("emails").select("id").eq("recipient_id", profile.id).is("read_at", null),
       fetchTimeOffRequests(profile.company_id),

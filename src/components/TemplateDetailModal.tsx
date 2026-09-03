@@ -1,27 +1,27 @@
 import { useEffect, useState } from "react";
 import { estimatePayout } from "../lib/documents";
-import type { DocumentTemplate } from "../types/template";
+import { loadTemplate, type TemplateMeta } from "../lib/templates";
 
-const DIFFICULTY_LABEL: Record<DocumentTemplate["difficulty"], string> = {
+const DIFFICULTY_LABEL: Record<TemplateMeta["difficulty"], string> = {
   quick: "Quick",
   standard: "Standard",
   detailed: "Detailed",
 };
 
 interface TemplateDetailModalProps {
-  template: DocumentTemplate;
+  template: TemplateMeta;
   isFavorite: boolean;
   onToggleFavorite: (id: string) => void;
   onClose: () => void;
-  onStart: (template: DocumentTemplate) => void;
-  onDelete?: (template: DocumentTemplate) => void;
+  onStart: (template: TemplateMeta) => void;
+  onDelete?: (template: TemplateMeta) => void;
   /** Shown as a secondary "🤖 Assign to AI Coworker" action when provided (i.e. the company has at least one hired). */
-  onAssignToNpc?: (template: DocumentTemplate) => void;
+  onAssignToNpc?: (template: TemplateMeta) => void;
   /** Shown as a "🪄 Smart Assign" action when provided (owner, with at least one assignable coworker). */
-  onSmartAssign?: (template: DocumentTemplate) => void;
+  onSmartAssign?: (template: TemplateMeta) => void;
   smartAssigning?: boolean;
   /** Opens the builder pre-filled with a copy of this template. */
-  onDuplicate?: (template: DocumentTemplate) => void;
+  onDuplicate?: (template: TemplateMeta) => void;
   /** Clicking a tag chip filters the Filing Cabinet's search by it. */
   onTagClick?: (tag: string) => void;
 }
@@ -40,7 +40,21 @@ export function TemplateDetailModal({
   onTagClick,
 }: TemplateDetailModalProps) {
   const [showFields, setShowFields] = useState(false);
+  const [fieldLabels, setFieldLabels] = useState<string[] | null>(null);
   const [copyLabel, setCopyLabel] = useState("📋 Copy Details");
+
+  // The field list lives in the template's own file rather than the browse
+  // index, so it's fetched only if someone actually expands it.
+  useEffect(() => {
+    if (!showFields || fieldLabels) return;
+    let cancelled = false;
+    loadTemplate(template.id).then((full) => {
+      if (!cancelled) setFieldLabels(full ? full.fields.map((f) => f.label) : []);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showFields, fieldLabels, template.id]);
 
   useEffect(() => {
     function handleEscape(e: KeyboardEvent) {
@@ -106,7 +120,7 @@ export function TemplateDetailModal({
           <span>💵 ${estimatePayout(template)}</span>
           <span>·</span>
           <button type="button" onClick={() => setShowFields((v) => !v)} className="underline decoration-dotted hover:text-stone-800">
-            {template.fields.length} fields
+            {template.fieldCount} fields
           </button>
           <button
             type="button"
@@ -122,7 +136,9 @@ export function TemplateDetailModal({
           </button>
         </div>
         {showFields && (
-          <p className="mt-1 text-xs text-stone-400">{template.fields.map((f) => f.label).join(", ")}</p>
+          <p className="mt-1 text-xs text-stone-400">
+            {fieldLabels ? fieldLabels.join(", ") : "Loading fields…"}
+          </p>
         )}
 
         <div className="mt-6 flex items-center justify-between gap-2">

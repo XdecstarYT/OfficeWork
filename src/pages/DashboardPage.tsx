@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchCompanyMembers, awardMoney, awardXp, claimMilestone, touchActivityStreak } from "../lib/company";
-import { fetchCompanyDocuments, type DocumentRow } from "../lib/documents";
+import { fetchCompanyDocumentStats, type DocumentStatRow } from "../lib/documents";
 import { fetchCompanyActivity, type ActivityItem } from "../lib/activity";
 import { fetchCorporateUpdates, type CorporateUpdateRow } from "../lib/corporateUpdates";
 import { fetchCompanyNpcs } from "../lib/npcs";
@@ -59,7 +59,7 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
   const [npcCount, setNpcCount] = useState(0);
   const [tasksThisWeek, setTasksThisWeek] = useState(0);
   const [nextMeeting, setNextMeeting] = useState<BoardMeetingRow | null>(null);
-  const [nextDueDoc, setNextDueDoc] = useState<DocumentRow | null>(null);
+  const [nextDueDoc, setNextDueDoc] = useState<DocumentStatRow | null>(null);
   const [members, setMembers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [claimingId, setClaimingId] = useState<string | null>(null);
@@ -77,7 +77,7 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
     setLoading(true);
     const [m, docs, activity, updates, npcs, meetings, moods] = await Promise.all([
       fetchCompanyMembers(profile.company_id),
-      fetchCompanyDocuments(profile.company_id),
+      fetchCompanyDocumentStats(profile.company_id),
       fetchCompanyActivity(profile.company_id, 5),
       fetchCorporateUpdates(profile.company_id),
       fetchCompanyNpcs(profile.company_id),

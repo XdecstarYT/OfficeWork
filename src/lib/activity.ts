@@ -7,27 +7,30 @@ export interface ActivityItem extends DocumentEventRow {
   documentTitle: string;
 }
 
+/**
+ * One round trip, joined server-side on the documents FK.
+ *
+ * This previously fetched every document id in the company and then passed
+ * them all back as an `.in(document_id, [...])` filter. That was two round
+ * trips, and because PostgREST puts filters in the query string the URL grew
+ * by ~40 bytes per document - a company with a few thousand documents would
+ * eventually blow past the server's URL length limit and the Activity Feed
+ * (and the Dashboard, which shares this call) would fail outright.
+ */
 export async function fetchCompanyActivity(companyId: string, limit = 100): Promise<ActivityItem[]> {
-  const { data: docs, error: docsError } = await supabase
-    .from("documents")
-    .select("id, title")
-    .eq("company_id", companyId);
-  if (docsError) throw docsError;
-
-  const docIds = (docs ?? []).map((d) => d.id);
-  if (docIds.length === 0) return [];
-  const titleById = new Map((docs ?? []).map((d) => [d.id, d.title] as const));
-
-  const { data: events, error } = await supabase
+  const { data, error } = await supabase
     .from("document_events")
-    .select("*")
-    .in("document_id", docIds)
+    .select("*, documents!inner(title, company_id)")
+    .eq("documents.company_id", companyId)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
 
-  return (events ?? []).map((e) => ({
-    ...e,
-    documentTitle: titleById.get(e.document_id) ?? "a document",
+  const rows = (data ?? []) as unknown as (DocumentEventRow & {
+    documents: { title: string; company_id: string } | null;
+  })[];
+  return rows.map(({ documents, ...event }) => ({
+    ...event,
+    documentTitle: documents?.title ?? "a document",
   }));
 }

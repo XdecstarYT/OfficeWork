@@ -46,7 +46,7 @@ import {
   isOnLeaveToday,
   type TimeOffRequestRow,
 } from "../lib/timeOff";
-import { assignWork, fetchCompanyDocuments, payoutFor } from "../lib/documents";
+import { assignWork, fetchCompanyDocumentStats, payoutForStat } from "../lib/documents";
 import { fetchCompanyEquipment, purchaseEquipment, type CompanyEquipmentRow } from "../lib/equipment";
 import { EQUIPMENT_CATALOG, totalPayoutBonusPercent } from "../data/equipment";
 import { rollEmployeeEvent } from "../data/employeeEvents";
@@ -205,7 +205,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     const [c, m, docs, depts, reviews, timeOff, equip, moods] = await Promise.all([
       fetchCompany(profile.company_id),
       fetchCompanyMembers(profile.company_id),
-      fetchCompanyDocuments(profile.company_id),
+      fetchCompanyDocumentStats(profile.company_id),
       fetchCompanyDepartments(profile.company_id),
       fetchCompanyReviews(profile.company_id),
       fetchTimeOffRequests(profile.company_id),
@@ -574,7 +574,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     if (!company) return;
     setAwardingEotm(true);
     try {
-      const docs = await fetchCompanyDocuments(company.id);
+      const docs = await fetchCompanyDocumentStats(company.id);
       const completedCounts = new Map<string, number>();
       for (const d of docs) {
         if (d.status === "completed" && d.assigned_to && d.assigned_to !== profile.id) {
@@ -746,13 +746,13 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     if (!company || !company.day_started_at) return;
     setEndingDay(true);
     try {
-      const docs = await fetchCompanyDocuments(company.id);
+      const docs = await fetchCompanyDocumentStats(company.id);
       const since = new Date(company.day_started_at).getTime();
       const completedToday = docs.filter(
         (d) => d.status === "completed" && d.completed_at && new Date(d.completed_at).getTime() >= since,
       );
       const moneyEarned = completedToday.reduce(
-        (sum, d) => sum + payoutFor(d, d.template_snapshot as unknown as DocumentTemplate),
+        (sum, d) => sum + payoutForStat(d),
         0,
       );
       const counts = new Map<string, number>();
@@ -781,7 +781,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
           (d) => d.status === "completed" && d.completed_at && new Date(d.completed_at).getTime() >= weekAgo,
         );
         const weekMoney = completedThisWeek.reduce(
-          (sum, d) => sum + payoutFor(d, d.template_snapshot as unknown as DocumentTemplate),
+          (sum, d) => sum + payoutForStat(d),
           0,
         );
         const weekCounts = new Map<string, number>();

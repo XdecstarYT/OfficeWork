@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ALL_TEMPLATES, searchTemplates, getTemplate } from "../lib/templates";
+import {
+  ALL_TEMPLATES,
+  searchTemplates,
+  getTemplateMeta,
+  loadTemplate,
+  metaFromTemplate,
+  type TemplateMeta,
+} from "../lib/templates";
 import { CategoryTree, type CategorySelection } from "../components/CategoryTree";
 import { SearchBar } from "../components/SearchBar";
 import { TemplateCard } from "../components/TemplateCard";
@@ -8,13 +15,13 @@ import { TemplateBuilder } from "../components/TemplateBuilder";
 import { AssignTaskModal, type AssignTaskDetails } from "../components/AssignTaskModal";
 import { useFavorites } from "../hooks/useFavorites";
 import { useRecent } from "../hooks/useRecent";
-import type { DocumentRow } from "../lib/documents";
+import type { DocumentStatRow } from "../lib/documents";
 import { useCustomTemplates } from "../hooks/useCustomTemplates";
 import { useNpcWorkAssignment } from "../hooks/useNpcWorkAssignment";
 import { resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
 import { BLANK_PAGE_TEMPLATE } from "../data/blankPage";
 import { fetchCompanyMembers } from "../lib/company";
-import { assignWork, fetchCompanyDocuments } from "../lib/documents";
+import { assignWork, fetchCompanyDocumentStats } from "../lib/documents";
 import { pickBestAssignee, type AssigneeCandidate } from "../lib/aiClient";
 import { estimatePayout } from "../lib/documents";
 import { downloadCsv } from "../lib/csv";
@@ -48,7 +55,7 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
     subcategoryId: null,
   });
   const [query, setQuery] = useState("");
-  const [activeTemplate, setActiveTemplate] = useState<DocumentTemplate | null>(null);
+  const [activeTemplate, setActiveTemplate] = useState<TemplateMeta | null>(null);
   const [showBuilder, setShowBuilder] = useState(false);
   const [duplicateSource, setDuplicateSource] = useState<DocumentTemplate | null>(null);
   const [assigningTemplate, setAssigningTemplate] = useState<DocumentTemplate | null>(null);
@@ -72,7 +79,7 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
   const [viewMode, setViewMode] = useState<CabinetViewMode>(() => loadCabinetViewMode());
   const { favorites, toggleFavorite } = useFavorites();
   const { recentIds, clearRecent } = useRecent();
-  const [companyDocsForStats, setCompanyDocsForStats] = useState<DocumentRow[]>([]);
+  const [companyDocsForStats, setCompanyDocsForStats] = useState<DocumentStatRow[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { customTemplates, addCustomTemplate, removeCustomTemplate, canRemoveTemplate } = useCustomTemplates(
     profile.company_id,
@@ -85,7 +92,7 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
   useEffect(() => {
     if (profile.company_id) {
       fetchCompanyMembers(profile.company_id).then(setMembers);
-      fetchCompanyDocuments(profile.company_id).then(setCompanyDocsForStats);
+      fetchCompanyDocumentStats(profile.company_id).then(setCompanyDocsForStats);
     }
   }, [profile.company_id]);
 
@@ -115,11 +122,36 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
     saveCabinetViewMode(viewMode);
   }, [viewMode]);
 
-  function handleStart(template: DocumentTemplate) {
+  /** Browsing only ever needs a template's metadata; its fields and body are
+   * fetched here, at the moment someone actually acts on it. Custom templates
+   * and the Blank Page are already held in full, so they skip the fetch. */
+  const resolveFullTemplate = useCallback(
+    async (meta: TemplateMeta): Promise<DocumentTemplate | undefined> => {
+      const custom = customTemplates.find((t) => t.id === meta.id);
+      if (custom) return custom;
+      if (meta.id === BLANK_PAGE_TEMPLATE.id) return BLANK_PAGE_TEMPLATE;
+      return loadTemplate(meta.id);
+    },
+    [customTemplates],
+  );
+
+  /** Opens the assign flow for a template we already hold in full - used by
+   * the builder, whose freshly-built template isn't in the index or the saved
+   * custom list yet. */
+  function startWithTemplate(template: DocumentTemplate) {
     setActiveTemplate(null);
     setShowBuilder(false);
     setAssignTargetId(profile.id);
     setAssigningTemplate(template);
+  }
+
+  async function handleStart(meta: TemplateMeta) {
+    const template = await resolveFullTemplate(meta);
+    if (!template) {
+      showStatus("Couldn't open that template - try again.", 4000);
+      return;
+    }
+    startWithTemplate(template);
   }
 
   async function handleAssignToNpc(npc: CompanyNpcRow) {
@@ -132,12 +164,17 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
     }
   }
 
-  async function handleSmartAssign(template: DocumentTemplate) {
+  async function handleSmartAssign(meta: TemplateMeta) {
     if (!profile.company_id) return;
     setActiveTemplate(null);
     setSmartAssigning(true);
     try {
-      const docs = await fetchCompanyDocuments(profile.company_id);
+      const template = await resolveFullTemplate(meta);
+      if (!template) {
+        showStatus("Couldn't open that template - try again.", 4000);
+        return;
+      }
+      const docs = await fetchCompanyDocumentStats(profile.company_id);
       const openCountFor = (matcher: (d: (typeof docs)[number]) => boolean) =>
         docs.filter((d) => d.status !== "completed" && matcher(d)).length;
 
@@ -238,7 +275,7 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
     return counts;
   }, []);
 
-  const inTimeRange = (t: DocumentTemplate, filter: TimeFilter) => {
+  const inTimeRange = (t: TemplateMeta, filter: TimeFilter) => {
     if (filter === "all") return true;
     if (filter === "short") return t.estimatedMinutes < 5;
     if (filter === "medium") return t.estimatedMinutes >= 5 && t.estimatedMinutes <= 15;
@@ -320,7 +357,7 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
   );
 
   const recentTemplates = useMemo(
-    () => recentIds.map((id) => getTemplate(id)).filter((t): t is DocumentTemplate => !!t),
+    () => recentIds.map((id) => getTemplateMeta(id)).filter((t): t is TemplateMeta => !!t),
     [recentIds],
   );
 
@@ -333,8 +370,8 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
     return [...counts.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
-      .map(([id]) => getTemplate(id))
-      .filter((t): t is DocumentTemplate => !!t);
+      .map(([id]) => getTemplateMeta(id))
+      .filter((t): t is TemplateMeta => !!t);
   }, [companyDocsForStats]);
 
   function handleSurpriseMe() {
@@ -349,7 +386,7 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
     <>
       <button
         type="button"
-        onClick={() => setActiveTemplate(BLANK_PAGE_TEMPLATE)}
+        onClick={() => setActiveTemplate(metaFromTemplate(BLANK_PAGE_TEMPLATE))}
         className="mb-1 flex w-full items-center gap-2 rounded-md border border-dashed border-stone-300 bg-white px-2.5 py-2 text-left text-sm font-medium text-stone-700 hover:bg-stone-100"
       >
         📄 Blank Page
@@ -532,7 +569,7 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
                 title={`🧩 Custom Templates (shared with your team)${customTemplates.length > 0 ? ` (${customTemplates.length})` : ""}`}
                 emptyLabel="Build one with the drag-and-drop template builder, top-left — anyone on your team can use it."
               >
-                {customTemplates.map((t) => (
+                {customTemplates.map(metaFromTemplate).map((t) => (
                   <TemplateCard
                     key={t.id}
                     template={t}
@@ -652,7 +689,6 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
           onToggleFavorite={toggleFavorite}
           onClose={() => setActiveTemplate(null)}
           onStart={(t) => {
-            setActiveTemplate(null);
             handleStart(t);
           }}
           onDelete={
@@ -666,9 +702,10 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
           }
           onAssignToNpc={
             npcs.length > 0
-              ? (t) => {
+              ? async (t) => {
+                  const full = await resolveFullTemplate(t);
                   setActiveTemplate(null);
-                  setPickingNpcForTemplate(t);
+                  if (full) setPickingNpcForTemplate(full);
                 }
               : undefined
           }
@@ -679,9 +716,11 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
               : undefined
           }
           smartAssigning={smartAssigning}
-          onDuplicate={(t) => {
+          onDuplicate={async (t) => {
+            const full = await resolveFullTemplate(t);
             setActiveTemplate(null);
-            setDuplicateSource(t);
+            if (!full) return;
+            setDuplicateSource(full);
             setShowBuilder(true);
           }}
           onTagClick={(tag) => {
@@ -749,9 +788,8 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
             setDuplicateSource(null);
           }}
           onFillOutNow={(t) => {
-            setShowBuilder(false);
             setDuplicateSource(null);
-            handleStart(t);
+            startWithTemplate(t);
           }}
         />
       )}

@@ -1,17 +1,17 @@
-import type { DocumentTemplate } from "../types/template";
 import { estimatePayout } from "../lib/documents";
+import type { TemplateMeta } from "../lib/templates";
 
-const DIFFICULTY_STYLES: Record<DocumentTemplate["difficulty"], string> = {
+const DIFFICULTY_STYLES: Record<TemplateMeta["difficulty"], string> = {
   quick: "bg-emerald-100 text-emerald-800",
   standard: "bg-amber-100 text-amber-800",
   detailed: "bg-rose-100 text-rose-800",
 };
 
 interface TemplateCardProps {
-  template: DocumentTemplate;
+  template: TemplateMeta;
   isFavorite: boolean;
   onToggleFavorite: (id: string) => void;
-  onOpen: (template: DocumentTemplate) => void;
+  onOpen: (template: TemplateMeta) => void;
   compact?: boolean;
 }
 

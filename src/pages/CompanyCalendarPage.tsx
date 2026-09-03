@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchCompany, fetchCompanyMembers } from "../lib/company";
 import { fetchMeetings, type BoardMeetingRow } from "../lib/boardMeetings";
-import { fetchCompanyDocuments, type DocumentRow } from "../lib/documents";
+import { fetchCompanyDocumentStats, type DocumentStatRow } from "../lib/documents";
 import { fetchTimeOffRequests, type TimeOffRequestRow } from "../lib/timeOff";
 import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../types/database";
@@ -31,7 +31,7 @@ export function CompanyCalendarPage({ profile }: CompanyCalendarPageProps) {
   const [company, setCompany] = useState<Company | null>(null);
   const [members, setMembers] = useState<Profile[]>([]);
   const [meetings, setMeetings] = useState<BoardMeetingRow[]>([]);
-  const [documents, setDocuments] = useState<DocumentRow[]>([]);
+  const [documents, setDocuments] = useState<DocumentStatRow[]>([]);
   const [timeOff, setTimeOff] = useState<TimeOffRequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [kindFilter, setKindFilter] = useState<AgendaKind | "all">("all");
@@ -45,7 +45,7 @@ export function CompanyCalendarPage({ profile }: CompanyCalendarPageProps) {
       fetchCompany(profile.company_id),
       fetchCompanyMembers(profile.company_id),
       fetchMeetings(profile.company_id),
-      fetchCompanyDocuments(profile.company_id),
+      fetchCompanyDocumentStats(profile.company_id),
       fetchTimeOffRequests(profile.company_id),
     ]);
     setCompany(c);
