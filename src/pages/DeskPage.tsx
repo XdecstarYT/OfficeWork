@@ -10,7 +10,9 @@ import {
 } from "../data/cosmetics";
 import { buyCosmetic, equipCosmetic, fetchCompanyDesks, fetchDesk, setDeskStyle, type Desk } from "../lib/desks";
 import { fetchCompanyMembers } from "../lib/company";
+import { formatMoney } from "../lib/format";
 import type { Database } from "../types/database";
+import { Toast } from "../components/Toast";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
@@ -133,7 +135,7 @@ export function DeskPage({ profile, onProfileChanged }: DeskPageProps) {
           <div>
             <h1 className="text-lg font-semibold text-stone-900">🪑 Your Desk</h1>
             <p className="text-sm text-stone-500">
-              {profile.display_name} · {profile.job_title} · 💵 ${profile.money.toFixed(2)} to spend
+              {profile.display_name} · {profile.job_title} · 💵 {formatMoney(profile.money)} to spend
             </p>
           </div>
           <span className="shrink-0 rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-500">
@@ -298,11 +300,7 @@ export function DeskPage({ profile, onProfileChanged }: DeskPageProps) {
         </div>
       )}
 
-      {status && (
-        <div className="fixed bottom-4 right-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 shadow-lg">
-          {status}
-        </div>
-      )}
+      <Toast message={status} onDismiss={() => setStatus(null)} />
     </div>
   );
 }

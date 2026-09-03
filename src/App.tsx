@@ -24,10 +24,18 @@ import {
   saveDismissedChangelogVersion,
   loadPlaytimeToday,
   addPlaytimeMinute,
+  loadLastTab,
+  saveLastTab,
   type FontSize,
   type ContrastMode,
 } from "./lib/storage";
 import { playChime } from "./lib/sound";
+import { PageErrorBoundary } from "./components/PageErrorBoundary";
+import { formatMoney } from "./lib/format";
+import { fetchCompanyMembers } from "./lib/company";
+import { fetchCompanyDocumentStats, type DocumentStatRow } from "./lib/documents";
+import { fetchProjects, type ProjectRow } from "./lib/projects";
+import type { TemplateMeta } from "./lib/templates";
 import type { ClientRequest } from "./types/template";
 
 // Each tab is its own chunk, downloaded only when opened - with 10 tabs and a
@@ -63,6 +71,7 @@ const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage").then((m) => ({ 
 const DeskPage = lazy(() => import("./pages/DeskPage").then((m) => ({ default: m.DeskPage })));
 const PerksPage = lazy(() => import("./pages/PerksPage").then((m) => ({ default: m.PerksPage })));
 const ProjectsPage = lazy(() => import("./pages/ProjectsPage").then((m) => ({ default: m.ProjectsPage })));
+const CareerPage = lazy(() => import("./pages/CareerPage").then((m) => ({ default: m.CareerPage })));
 
 type Tab =
   | "dashboard"
@@ -80,13 +89,24 @@ type Tab =
   | "analytics"
   | "desk"
   | "perks"
+  | "career"
   | "projects"
   | "archive"
   | "calendar";
 
-const APP_VERSION = "1.6.0";
+const APP_VERSION = "1.7.0";
 
 const CHANGELOG: { version: string; notes: string[] }[] = [
+  {
+    version: "1.7.0",
+    notes: [
+      "The game has an ending — a 21-goal Career ladder, a final score and rank, retirement, and a company Hall of Fame.",
+      "Send money to a coworker, with an email receipt.",
+      "The 🔔 bell now covers objectives, overdue loans and projects ready to deliver.",
+      "⌘K searches your work, coworkers, projects and templates — not just tabs.",
+      "The nav is grouped, a crashing tab no longer takes the app down, and reloads return you to the tab you were on.",
+    ],
+  },
   {
     version: "1.6.0",
     notes: [
@@ -128,26 +148,47 @@ const CHANGELOG: { version: string; notes: string[] }[] = [
   },
 ];
 
-const TAB_META: { id: Tab; label: string; emoji: string }[] = [
-  { id: "dashboard", label: "Dashboard", emoji: "🏠" },
-  { id: "cabinet", label: "Filing Cabinet", emoji: "📁" },
-  { id: "work", label: "My Work", emoji: "📥" },
-  { id: "inbox", label: "Inbox", emoji: "✉️" },
-  { id: "company", label: "Company", emoji: "🏛" },
-  { id: "projects", label: "Projects", emoji: "🚩" },
-  { id: "desk", label: "Your Desk", emoji: "🪑" },
-  { id: "perks", label: "Perks", emoji: "🌟" },
-  { id: "calendar", label: "Calendar", emoji: "🗓" },
-  { id: "meetings", label: "Board Meetings", emoji: "📅" },
-  { id: "updates", label: "Corporate Updates", emoji: "📰" },
-  { id: "activity", label: "Activity", emoji: "🗞" },
-  { id: "leaderboard", label: "Leaderboard", emoji: "🏆" },
-  { id: "stocks", label: "Stock Market", emoji: "📈" },
-  { id: "bank", label: "Bank", emoji: "🏦" },
-  { id: "analytics", label: "Analytics", emoji: "📊" },
-  { id: "archive", label: "Archive", emoji: "🗄" },
-  { id: "clients", label: "AI Clients", emoji: "🤝" },
+type TabGroup = "work" | "company" | "money" | "you";
+
+/** The nav grew past a dozen entries; grouping keeps a flat scroll of 19
+ * tabs from turning into a search-by-eye exercise. */
+const TAB_GROUPS: { id: TabGroup; label: string }[] = [
+  { id: "work", label: "Work" },
+  { id: "company", label: "Company" },
+  { id: "money", label: "Money" },
+  { id: "you", label: "You" },
 ];
+
+const TAB_META: { id: Tab; label: string; emoji: string; group: TabGroup }[] = [
+  { id: "dashboard", label: "Dashboard", emoji: "🏠", group: "work" },
+  { id: "cabinet", label: "Filing Cabinet", emoji: "📁", group: "work" },
+  { id: "work", label: "My Work", emoji: "📥", group: "work" },
+  { id: "inbox", label: "Inbox", emoji: "✉️", group: "work" },
+  { id: "company", label: "Company", emoji: "🏛", group: "company" },
+  { id: "projects", label: "Projects", emoji: "🚩", group: "company" },
+  { id: "desk", label: "Your Desk", emoji: "🪑", group: "you" },
+  { id: "perks", label: "Perks", emoji: "🌟", group: "you" },
+  { id: "career", label: "Career", emoji: "🏁", group: "you" },
+  { id: "calendar", label: "Calendar", emoji: "🗓", group: "company" },
+  { id: "meetings", label: "Board Meetings", emoji: "📅", group: "company" },
+  { id: "updates", label: "Corporate Updates", emoji: "📰", group: "company" },
+  { id: "activity", label: "Activity", emoji: "🗞", group: "company" },
+  { id: "leaderboard", label: "Leaderboard", emoji: "🏆", group: "company" },
+  { id: "stocks", label: "Stock Market", emoji: "📈", group: "money" },
+  { id: "bank", label: "Bank", emoji: "🏦", group: "money" },
+  { id: "analytics", label: "Analytics", emoji: "📊", group: "money" },
+  { id: "archive", label: "Archive", emoji: "🗄", group: "work" },
+  { id: "clients", label: "AI Clients", emoji: "🤝", group: "work" },
+];
+
+interface PaletteResult {
+  key: string;
+  emoji: string;
+  label: string;
+  detail?: string;
+  group: string;
+  tab: Tab;
+}
 
 function App() {
   const { session, user, loading: sessionLoading, error: sessionError, refresh: refreshSession } = useSession();
@@ -164,10 +205,17 @@ function App() {
     refresh: refreshCompany,
   } = useCompany(profile?.company_id ?? null);
   const notifications = useNotifications(profile);
-  const [tab, setTab] = useState<Tab>("dashboard");
+  const [tab, setTab] = useState<Tab>(() => {
+    const remembered = loadLastTab();
+    return TAB_META.some((t) => t.id === remembered) ? (remembered as Tab) : "dashboard";
+  });
   const [showNotifications, setShowNotifications] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
   const [paletteQuery, setPaletteQuery] = useState("");
+  const [paletteMembers, setPaletteMembers] = useState<{ id: string; display_name: string; job_title: string }[]>([]);
+  const [paletteDocs, setPaletteDocs] = useState<DocumentStatRow[]>([]);
+  const [paletteProjects, setPaletteProjects] = useState<ProjectRow[]>([]);
+  const [paletteTemplates, setPaletteTemplates] = useState<TemplateMeta[]>([]);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
   const [fontSize, setFontSize] = useState<FontSize>(() => loadFontSize());
@@ -184,8 +232,18 @@ function App() {
   const lastActivityRef = useRef(Date.now());
   const paletteInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    saveLastTab(tab);
+  }, [tab]);
+
   const notificationTotal =
-    notifications.pendingApproval + notifications.unreadEmail + notifications.overdue + notifications.pendingTimeOff;
+    notifications.pendingApproval +
+    notifications.unreadEmail +
+    notifications.overdue +
+    notifications.pendingTimeOff +
+    notifications.objectivesReady +
+    notifications.loanOverdue +
+    notifications.projectsReady;
 
   useEffect(() => {
     const prefix = isAway ? "(Away) " : notificationTotal > 0 ? `(${notificationTotal > 99 ? "99+" : notificationTotal}) ` : "";
@@ -290,11 +348,112 @@ function App() {
     else setPaletteQuery("");
   }, [showPalette]);
 
-  const filteredPaletteTabs = useMemo(() => {
+  // The company's own searchable material is only pulled once the palette is
+  // actually opened - it is a keystroke away at all times, but most sessions
+  // never open it.
+  useEffect(() => {
+    if (!showPalette) return;
+    let cancelled = false;
+    // The 515 kB template index must NOT be a static import here - App is the
+    // root chunk, and pulling it in statically put the whole library back on
+    // the boot path, which is exactly what the lazy split removed.
+    import("./lib/templates")
+      .then((m) => {
+        if (!cancelled) setPaletteTemplates(m.ALL_TEMPLATES);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [showPalette]);
+
+  useEffect(() => {
+    if (!showPalette || !profile?.company_id) return;
+    let cancelled = false;
+    const companyId = profile.company_id;
+    Promise.all([
+      fetchCompanyMembers(companyId),
+      fetchCompanyDocumentStats(companyId),
+      fetchProjects(companyId),
+    ])
+      .then(([m, d, p]) => {
+        if (cancelled) return;
+        setPaletteMembers(m);
+        setPaletteDocs(d);
+        setPaletteProjects(p.filter((x) => x.status === "active"));
+      })
+      .catch(() => {
+        // A palette that can only jump to tabs is still a useful palette.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showPalette, profile?.company_id]);
+
+  const paletteResults = useMemo((): PaletteResult[] => {
     const q = paletteQuery.trim().toLowerCase();
-    if (!q) return TAB_META;
-    return TAB_META.filter((t) => t.label.toLowerCase().includes(q));
-  }, [paletteQuery]);
+    const tabs: PaletteResult[] = TAB_META.filter((t) => !q || t.label.toLowerCase().includes(q)).map((t) => ({
+      key: `tab:${t.id}`,
+      emoji: t.emoji,
+      label: t.label,
+      group: "Go to",
+      tab: t.id,
+    }));
+    if (!q) return tabs;
+
+    const docs: PaletteResult[] = paletteDocs
+      .filter((d) => d.title.toLowerCase().includes(q))
+      .slice(0, 5)
+      .map((d) => ({
+        key: `doc:${d.id}`,
+        emoji: d.status === "completed" ? "✅" : "📄",
+        label: d.title,
+        detail: d.status.replace(/_/g, " "),
+        group: "Documents",
+        tab: d.status === "completed" ? ("archive" as Tab) : ("work" as Tab),
+      }));
+
+    const people: PaletteResult[] = paletteMembers
+      .filter((m) => m.display_name.toLowerCase().includes(q) || m.job_title.toLowerCase().includes(q))
+      .slice(0, 5)
+      .map((m) => ({
+        key: `member:${m.id}`,
+        emoji: "👤",
+        label: m.display_name,
+        detail: m.job_title,
+        group: "People",
+        tab: "company" as Tab,
+      }));
+
+    const projects: PaletteResult[] = paletteProjects
+      .filter((p) => p.name.toLowerCase().includes(q))
+      .slice(0, 5)
+      .map((p) => ({
+        key: `project:${p.id}`,
+        emoji: p.emoji,
+        label: p.name,
+        detail: `${p.target_documents} documents`,
+        group: "Projects",
+        tab: "projects" as Tab,
+      }));
+
+    const templates: PaletteResult[] = paletteTemplates
+      .filter((t) => {
+        const haystack = `${t.title} ${t.category} ${t.subcategory} ${t.tags.join(" ")}`.toLowerCase();
+        return haystack.includes(q);
+      })
+      .slice(0, 6)
+      .map((t) => ({
+        key: `template:${t.id}`,
+        emoji: "📁",
+        label: t.title,
+        detail: `${t.category} / ${t.subcategory}`,
+        group: "Templates",
+        tab: "cabinet" as Tab,
+      }));
+
+    return [...tabs, ...docs, ...people, ...projects, ...templates];
+  }, [paletteQuery, paletteDocs, paletteMembers, paletteProjects, paletteTemplates]);
 
   function goToTab(t: Tab) {
     setTab(t);
@@ -398,7 +557,7 @@ function App() {
               {now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
             </span>
             <span className="flex items-center gap-1 text-sm font-medium text-emerald-700 tabular-nums">
-              💵 ${profile.money.toFixed(2)}
+              💵 {formatMoney(profile.money)}
             </span>
             <span
               className="flex items-center gap-1 text-xs font-medium text-amber-700 tabular-nums"
@@ -465,6 +624,33 @@ function App() {
                       setShowNotifications(false);
                     }}
                   />
+                  <NotificationRow
+                    emoji="🎯"
+                    label="Objectives ready to claim"
+                    count={notifications.objectivesReady}
+                    onClick={() => {
+                      setTab("dashboard");
+                      setShowNotifications(false);
+                    }}
+                  />
+                  <NotificationRow
+                    emoji="🚨"
+                    label="Loan past its due day"
+                    count={notifications.loanOverdue}
+                    onClick={() => {
+                      setTab("bank");
+                      setShowNotifications(false);
+                    }}
+                  />
+                  <NotificationRow
+                    emoji="🚩"
+                    label="Projects ready to deliver"
+                    count={notifications.projectsReady}
+                    onClick={() => {
+                      setTab("projects");
+                      setShowNotifications(false);
+                    }}
+                  />
                   {notificationTotal === 0 && (
                     <p className="p-2 text-center text-xs text-stone-400">You're all caught up.</p>
                   )}
@@ -475,7 +661,7 @@ function App() {
               type="button"
               onClick={() => setShowPalette(true)}
               className="hidden rounded-md border border-stone-200 px-2 py-1 text-xs text-stone-400 hover:bg-stone-100 sm:block"
-              title="Jump to a tab (⌘K)"
+              title="Search everything (⌘K)"
             >
               ⌘K
             </button>
@@ -508,19 +694,36 @@ function App() {
             </button>
           </div>
         </div>
-        <nav className="flex gap-1 overflow-x-auto border-t border-stone-100 px-6 py-2">
-          {TAB_META.map((t) => (
-            <TabButton key={t.id} active={tab === t.id} onClick={() => setTab(t.id)} title={compactNav ? t.label : undefined}>
-              {compactNav ? t.emoji : `${t.emoji} ${t.label}`}
-            </TabButton>
+        <nav className="flex items-center gap-1 overflow-x-auto border-t border-stone-100 px-6 py-2">
+          {TAB_GROUPS.map((group, i) => (
+            <div key={group.id} className="flex shrink-0 items-center gap-1">
+              {i > 0 && <span className="mx-1 h-5 w-px shrink-0 bg-stone-200" aria-hidden="true" />}
+              {!compactNav && (
+                <span className="shrink-0 pr-0.5 text-[10px] font-semibold uppercase tracking-wider text-stone-300">
+                  {group.label}
+                </span>
+              )}
+              {TAB_META.filter((t) => t.group === group.id).map((t) => (
+                <TabButton
+                  key={t.id}
+                  active={tab === t.id}
+                  onClick={() => setTab(t.id)}
+                  title={compactNav ? t.label : undefined}
+                >
+                  {compactNav ? t.emoji : `${t.emoji} ${t.label}`}
+                </TabButton>
+              ))}
+            </div>
           ))}
         </nav>
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <Suspense
-          fallback={<div className="flex-1 p-6 text-sm text-stone-400">Loading…</div>}
-        >
+        {/* Keyed on the tab so leaving a broken page and coming back retries it. */}
+        <PageErrorBoundary resetKey={tab}>
+          <Suspense
+            fallback={<div className="flex-1 p-6 text-sm text-stone-400">Loading…</div>}
+          >
           {tab === "dashboard" && (
             <DashboardPage
               profile={profile}
@@ -558,6 +761,9 @@ function App() {
           {tab === "analytics" && <AnalyticsPage profile={profile} company={company} />}
           {tab === "desk" && <DeskPage profile={profile} onProfileChanged={refreshProfile} />}
           {tab === "perks" && <PerksPage profile={profile} onProfileChanged={refreshProfile} />}
+          {tab === "career" && (
+            <CareerPage profile={profile} company={company} onProfileChanged={refreshProfile} />
+          )}
           {tab === "projects" && (
             <ProjectsPage
               profile={profile}
@@ -575,7 +781,8 @@ function App() {
               onCompleteRequest={handleCompleteRequest}
             />
           )}
-        </Suspense>
+          </Suspense>
+        </PageErrorBoundary>
       </div>
 
       {showPalette && (
@@ -594,27 +801,34 @@ function App() {
               onChange={(e) => setPaletteQuery(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Escape") setShowPalette(false);
-                if (e.key === "Enter" && filteredPaletteTabs[0]) goToTab(filteredPaletteTabs[0].id);
+                if (e.key === "Enter" && paletteResults[0]) goToTab(paletteResults[0].tab);
               }}
-              placeholder="Jump to a tab…"
+              placeholder="Search tabs, work, people, projects, templates…"
               className="w-full border-b border-stone-200 px-4 py-3 text-sm focus:outline-none"
             />
-            <div className="max-h-72 overflow-y-auto p-2">
-              {filteredPaletteTabs.length === 0 ? (
-                <p className="p-3 text-center text-xs text-stone-400">No matching tab.</p>
+            <div className="max-h-80 overflow-y-auto p-2">
+              {paletteResults.length === 0 ? (
+                <p className="p-3 text-center text-xs text-stone-400">Nothing matches that.</p>
               ) : (
-                filteredPaletteTabs.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => goToTab(t.id)}
-                    className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-stone-100 ${
-                      t.id === tab ? "font-medium text-stone-900" : "text-stone-600"
-                    }`}
-                  >
-                    <span>{t.emoji}</span>
-                    {t.label}
-                  </button>
+                paletteResults.map((r, i) => (
+                  <div key={r.key}>
+                    {(i === 0 || paletteResults[i - 1].group !== r.group) && (
+                      <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-stone-300">
+                        {r.group}
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => goToTab(r.tab)}
+                      className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-stone-100 ${
+                        r.group === "Go to" && r.tab === tab ? "font-medium text-stone-900" : "text-stone-600"
+                      }`}
+                    >
+                      <span className="shrink-0">{r.emoji}</span>
+                      <span className="min-w-0 flex-1 truncate">{r.label}</span>
+                      {r.detail && <span className="shrink-0 text-xs text-stone-400">{r.detail}</span>}
+                    </button>
+                  </div>
                 ))
               )}
             </div>
@@ -633,7 +847,7 @@ function App() {
           >
             <h2 className="text-lg font-semibold text-stone-900">⌨️ Keyboard Shortcuts</h2>
             <div className="mt-4 flex flex-col gap-2 text-sm text-stone-600">
-              <ShortcutRow keys="⌘/Ctrl K" label="Jump to a tab" />
+              <ShortcutRow keys="⌘/Ctrl K" label="Search tabs, work, people, projects, templates" />
               <ShortcutRow keys="N" label="Toggle notifications" />
               <ShortcutRow keys="/" label="Focus search (Filing Cabinet)" />
               <ShortcutRow keys="Alt ←/→" label="Cycle tabs" />

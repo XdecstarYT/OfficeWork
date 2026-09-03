@@ -3,6 +3,7 @@ import { PERKS, PERK_BRANCHES, type Perk, type PerkBranch } from "../data/perks"
 import { fetchMyPerks, perkBlockedReason, perkState, respecPerks, takePerk } from "../lib/perks";
 import { careerProgress } from "../lib/careerLevel";
 import type { Database } from "../types/database";
+import { Toast } from "../components/Toast";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
@@ -167,11 +168,7 @@ export function PerksPage({ profile, onProfileChanged }: PerksPageProps) {
         )}
       </div>
 
-      {status && (
-        <div className="fixed bottom-4 right-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 shadow-lg">
-          {status}
-        </div>
-      )}
+      <Toast message={status} onDismiss={() => setStatus(null)} />
     </div>
   );
 }

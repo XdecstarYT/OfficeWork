@@ -12,6 +12,7 @@ import { SearchBar } from "../components/SearchBar";
 import { TemplateCard } from "../components/TemplateCard";
 import { TemplateDetailModal } from "../components/TemplateDetailModal";
 import { TemplateBuilder } from "../components/TemplateBuilder";
+import { Toast } from "../components/Toast";
 import { fetchProjects, type ProjectRow } from "../lib/projects";
 import { AssignTaskModal, type AssignTaskDetails } from "../components/AssignTaskModal";
 import { useFavorites } from "../hooks/useFavorites";
@@ -815,18 +816,7 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
         />
       )}
 
-      {statusMessage && (
-        <div className="fixed bottom-4 right-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 shadow-lg">
-          {statusMessage}
-          <button
-            type="button"
-            onClick={() => setStatusMessage(null)}
-            className="ml-3 text-emerald-400 hover:text-emerald-600"
-          >
-            ✕
-          </button>
-        </div>
-      )}
+      <Toast message={statusMessage} onDismiss={() => setStatusMessage(null)} />
     </div>
   );
 }

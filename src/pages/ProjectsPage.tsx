@@ -12,7 +12,9 @@ import {
 import { fetchCompanyDocumentStats, type DocumentStatRow } from "../lib/documents";
 import { fetchCompanyMembers } from "../lib/company";
 import { postCorporateUpdate } from "../lib/corporateUpdates";
+import { formatMoney as money } from "../lib/format";
 import type { Database } from "../types/database";
+import { Toast } from "../components/Toast";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Company = Database["public"]["Tables"]["companies"]["Row"];
@@ -25,8 +27,6 @@ interface ProjectsPageProps {
 }
 
 const EMOJI_CHOICES = ["📁", "🚀", "🏗", "🧾", "⚖️", "🔬", "🎯", "🌍", "🧩", "🏆"];
-
-const money = (n: number) => `$${n.toFixed(2)}`;
 
 export function ProjectsPage({ profile, company, onProfileChanged, onCompanyChanged }: ProjectsPageProps) {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
@@ -467,11 +467,7 @@ export function ProjectsPage({ profile, company, onProfileChanged, onCompanyChan
         </div>
       )}
 
-      {status && (
-        <div className="fixed bottom-4 right-4 max-w-sm rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 shadow-lg">
-          {status}
-        </div>
-      )}
+      <Toast message={status} onDismiss={() => setStatus(null)} />
     </div>
   );
 }

@@ -748,6 +748,34 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["treasury_transactions"]["Insert"]>;
         Relationships: [];
       };
+      retirements: {
+        Row: {
+          id: string;
+          member_id: string;
+          company_id: string | null;
+          display_name: string;
+          company_name: string;
+          final_title: string;
+          score: number;
+          completion_percent: number;
+          stats: Json;
+          retired_at: string;
+        };
+        Insert: {
+          id?: string;
+          member_id: string;
+          company_id?: string | null;
+          display_name: string;
+          company_name: string;
+          final_title: string;
+          score: number;
+          completion_percent: number;
+          stats?: Json;
+          retired_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["retirements"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -769,6 +797,10 @@ export interface Database {
       };
       contribute_to_treasury: {
         Args: { p_amount: number; p_reason: string };
+        Returns: number;
+      };
+      transfer_money: {
+        Args: { p_recipient: string; p_amount: number };
         Returns: number;
       };
     };

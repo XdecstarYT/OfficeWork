@@ -5,6 +5,10 @@ A multiplayer "cozy job simulator" — fill out realistic office paperwork
 template library, earn Money, and grow your rank inside a shared company
 with real coworkers.
 
+It has an ending: a [Career ladder](#the-career-ladder--and-an-ending) of 21
+goals across every system, a final score and rank, and a retirement that
+files your career into the company's Hall of Fame and starts you over.
+
 ## Status
 
 - **Template library: 1111 templates** across 11 categories (the original
@@ -556,6 +560,73 @@ A much larger follow-up pass, organized by area. Roughly 20 batches, each typech
   the ledger row in the same statement so the two can't disagree.
 - New columns `companies.treasury` and `companies.treasury_cut_percent`, plus
   a `treasury_transactions` ledger table.
+
+### The Career ladder — and an ending
+
+Office Quest is a finite game now, not an endless sandbox.
+
+- **21 goals across four chapters** — The New Hire, Finding Your Feet, Making
+  a Name, The Corner Office — spanning every system in the app: documents
+  completed, career level, objectives claimed, payouts banked, perks
+  unlocked, desk slots furnished, loans repaid, projects delivered, credit
+  rating, treasury contributed, and shares held. A completion meter over the
+  whole ladder tells you how far through the game you are.
+- Each goal reads from data the game already keeps, so nothing here needs its
+  own counter column and no goal can drift out of step with the tab it
+  describes.
+- **Retirement.** Clear chapter 3 and you can end the career whenever you
+  like. Retiring computes a **final score** — weighted so no single system
+  can carry a career on its own, which is the whole point of the ladder —
+  awards a **rank** from Temp to Chairman Emeritus, files a permanent record
+  into the company's **Hall of Fame**, announces the send-off as a Corporate
+  Update, and resets your profile so a new career can start. The record is
+  written *before* the profile is reset, so a failure part-way leaves a
+  career intact rather than wiped and unrecorded.
+- Money, rank, perks and the desk go with the old career; the Hall of Fame
+  entry and its stats snapshot are what survive, which is the only account of
+  a career that no longer exists.
+- New table `retirements`, readable by the member forever and by whoever is
+  currently in that company.
+
+### Sending money
+
+- **Send money to any coworker** from the Company roster — quick amounts, an
+  optional note, and an in-game email receipt either way.
+- RLS only lets you update a profile you strictly *outrank*, so a peer
+  transfer can't be expressed as a policy; and doing it as two client writes
+  would let a tampered client post the credit without the debit. It goes
+  through a `SECURITY DEFINER` function that takes the money from the caller
+  (never a parameter), checks both sides share a company, moves both halves
+  in one transaction, and locks the sender's row so two tabs can't spend the
+  same balance.
+
+### Quality of life
+
+- **The 🔔 bell covers the whole game.** On top of approvals, unread email,
+  overdue work and time-off decisions, it now surfaces objectives ready to
+  claim, a loan past its due day, and projects that have hit their target and
+  are waiting to be delivered (owners only — nobody else can deliver one).
+- **⌘K searches everything**, not just tabs: your documents, coworkers by
+  name or job title, active projects, and the template library, grouped by
+  kind. The 515 kB template index is loaded *dynamically* when the palette
+  first opens — importing it statically from `App.tsx` would put the whole
+  library back on the boot path, undoing the load-time work above.
+- **Grouped navigation.** Nineteen tabs in one flat scroll had become a
+  search-by-eye exercise; they're now grouped Work / Company / Money / You
+  with dividers, and compact mode still collapses to emoji.
+- **A crashing tab no longer takes the app down.** Every page is a lazily
+  loaded chunk rendered into the same slot, so an uncaught render error used
+  to unmount the whole tree and leave a white screen. A per-page error
+  boundary now catches it, offers Try again / Reload, and resets itself when
+  you switch tabs.
+- **Reloads return you to the tab you were on** rather than dumping you back
+  on the Dashboard mid-task.
+- **One status toast** (`src/components/Toast.tsx`) instead of five pages each
+  hand-rolling a fixed-position div with its own colours and timer — and it's
+  dismissible and announced to screen readers.
+- **Money reads properly at scale.** Balances hit five figures once the
+  treasury and the larger loan desks landed, and `$12345.60` is hard to scan;
+  a shared `formatMoney` puts separators in everywhere it matters.
 
 Not yet built: cosmetics that affect other people's screens, a walkable
 office map.

@@ -376,6 +376,26 @@ export function saveStarredUpdates(starred: Set<string>) {
 /** Wipes every local (per-browser) preference this app has ever written -
  * favorites, recents, font size, sound toggle, drafts, etc. Server-stored
  * data (money, documents, company state) is untouched. */
+const LAST_TAB_KEY = "officequest.lastTab";
+
+/** The tab you were on last, so a reload doesn't dump you back on the
+ * Dashboard mid-task. */
+export function loadLastTab(): string | null {
+  try {
+    return localStorage.getItem(LAST_TAB_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function saveLastTab(tab: string) {
+  try {
+    localStorage.setItem(LAST_TAB_KEY, tab);
+  } catch {
+    // Ignore - a remembered tab is a convenience, not state worth failing for.
+  }
+}
+
 export function resetLocalPreferences() {
   try {
     const keysToRemove: string[] = [];

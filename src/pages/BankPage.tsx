@@ -15,7 +15,9 @@ import { fetchCompanyMembers } from "../lib/company";
 import { fetchMyPerks, perkState } from "../lib/perks";
 import { fetchTreasuryLedger, setTreasuryCut, spendTreasury, type TreasuryTransactionRow } from "../lib/treasury";
 import { relativeTime } from "../lib/time";
+import { formatMoney as money } from "../lib/format";
 import type { Database } from "../types/database";
+import { Toast } from "../components/Toast";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Company = Database["public"]["Tables"]["companies"]["Row"];
@@ -26,8 +28,6 @@ interface BankPageProps {
   onProfileChanged: () => void;
   onCompanyChanged: () => void;
 }
-
-const money = (n: number) => `$${n.toFixed(2)}`;
 
 export function BankPage({ profile, company, onProfileChanged, onCompanyChanged }: BankPageProps) {
   const [loans, setLoans] = useState<LoanRow[]>([]);
@@ -489,11 +489,7 @@ export function BankPage({ profile, company, onProfileChanged, onCompanyChanged 
         </div>
       )}
 
-      {status && (
-        <div className="fixed bottom-4 right-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 shadow-lg">
-          {status}
-        </div>
-      )}
+      <Toast message={status} onDismiss={() => setStatus(null)} />
     </div>
   );
 }

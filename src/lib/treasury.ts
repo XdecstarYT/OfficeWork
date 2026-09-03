@@ -14,6 +14,20 @@ export async function fetchTreasuryLedger(companyId: string, limit = 50): Promis
   return data ?? [];
 }
 
+/** Everything this member has ever put into the treasury, for the endgame
+ * ladder. Filtered and summed rather than paged, since only the total is
+ * ever shown. */
+export async function fetchMyContributionTotal(companyId: string, memberId: string): Promise<number> {
+  const { data, error } = await supabase
+    .from("treasury_transactions")
+    .select("amount")
+    .eq("company_id", companyId)
+    .eq("member_id", memberId)
+    .gt("amount", 0);
+  if (error) throw error;
+  return (data ?? []).reduce((sum, row) => sum + row.amount, 0);
+}
+
 /** The company's cut of one payout, after the borrower's own perk discount. */
 export function treasuryCutFor(payout: number, cutPercent: number, discountPercent = 0): number {
   const effective = (cutPercent / 100) * (1 - discountPercent / 100);

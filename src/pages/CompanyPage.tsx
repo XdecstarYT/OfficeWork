@@ -8,6 +8,7 @@ import {
   awardMoney,
   awardXp,
   awardBonusToAll,
+  transferMoney,
   renameCompany,
   regenerateInviteCode,
   startCompanyDay,
@@ -52,6 +53,7 @@ import { EQUIPMENT_CATALOG, totalPayoutBonusPercent } from "../data/equipment";
 import { rollEmployeeEvent } from "../data/employeeEvents";
 import { COMPANY_BADGES, getCompanyBadge } from "../data/companyBadges";
 import { sendEmailToCoworker } from "../lib/emails";
+import { formatMoney } from "../lib/format";
 import { postCorporateUpdate } from "../lib/corporateUpdates";
 import { hireNpc, fireNpc, resolveNpcPersona, type CompanyNpcRow } from "../lib/npcs";
 import { createCustomNpcPersona, deleteCustomNpcPersona, customPersonaToNpcPersona } from "../lib/customNpcPersonas";
@@ -126,6 +128,10 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
     statusTimeoutRef.current = setTimeout(() => setStatusMessage(null), ms);
   }, []);
   const [bonusTargetId, setBonusTargetId] = useState<string | null>(null);
+  const [sendTarget, setSendTarget] = useState<Profile | null>(null);
+  const [sendAmount, setSendAmount] = useState("");
+  const [sendNote, setSendNote] = useState("");
+  const [sending, setSending] = useState(false);
   const [bonusAmount, setBonusAmount] = useState(50);
   const [confirmKickId, setConfirmKickId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -373,6 +379,36 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       await load();
     } catch (err) {
       showStatus(err instanceof Error ? err.message : "Couldn't award that bonus.", 4000);
+    }
+  }
+
+  async function handleSendMoney() {
+    if (!sendTarget || !company) return;
+    const amount = Number(sendAmount);
+    setSending(true);
+    try {
+      await transferMoney(sendTarget.id, amount);
+      // The receipt is a normal in-game email, so the recipient finds out the
+      // same way they find out about everything else.
+      await sendEmailToCoworker({
+        companyId: company.id,
+        senderId: profile.id,
+        recipientId: sendTarget.id,
+        subject: `💸 ${profile.display_name} sent you $${amount.toFixed(2)}`,
+        body: sendNote.trim()
+          ? `${sendNote.trim()}\n\n— ${profile.display_name}`
+          : `No note attached.\n\n— ${profile.display_name}`,
+      }).catch(() => {});
+      showStatus(`Sent $${amount.toFixed(2)} to ${sendTarget.display_name}.`, 4000);
+      setSendTarget(null);
+      setSendAmount("");
+      setSendNote("");
+      onProfileChanged();
+      await load();
+    } catch (err) {
+      showStatus(err instanceof Error ? err.message : "Couldn't send that.", 4000);
+    } finally {
+      setSending(false);
     }
   }
 
@@ -1655,7 +1691,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                     </div>
                   ) : (
                     <p className="text-xs text-stone-400">
-                      {m.job_title} · level {m.level} · ${m.money.toFixed(2)}
+                      {m.job_title} · level {m.level} · {formatMoney(m.money)}
                       {m.department && (
                         <button
                           type="button"
@@ -1785,6 +1821,19 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
                           </button>
                         )}
                       </>
+                    )}
+                    {m.id !== profile.id && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSendTarget(m);
+                          setSendAmount("");
+                          setSendNote("");
+                        }}
+                        className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+                      >
+                        💸 Send Money
+                      </button>
                     )}
                     {allReviews.some((r) => r.member_id === m.id) && (
                       <button
@@ -2373,7 +2422,7 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
           >
             <h2 className="text-lg font-semibold text-stone-900">🤖 Hire an AI Coworker</h2>
             <p className="mt-1 text-sm text-stone-500">
-              You have ${profile.money.toFixed(2)}. Hiring deducts the cost from your own balance.
+              You have {formatMoney(profile.money)}. Hiring deducts the cost from your own balance.
             </p>
             <div className="mt-3 flex flex-col gap-2">
               {NPC_PERSONAS.filter((p) => !npcs.some((n) => n.persona_key === p.key)).map((persona) => (
@@ -2546,6 +2595,79 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {sendTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-4"
+          onClick={() => setSendTarget(null)}
+        >
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-stone-900">💸 Send money to {sendTarget.display_name}</h2>
+            <p className="mt-1 text-sm text-stone-500">
+              {sendTarget.job_title} · you have {formatMoney(profile.money)}
+            </p>
+
+            <label className="mt-4 block text-xs font-medium text-stone-500" htmlFor="send-amount">
+              Amount
+            </label>
+            <input
+              id="send-amount"
+              type="number"
+              min="0"
+              step="1"
+              autoFocus
+              value={sendAmount}
+              onChange={(e) => setSendAmount(e.target.value)}
+              className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {[10, 25, 50, 100].map((amount) => (
+                <button
+                  key={amount}
+                  type="button"
+                  disabled={amount > profile.money}
+                  onClick={() => setSendAmount(String(amount))}
+                  className="rounded-full border border-stone-300 px-2.5 py-0.5 text-xs text-stone-600 hover:bg-stone-100 disabled:opacity-40"
+                >
+                  ${amount}
+                </button>
+              ))}
+            </div>
+
+            <label className="mt-3 block text-xs font-medium text-stone-500" htmlFor="send-note">
+              Note (optional)
+            </label>
+            <input
+              id="send-note"
+              type="text"
+              placeholder="Thanks for covering the audit"
+              value={sendNote}
+              onChange={(e) => setSendNote(e.target.value)}
+              className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <p className="mt-1 text-xs text-stone-400">They get an email receipt either way.</p>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setSendTarget(null)}
+                className="rounded-md px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={sending || !(Number(sendAmount) > 0) || Number(sendAmount) > profile.money}
+                onClick={handleSendMoney}
+                aria-label="Send money"
+                className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+              >
+                {sending ? "Sending…" : "Send"}
+              </button>
+            </div>
           </div>
         </div>
       )}

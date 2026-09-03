@@ -240,6 +240,25 @@ export async function awardMoney(userId: string, amount: number) {
  * from Money. Same RLS rules as awardMoney (self, or a manager crediting a
  * subordinate they outrank).
  */
+/**
+ * Sends money to a coworker. Goes through a SECURITY DEFINER RPC: RLS only
+ * lets you update a profile you strictly outrank, so a peer transfer can't be
+ * expressed as a policy - and doing it as two client writes would let a
+ * tampered client post the credit without the debit. The function takes the
+ * money from the caller, checks both sides share a company, and locks the
+ * sender's row so two tabs can't spend the same balance.
+ *
+ * Returns the sender's new balance.
+ */
+export async function transferMoney(recipientId: string, amount: number): Promise<number> {
+  const { data, error } = await supabase.rpc("transfer_money", {
+    p_recipient: recipientId,
+    p_amount: amount,
+  });
+  if (error) throw new Error(error.message.replace(/^.*?:\s*/, ""));
+  return data as number;
+}
+
 export async function awardXp(userId: string, amount: number) {
   const { data: current, error: fetchError } = await supabase
     .from("profiles")

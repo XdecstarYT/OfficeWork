@@ -11,6 +11,7 @@ import { fetchMemberMoods } from "../lib/memberMoods";
 import { relativeTime } from "../lib/time";
 import type { NotificationCounts } from "../hooks/useNotifications";
 import { careerProgress } from "../lib/careerLevel";
+import { formatMoney } from "../lib/format";
 import { ObjectivesPanel } from "../components/ObjectivesPanel";
 import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../types/database";
@@ -36,6 +37,7 @@ type Tab =
   | "analytics"
   | "desk"
   | "perks"
+  | "career"
   | "projects";
 
 interface DashboardPageProps {
@@ -237,7 +239,7 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
         )}
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-          <StatTile emoji="💵" label="Money" value={`$${profile.money.toFixed(2)}`} />
+          <StatTile emoji="💵" label="Money" value={formatMoney(profile.money)} />
           <StatTile
             emoji="⭐"
             label="Career Level"

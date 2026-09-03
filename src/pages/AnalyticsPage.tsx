@@ -3,6 +3,7 @@ import { fetchCompanyDocumentStats, payoutForStat, type DocumentStatRow } from "
 import { fetchCompanyMembers } from "../lib/company";
 import { fetchCompanyNpcs } from "../lib/npcs";
 import { downloadCsv } from "../lib/csv";
+import { formatMoney as money } from "../lib/format";
 import { BarChart, DonutChart, HBarChart, LineChart, type Point } from "../components/charts";
 import type { Database } from "../types/database";
 
@@ -37,8 +38,6 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   standard: "#f59e0b",
   detailed: "#f43f5e",
 };
-
-const money = (n: number) => `$${n.toFixed(2)}`;
 
 /** Local midnight N days back, inclusive of today. */
 function dayBuckets(days: number): { key: string; label: string; start: number; end: number }[] {

@@ -18,6 +18,7 @@ import { fetchCompanyMembers } from "../lib/company";
 import { relativeTime } from "../lib/time";
 import { supabase } from "../lib/supabaseClient";
 import type { Database } from "../types/database";
+import { formatMoney } from "../lib/format";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Company = Database["public"]["Tables"]["companies"]["Row"];
@@ -201,7 +202,7 @@ export function StockMarketPage({ profile, company, onProfileChanged }: StockMar
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-lg border border-stone-200 bg-white p-3">
             <p className="text-xs text-stone-400">💵 Cash</p>
-            <p className="mt-1 text-lg font-semibold text-stone-900">${profile.money.toFixed(2)}</p>
+            <p className="mt-1 text-lg font-semibold text-stone-900">{formatMoney(profile.money)}</p>
           </div>
           <div className="rounded-lg border border-stone-200 bg-white p-3">
             <p className="text-xs text-stone-400">📊 Portfolio Value</p>
