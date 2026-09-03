@@ -592,6 +592,66 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["member_moods"]["Insert"]>;
         Relationships: [];
       };
+      objective_claims: {
+        Row: {
+          id: string;
+          member_id: string;
+          company_id: string;
+          objective_key: string;
+          period: "daily" | "weekly";
+          reward_money: number;
+          reward_xp: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          member_id: string;
+          company_id: string;
+          objective_key: string;
+          period: "daily" | "weekly";
+          reward_money?: number;
+          reward_xp?: number;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["objective_claims"]["Insert"]>;
+        Relationships: [];
+      };
+      company_loans: {
+        Row: {
+          id: string;
+          member_id: string;
+          company_id: string;
+          principal: number;
+          balance: number;
+          interest_paid: number;
+          daily_rate: number;
+          term_days: number;
+          taken_on_day: number;
+          due_day: number;
+          last_accrued_day: number;
+          status: "active" | "repaid" | "defaulted";
+          created_at: string;
+          closed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          member_id: string;
+          company_id: string;
+          principal: number;
+          balance?: number;
+          interest_paid?: number;
+          daily_rate: number;
+          term_days: number;
+          taken_on_day: number;
+          due_day: number;
+          last_accrued_day: number;
+          status?: "active" | "repaid" | "defaulted";
+          created_at?: string;
+          closed_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["company_loans"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {

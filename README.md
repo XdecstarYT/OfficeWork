@@ -434,6 +434,57 @@ A much larger follow-up pass, organized by area. Roughly 20 batches, each typech
   — and only someone who actually owns a company can declare it as the
   parent of a new one.
 
+### Objectives
+
+- **Daily and weekly goals** on the Dashboard, with claimable Money and XP.
+  Three daily and two weekly, drawn from five kinds of goal: clear N tasks,
+  earn $N, submit N for review, delegate N tasks, and work across N
+  categories. Weekly targets are 4× the daily ones.
+- The objective *set* is generated deterministically from
+  `(company id, calendar day)` with an FNV-1a hash rather than
+  `Math.random()`, so everyone in a company sees the same goals on the same
+  day and a reload never reshuffles them — no table of generated objectives
+  to store or keep in sync.
+- Progress is measured live against the company's document history (nothing
+  to increment on every action, nothing to drift), and only the *claim* is
+  persisted. New table `objective_claims`, with a unique index on
+  `(member_id, objective_key)` — the claim row is inserted *before* the
+  money moves, so a double-click or a second tab can't pay the same
+  objective twice.
+
+### Company Bank
+
+- Four **loan desks** — Petty Cash Advance ($150), Working Capital Line
+  ($500), Expansion Loan ($1,500), Leveraged Buyout Facility ($5,000) — each
+  with its own daily rate, term, and minimum credit score. One open loan at
+  a time.
+- **Interest compounds per in-game day**, charged when the day is ended
+  rather than recomputed on read, so the balance on the Bank page is the
+  balance you actually owe. Overdue loans accrue at **double rate**;
+  anything still unpaid a full term past due (plus 3 days' grace) is written
+  off as a default. The End Day wrap-up post reports the interest accrued.
+- A **credit rating** (CCC → AAA, score out of 100) derived entirely from
+  the loan book — clean repayments build it, defaults and carried debt drag
+  it down — which is what gates the bigger desks. Everyone starts at 50.
+- Repay in full or in part; the whole company can see the loan book
+  (outstanding balances, all-time interest charged) since it's the company's
+  money. New table `company_loans`.
+
+### Analytics
+
+- A **charts** tab over the company's real document history, with 7/14/30/90-day
+  ranges and a "just my work" filter.
+- Tasks completed per day (filled line), payouts earned per day and work
+  created per day (bars — compare the last two to see whether the backlog is
+  growing), pipeline by status and completions by difficulty (donuts), and
+  tasks/payouts by worker including AI coworkers (ranked bars).
+- Headline metrics: completed, earned, **median turnaround** (created →
+  completed), and **on-time rate** against due dates.
+- Charts are hand-rolled SVG in `src/components/charts.tsx` — the app ships
+  no charting dependency. Everything draws into a fixed `viewBox` and is
+  sized with CSS, so it scales with its container; values are exposed as
+  `<title>` tooltips. Daily figures export to CSV.
+
 Not yet built: an avatar/office world, cosmetics.
 
 ## Getting started
@@ -496,8 +547,10 @@ both scripts since they're already at their target count.
 
 ## Tech stack
 
-React + Vite + TypeScript + Tailwind CSS v4. Templates are static JSON
-loaded client-side via `import.meta.glob`. Accounts, companies, ranks, work
+React + Vite + TypeScript + Tailwind CSS v4, no charting or UI libraries.
+Templates are static JSON: a generated browse index is bundled, and each
+full template is a plain file under `public/templates/` fetched by id (see
+Performance below). Accounts, companies, ranks, work
 items, emails, and board meetings live in Supabase (Postgres + Auth +
 Realtime) under Row Level Security. Per-browser conveniences (favorites,
 recently used, custom templates you've built) stay in `localStorage`;
@@ -505,14 +558,52 @@ anything another person's actions need to affect (Money, rank, document
 status, emails) lives server-side. All AI features go through a hosted
 Supabase Edge Function — see [AI architecture](#ai-architecture).
 
-**Performance**: every tab is its own lazily-loaded chunk (`React.lazy` +
+**Performance.** Every tab is its own lazily-loaded chunk (`React.lazy` +
 `Suspense` in `App.tsx`) instead of one upfront bundle, and the Filing
 Cabinet paginates its template grid 60 at a time instead of mounting all
-1111+ cards — that grid was the main source of UI jank. The template
-library itself (~1.8MB of JSON) is still loaded in full the first time you
-open Filing Cabinet or use "Assign Work," since it's a static, fully
-client-side dataset; splitting that further would mean lazy-loading it per
-category instead of one flat array.
+1111+ cards.
+
+The template library used to be pulled in with `import.meta.glob(...,
+{ eager: true })`, which produced a **1.78 MB JavaScript chunk** that had to
+be downloaded *and* evaluated as object literals before the Filing Cabinet,
+Board Meetings, or any template picker could paint — measured at 316 ms of
+parse time plus a 39 ms `localeCompare` sort at startup, and far worse on a
+phone. It is now split in two:
+
+- `npm run build:template-index` (which `npm run dev` and `npm run build`
+  both run first) writes `src/data/templateIndex.json` — browse-level
+  metadata only, 0.49 MB, **28% of the library**, pre-sorted by title so
+  startup never pays for the sort. Fields and body text, which are ~68% of
+  the bytes and are only needed once you actually open a template, are left
+  out.
+- The same script writes flat, minified copies to `public/templates/<id>.json`.
+  `loadTemplate(id)` fetches one on demand and caches it. Because the
+  filename *is* the id, there is no lookup map in the bundle, and the
+  browser parses each with its native JSON parser. Keeping them out of the
+  module graph matters: as lazy `import.meta.glob` chunks they cost ~140 kB
+  of import thunks plus 1111 extra chunks; inlined as `?url` data URIs they
+  ballooned to 3 MB.
+
+Net: **1.78 MB → 515 kB** (66 kB gzipped) for the template chunk.
+`public/templates/` is generated and git-ignored.
+
+Query-side, `fetchCompanyDocumentStats` selects only the columns stats
+surfaces need — lifting `difficulty` out of the snapshot with a PostgREST
+JSON accessor (`difficulty:template_snapshot->>difficulty`) rather than
+shipping the whole `template_snapshot` per row. That is a **77.8% smaller
+payload** at 13 documents and scales linearly; it matters most in the
+app-root notification poller, which re-runs on every realtime document
+change. The Activity Feed's two-step fetch became one server-side join on
+the documents FK, which also removed an `.in(document_id, [...])` filter
+whose URL grew ~40 bytes per document and would eventually 414 outright.
+
+**Reliability.** `useSession`, `useProfile` and `useCompany` used to swallow
+their errors and return `null`, so a dropped request or an RLS error left
+`App.tsx` rendering "Loading…" forever with no way out — the "sometimes it
+just doesn't load" bug. All three now surface an error, every startup call
+is wrapped in a 12-second watchdog, and the boot gates render a retryable
+error screen (Try again / Leave this company / Sign out) instead of a dead
+end. The boot spinner offers a Reload after 6 seconds.
 
 ## Session-code login (no email/password)
 

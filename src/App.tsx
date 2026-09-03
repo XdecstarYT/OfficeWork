@@ -58,6 +58,8 @@ const CompanyCalendarPage = lazy(() =>
 const StockMarketPage = lazy(() =>
   import("./pages/StockMarketPage").then((m) => ({ default: m.StockMarketPage })),
 );
+const BankPage = lazy(() => import("./pages/BankPage").then((m) => ({ default: m.BankPage })));
+const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage").then((m) => ({ default: m.AnalyticsPage })));
 
 type Tab =
   | "dashboard"
@@ -71,12 +73,23 @@ type Tab =
   | "activity"
   | "leaderboard"
   | "stocks"
+  | "bank"
+  | "analytics"
   | "archive"
   | "calendar";
 
-const APP_VERSION = "1.4.0";
+const APP_VERSION = "1.5.0";
 
 const CHANGELOG: { version: string; notes: string[] }[] = [
+  {
+    version: "1.5.0",
+    notes: [
+      "Objectives — daily and weekly goals on the Dashboard with claimable cash and XP.",
+      "Company Bank — take loans, watch interest compound each End Day, build a credit rating.",
+      "Analytics — real charts for throughput, payouts, pipeline and per-worker output.",
+      "Much faster startup: the 1.78 MB template bundle is gone, and the app no longer hangs on \"Loading…\".",
+    ],
+  },
   {
     version: "1.4.0",
     notes: [
@@ -112,6 +125,8 @@ const TAB_META: { id: Tab; label: string; emoji: string }[] = [
   { id: "activity", label: "Activity", emoji: "🗞" },
   { id: "leaderboard", label: "Leaderboard", emoji: "🏆" },
   { id: "stocks", label: "Stock Market", emoji: "📈" },
+  { id: "bank", label: "Bank", emoji: "🏦" },
+  { id: "analytics", label: "Analytics", emoji: "📊" },
   { id: "archive", label: "Archive", emoji: "🗄" },
   { id: "clients", label: "AI Clients", emoji: "🤝" },
 ];
@@ -519,6 +534,10 @@ function App() {
           {tab === "stocks" && (
             <StockMarketPage profile={profile} company={company} onProfileChanged={refreshProfile} />
           )}
+          {tab === "bank" && (
+            <BankPage profile={profile} company={company} onProfileChanged={refreshProfile} />
+          )}
+          {tab === "analytics" && <AnalyticsPage profile={profile} company={company} />}
           {tab === "archive" && <ArchivePage profile={profile} />}
           {tab === "clients" && (
             <AiClients

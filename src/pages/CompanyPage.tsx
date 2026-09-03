@@ -62,6 +62,7 @@ import {
   generateCompanyMotto,
   generatePerformanceReviewDraft,
 } from "../lib/aiClient";
+import { accrueInterest } from "../lib/bank";
 import { TemplatePickerModal } from "../components/TemplatePickerModal";
 import { TemplateBuilder } from "../components/TemplateBuilder";
 import { AssignTaskModal, type AssignTaskDetails } from "../components/AssignTaskModal";
@@ -763,11 +764,14 @@ export function CompanyPage({ profile, onProfileChanged, llmConfig }: CompanyPag
       const topName = topId ? members.find((m) => m.id === topId)?.display_name : null;
       const payroll = await paySalaries(members, company.salary_per_level);
       if (payroll > 0) await incrementTotalPayrollPaid(company.id, payroll, company.total_payroll_paid);
+      // Loans compound on the day boundary rather than on read, so the balance
+      // a borrower sees on the Bank page is the balance they actually owe.
+      const interestCharged = await accrueInterest(company.id, company.current_day);
       await endCompanyDay(company.id);
       await postCorporateUpdate({
         companyId: company.id,
         title: `📅 Day ${company.current_day} Wrap-Up`,
-        body: `${completedToday.length} task${completedToday.length === 1 ? "" : "s"} completed today, $${moneyEarned.toFixed(2)} earned company-wide.${topName ? ` Top performer: ${topName}.` : ""}${payroll > 0 ? ` 💵 $${payroll.toFixed(2)} in salaries paid out.` : ""}`,
+        body: `${completedToday.length} task${completedToday.length === 1 ? "" : "s"} completed today, $${moneyEarned.toFixed(2)} earned company-wide.${topName ? ` Top performer: ${topName}.` : ""}${payroll > 0 ? ` 💵 $${payroll.toFixed(2)} in salaries paid out.` : ""}${interestCharged > 0 ? ` 🏦 $${interestCharged.toFixed(2)} in loan interest accrued.` : ""}`,
         postedBy: profile.id,
       });
 
