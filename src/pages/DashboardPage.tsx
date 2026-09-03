@@ -33,7 +33,10 @@ type Tab =
   | "calendar"
   | "stocks"
   | "bank"
-  | "analytics";
+  | "analytics"
+  | "desk"
+  | "perks"
+  | "projects";
 
 interface DashboardPageProps {
   profile: Profile;
@@ -225,6 +228,7 @@ export function DashboardPage({ profile, company, notifications, onNavigate, onP
           <ObjectivesPanel
             memberId={profile.id}
             companyId={profile.company_id}
+            xp={profile.xp}
             onClaimed={() => {
               onProfileChanged();
               load();

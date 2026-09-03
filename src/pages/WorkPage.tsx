@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   fetchMyDocuments,
   fetchCompanyDocuments,
@@ -12,6 +12,8 @@ import {
   type DocumentRow,
 } from "../lib/documents";
 import { fetchCompanyMembers, awardMoney, awardXp } from "../lib/company";
+import { fetchMyPerks, perkState } from "../lib/perks";
+import { contributeToTreasury, treasuryCutFor } from "../lib/treasury";
 import { loadDraftFieldValues, saveDraftFieldValues, clearDraftFieldValues } from "../lib/storage";
 import { fetchCompanyEquipment } from "../lib/equipment";
 import { totalPayoutBonusPercent } from "../data/equipment";
@@ -27,9 +29,11 @@ import type { DocumentTemplate } from "../types/template";
 import type { LlmConfig } from "../lib/llmConfig";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+type Company = Database["public"]["Tables"]["companies"]["Row"];
 
 interface WorkPageProps {
   profile: Profile;
+  company: Company | null;
   onProfileChanged: () => void;
   llmConfig: LlmConfig;
 }
@@ -68,7 +72,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps) {
+export function WorkPage({ profile, company, onProfileChanged, llmConfig }: WorkPageProps) {
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [members, setMembers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +84,8 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [overdueOnly, setOverdueOnly] = useState(false);
-  const [bonusPercent, setBonusPercent] = useState(0);
+  const [equipmentBonusPercent, setEquipmentBonusPercent] = useState(0);
+  const [myPerks, setMyPerks] = useState<string[]>([]);
   const [copyLabel, setCopyLabel] = useState("📋 Copy Text");
   const [workSortMode, setWorkSortMode] = useState<"due" | "payout" | "newest">("due");
   const [approvingAll, setApprovingAll] = useState(false);
@@ -97,14 +102,16 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [mine, companyDocs, companyMembers, equipment] = await Promise.all([
+    const [mine, companyDocs, companyMembers, equipment, perks] = await Promise.all([
       fetchMyDocuments(profile.id),
       profile.company_id ? fetchCompanyDocuments(profile.company_id) : Promise.resolve([]),
       profile.company_id ? fetchCompanyMembers(profile.company_id) : Promise.resolve([]),
       profile.company_id ? fetchCompanyEquipment(profile.company_id) : Promise.resolve([]),
+      fetchMyPerks(profile.id),
     ]);
     setMembers(companyMembers);
-    setBonusPercent(totalPayoutBonusPercent(equipment.map((e) => e.item_key)));
+    setEquipmentBonusPercent(totalPayoutBonusPercent(equipment.map((e) => e.item_key)));
+    setMyPerks(perks);
 
     // Merge: my docs + any pending_approval docs in the company I might be able to approve.
     const byId = new Map<string, DocumentRow>();
@@ -115,6 +122,39 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
     setDocuments([...byId.values()].sort((a, b) => b.created_at.localeCompare(a.created_at)));
     setLoading(false);
   }, [profile.id, profile.company_id]);
+
+  // Office Shop equipment (company-wide) and Rainmaking perks (personal) both
+  // raise the same payout multiplier, so they are summed once here rather
+  // than threaded separately through every payout call site.
+  const effects = useMemo(() => perkState(myPerks, profile.xp).effects, [myPerks, profile.xp]);
+  const treasuryCutPercent = company?.treasury_cut_percent ?? 0;
+  const bonusPercent = equipmentBonusPercent + effects.payoutBonusPercent;
+
+  /** Pays the worker, routes the company's cut into the treasury, and awards
+   * XP - the one place a completed document turns into money. */
+  const settleCompletedWork = useCallback(
+    async (doc: DocumentRow, workerId: string) => {
+      const gross = Math.round(payoutFor(doc, asTemplate(doc), bonusPercent));
+      await awardMoney(workerId, gross);
+      await awardXp(workerId, Math.round(estimateXp(asTemplate(doc)) * (1 + effects.xpBonusPercent / 100)));
+
+      // Only the worker's own client knows their perk discount, so the cut is
+      // computed here rather than server-side; the RPC bounds what it accepts.
+      if (workerId === profile.id && treasuryCutPercent > 0) {
+        const cut = treasuryCutFor(gross, treasuryCutPercent, effects.treasuryCutDiscountPercent);
+        if (cut > 0) {
+          try {
+            await awardMoney(workerId, -cut);
+            await contributeToTreasury(cut, `${profile.display_name} completed "${doc.title}"`);
+          } catch {
+            // A treasury that momentarily rejects the contribution must never
+            // cost someone their payout; the worker keeps the gross amount.
+          }
+        }
+      }
+    },
+    [bonusPercent, effects.xpBonusPercent, effects.treasuryCutDiscountPercent, profile.id, profile.display_name, treasuryCutPercent],
+  );
 
   useEffect(() => {
     load();
@@ -201,8 +241,7 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
     if (nextStatus === "completed") {
       // Self-serve completion (no approval needed) - pay the assignee, who is
       // always the caller here since this document didn't need sign-off.
-      await awardMoney(profile.id, Math.round(payoutFor(openDoc, asTemplate(openDoc), bonusPercent)));
-      await awardXp(profile.id, estimateXp(asTemplate(openDoc)));
+      await settleCompletedWork(openDoc, profile.id);
       onProfileChanged();
     }
     clearDraftFieldValues(openDoc.id);
@@ -216,8 +255,7 @@ export function WorkPage({ profile, onProfileChanged, llmConfig }: WorkPageProps
     // profiles_update_by_manager RLS policy allows since approving requires
     // outranking that person. Refresh only matters for our own balance.
     if (doc.assigned_to) {
-      await awardMoney(doc.assigned_to, Math.round(payoutFor(doc, asTemplate(doc), bonusPercent)));
-      await awardXp(doc.assigned_to, estimateXp(asTemplate(doc)));
+      await settleCompletedWork(doc, doc.assigned_to);
       if (doc.assigned_to === profile.id) onProfileChanged();
     }
     load();

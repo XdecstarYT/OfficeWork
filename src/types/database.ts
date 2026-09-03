@@ -33,6 +33,8 @@ export interface Database {
           company_badges_claimed: string[];
           total_payroll_paid: number;
           parent_company_id: string | null;
+          treasury: number;
+          treasury_cut_percent: number;
           created_at: string;
         };
         Insert: {
@@ -51,6 +53,8 @@ export interface Database {
           company_badges_claimed?: string[];
           total_payroll_paid?: number;
           parent_company_id?: string | null;
+          treasury?: number;
+          treasury_cut_percent?: number;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["companies"]["Insert"]>;
@@ -139,6 +143,7 @@ export interface Database {
           created_at: string;
           updated_at: string;
           completed_at: string | null;
+          project_id: string | null;
         };
         Insert: {
           id?: string;
@@ -160,6 +165,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           completed_at?: string | null;
+          project_id?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["documents"]["Insert"]>;
         Relationships: [];
@@ -652,6 +658,96 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["company_loans"]["Insert"]>;
         Relationships: [];
       };
+      member_desks: {
+        Row: {
+          member_id: string;
+          company_id: string | null;
+          owned_items: string[];
+          equipped: Json;
+          wall: string;
+          floor: string;
+          updated_at: string;
+        };
+        Insert: {
+          member_id: string;
+          company_id?: string | null;
+          owned_items?: string[];
+          equipped?: Json;
+          wall?: string;
+          floor?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["member_desks"]["Insert"]>;
+        Relationships: [];
+      };
+      member_perks: {
+        Row: {
+          id: string;
+          member_id: string;
+          perk_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          member_id: string;
+          perk_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["member_perks"]["Insert"]>;
+        Relationships: [];
+      };
+      company_projects: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          description: string | null;
+          emoji: string;
+          target_documents: number;
+          bonus_pool: number;
+          status: "active" | "completed" | "cancelled";
+          due_day: number | null;
+          created_by: string;
+          created_at: string;
+          completed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          description?: string | null;
+          emoji?: string;
+          target_documents: number;
+          bonus_pool?: number;
+          status?: "active" | "completed" | "cancelled";
+          due_day?: number | null;
+          created_by: string;
+          created_at?: string;
+          completed_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["company_projects"]["Insert"]>;
+        Relationships: [];
+      };
+      treasury_transactions: {
+        Row: {
+          id: string;
+          company_id: string;
+          amount: number;
+          reason: string;
+          member_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          amount: number;
+          reason: string;
+          member_id?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["treasury_transactions"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -670,6 +766,10 @@ export interface Database {
       check_company_badges: {
         Args: Record<string, never>;
         Returns: string[];
+      };
+      contribute_to_treasury: {
+        Args: { p_amount: number; p_reason: string };
+        Returns: number;
       };
     };
     Enums: Record<string, never>;

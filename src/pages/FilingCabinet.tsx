@@ -12,6 +12,7 @@ import { SearchBar } from "../components/SearchBar";
 import { TemplateCard } from "../components/TemplateCard";
 import { TemplateDetailModal } from "../components/TemplateDetailModal";
 import { TemplateBuilder } from "../components/TemplateBuilder";
+import { fetchProjects, type ProjectRow } from "../lib/projects";
 import { AssignTaskModal, type AssignTaskDetails } from "../components/AssignTaskModal";
 import { useFavorites } from "../hooks/useFavorites";
 import { useRecent } from "../hooks/useRecent";
@@ -88,11 +89,13 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
   const { npcs, customNpcPersonas, npcWorking, assignTemplateToNpc } = useNpcWorkAssignment(profile, llmConfig);
   const [pickingNpcForTemplate, setPickingNpcForTemplate] = useState<DocumentTemplate | null>(null);
   const [smartAssigning, setSmartAssigning] = useState(false);
+  const [activeProjects, setActiveProjects] = useState<ProjectRow[]>([]);
 
   useEffect(() => {
     if (profile.company_id) {
       fetchCompanyMembers(profile.company_id).then(setMembers);
       fetchCompanyDocumentStats(profile.company_id).then(setCompanyDocsForStats);
+      fetchProjects(profile.company_id).then((p) => setActiveProjects(p.filter((x) => x.status === "active")));
     }
   }, [profile.company_id]);
 
@@ -807,6 +810,7 @@ export function FilingCabinet({ profile, llmConfig, isOwner }: FilingCabinetProp
           targetId={assignTargetId}
           onTargetChange={setAssignTargetId}
           onClose={() => setAssigningTemplate(null)}
+          projectOptions={activeProjects.map((p) => ({ id: p.id, label: `${p.emoji} ${p.name}` }))}
           onConfirm={handleConfirmAssign}
         />
       )}

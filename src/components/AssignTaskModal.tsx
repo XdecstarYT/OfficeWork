@@ -10,6 +10,8 @@ export interface AssignTaskDetails {
   referenceData?: ReferenceRow[];
   initialFieldValues?: Record<string, string>;
   forceApproval: boolean;
+  /** Files the new document under a company project. */
+  projectId?: string | null;
 }
 
 interface AssignTaskModalProps {
@@ -22,6 +24,8 @@ interface AssignTaskModalProps {
   targetOptions?: { id: string; label: string }[];
   targetId?: string;
   onTargetChange?: (id: string) => void;
+  /** Active company projects; renders a "File under" picker when non-empty. */
+  projectOptions?: { id: string; label: string }[];
 }
 
 type Step = "details" | "review";
@@ -35,11 +39,13 @@ export function AssignTaskModal({
   targetOptions,
   targetId,
   onTargetChange,
+  projectOptions,
 }: AssignTaskModalProps) {
   const [step, setStep] = useState<Step>("details");
   const [dueDays, setDueDays] = useState(3);
   const [payout, setPayout] = useState(estimatePayout(template));
   const [forceApproval, setForceApproval] = useState(false);
+  const [projectId, setProjectId] = useState("");
   const [prefillValues, setPrefillValues] = useState<Record<string, string>>({});
   const [referenceRows, setReferenceRows] = useState<ReferenceRow[]>([]);
   const [confirming, setConfirming] = useState(false);
@@ -63,6 +69,7 @@ export function AssignTaskModal({
         dueInDays: dueDays > 0 ? dueDays : undefined,
         payoutOverride: payout,
         forceApproval,
+        ...(projectId ? { projectId } : {}),
         ...(filledReferenceRows.length > 0 ? { referenceData: filledReferenceRows } : {}),
         ...(Object.keys(filledValues).length > 0 ? { initialFieldValues: filledValues } : {}),
       });
@@ -161,6 +168,30 @@ export function AssignTaskModal({
                 />
               </div>
             </div>
+
+            {projectOptions && projectOptions.length > 0 && (
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-stone-700" htmlFor="assign-project">
+                  File under a project
+                </label>
+                <select
+                  id="assign-project"
+                  value={projectId}
+                  onChange={(e) => setProjectId(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-stone-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="">No project</option>
+                  {projectOptions.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-stone-400">
+                  It counts toward that project's target once it's completed.
+                </p>
+              </div>
+            )}
 
             <label
               className={`mt-4 flex items-start gap-2 rounded-md border p-3 text-sm ${
@@ -297,6 +328,9 @@ export function AssignTaskModal({
                     `Due: ${dueDays > 0 ? `in ${dueDays} day${dueDays === 1 ? "" : "s"}` : "No deadline"}`,
                     `Payout: $${payout.toFixed(2)}`,
                     `Boss review required: ${forceApproval ? "Yes" : "No"}`,
+                    projectId
+                      ? `Project: ${projectOptions?.find((p) => p.id === projectId)?.label ?? "—"}`
+                      : "Project: none",
                   ].join("\n");
                   navigator.clipboard?.writeText(text).catch(() => {});
                   setSummaryCopyLabel("Copied!");

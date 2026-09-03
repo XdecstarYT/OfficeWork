@@ -7,20 +7,24 @@ import {
   type ObjectiveProgress,
 } from "../lib/objectives";
 import { fetchCompanyDocumentStats } from "../lib/documents";
+import { fetchMyPerks, perkState } from "../lib/perks";
 
 interface ObjectivesPanelProps {
   memberId: string;
   companyId: string;
+  /** Drives the perk reward bonus; also re-derives it as you level. */
+  xp: number;
   /** Bumped by the parent when money/XP changed elsewhere. */
   onClaimed?: () => void;
 }
 
-export function ObjectivesPanel({ memberId, companyId, onClaimed }: ObjectivesPanelProps) {
+export function ObjectivesPanel({ memberId, companyId, xp, onClaimed }: ObjectivesPanelProps) {
   const [objectives, setObjectives] = useState<ObjectiveProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [claimingKey, setClaimingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [rewardBonusPercent, setRewardBonusPercent] = useState(0);
 
   // The set is a pure function of the company and today's date, so it is
   // stable across re-renders without a fetch.
@@ -29,10 +33,12 @@ export function ObjectivesPanel({ memberId, companyId, onClaimed }: ObjectivesPa
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [docs, claims] = await Promise.all([
+      const [docs, claims, perks] = await Promise.all([
         fetchCompanyDocumentStats(companyId),
         fetchMyClaims(memberId),
+        fetchMyPerks(memberId),
       ]);
+      setRewardBonusPercent(perkState(perks, xp).effects.objectiveRewardPercent);
       setObjectives(
         evaluateObjectives({
           defs,
@@ -46,7 +52,7 @@ export function ObjectivesPanel({ memberId, companyId, onClaimed }: ObjectivesPa
     } finally {
       setLoading(false);
     }
-  }, [companyId, memberId, defs]);
+  }, [companyId, memberId, defs, xp]);
 
   useEffect(() => {
     load();
@@ -56,8 +62,8 @@ export function ObjectivesPanel({ memberId, companyId, onClaimed }: ObjectivesPa
     setClaimingKey(objective.key);
     setError(null);
     try {
-      await claimObjective({ memberId, companyId, objective });
-      setFlash(`+$${objective.rewardMoney} · +${objective.rewardXp} XP`);
+      const claim = await claimObjective({ memberId, companyId, objective, rewardBonusPercent });
+      setFlash(`+$${claim.reward_money} · +${claim.reward_xp} XP`);
       setTimeout(() => setFlash(null), 2500);
       await load();
       onClaimed?.();
@@ -97,8 +103,26 @@ export function ObjectivesPanel({ memberId, companyId, onClaimed }: ObjectivesPa
 
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
 
-      <ObjectiveList heading="Today" objectives={daily} claimingKey={claimingKey} onClaim={handleClaim} />
-      <ObjectiveList heading="This Week" objectives={weekly} claimingKey={claimingKey} onClaim={handleClaim} />
+      {rewardBonusPercent > 0 && (
+        <p className="mt-2 text-xs text-emerald-700">
+          🌟 Your perks add +{rewardBonusPercent}% to every objective reward below.
+        </p>
+      )}
+
+      <ObjectiveList
+        heading="Today"
+        objectives={daily}
+        bonusPercent={rewardBonusPercent}
+        claimingKey={claimingKey}
+        onClaim={handleClaim}
+      />
+      <ObjectiveList
+        heading="This Week"
+        objectives={weekly}
+        bonusPercent={rewardBonusPercent}
+        claimingKey={claimingKey}
+        onClaim={handleClaim}
+      />
     </section>
   );
 }
@@ -106,11 +130,13 @@ export function ObjectivesPanel({ memberId, companyId, onClaimed }: ObjectivesPa
 function ObjectiveList({
   heading,
   objectives,
+  bonusPercent,
   claimingKey,
   onClaim,
 }: {
   heading: string;
   objectives: ObjectiveProgress[];
+  bonusPercent: number;
   claimingKey: string | null;
   onClaim: (objective: ObjectiveProgress) => void;
 }) {
@@ -137,7 +163,8 @@ function ObjectiveList({
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-xs font-medium text-emerald-700">
-                    💵 ${o.rewardMoney} · ⭐ {o.rewardXp} XP
+                    💵 ${Math.round(o.rewardMoney * (1 + bonusPercent / 100))} · ⭐{" "}
+                    {Math.round(o.rewardXp * (1 + bonusPercent / 100))} XP
                   </p>
                   {o.claimed ? (
                     <span className="mt-1 inline-block text-xs text-stone-400">✓ Claimed</span>

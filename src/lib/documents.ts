@@ -77,6 +77,8 @@ export async function assignWork(params: {
   referenceData?: ReferenceRow[];
   /** Manager opted in to sign-off even though the template has no signature field. */
   forceApproval?: boolean;
+  /** Files this task under a company project. */
+  projectId?: string | null;
 }): Promise<DocumentRow> {
   const {
     companyId,
@@ -89,6 +91,7 @@ export async function assignWork(params: {
     payoutOverride,
     referenceData,
     forceApproval,
+    projectId,
   } = params;
   const status: DocumentStatus = isSelfRequest ? "requested" : "assigned";
   // Self-requested work has no natural approver (nobody necessarily outranks
@@ -117,6 +120,7 @@ export async function assignWork(params: {
       ...(referenceData && referenceData.length > 0
         ? { reference_data: referenceData as unknown as Database["public"]["Tables"]["documents"]["Row"]["reference_data"] }
         : {}),
+      ...(projectId ? { project_id: projectId } : {}),
     })
     .select()
     .single();
@@ -226,11 +230,12 @@ export interface DocumentStatRow {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  project_id: string | null;
   difficulty: Difficulty | null;
 }
 
 const STAT_COLUMNS =
-  "id,company_id,title,status,template_id,created_by,assigned_to,assigned_to_npc_id,payout_override,due_at,completed_at,created_at,updated_at,difficulty:template_snapshot->>difficulty";
+  "id,company_id,title,status,template_id,created_by,assigned_to,assigned_to_npc_id,payout_override,due_at,completed_at,created_at,updated_at,project_id,difficulty:template_snapshot->>difficulty";
 
 export async function fetchCompanyDocumentStats(companyId: string): Promise<DocumentStatRow[]> {
   const { data, error } = await supabase

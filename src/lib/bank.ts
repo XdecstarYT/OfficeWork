@@ -40,13 +40,13 @@ export interface CreditRating {
  * carrying a lot of debt drag it down. Everyone starts at 50 - enough for the
  * two smaller desks, not enough for the big ones.
  */
-export function creditRating(loans: LoanRow[]): CreditRating {
+export function creditRating(loans: LoanRow[], perkScoreBonus = 0): CreditRating {
   const repaid = loans.filter((l) => l.status === "repaid").length;
   const defaulted = loans.filter((l) => l.status === "defaulted").length;
   const active = loans.filter((l) => l.status === "active");
   const outstanding = active.reduce((sum, l) => sum + l.balance, 0);
 
-  let score = 50 + repaid * 12 - defaulted * 25 - Math.floor(outstanding / 250) * 4;
+  let score = 50 + repaid * 12 - defaulted * 25 - Math.floor(outstanding / 250) * 4 + perkScoreBonus;
   score = Math.max(0, Math.min(100, score));
 
   const grade =
@@ -93,15 +93,22 @@ export async function fetchCompanyLoans(companyId: string): Promise<LoanRow[]> {
   return data ?? [];
 }
 
+/** A Frugal/Treasury perk holder borrows at a lower daily rate. */
+export function discountedRate(offer: LoanOffer, rateDiscountPercent = 0): number {
+  return offer.dailyRate * (1 - Math.min(90, rateDiscountPercent) / 100);
+}
+
 export async function takeLoan(params: {
   memberId: string;
   companyId: string;
   offer: LoanOffer;
   currentDay: number;
   existingLoans: LoanRow[];
+  perkScoreBonus?: number;
+  rateDiscountPercent?: number;
 }): Promise<LoanRow> {
-  const { memberId, companyId, offer, currentDay, existingLoans } = params;
-  const { score } = creditRating(existingLoans);
+  const { memberId, companyId, offer, currentDay, existingLoans, perkScoreBonus = 0, rateDiscountPercent = 0 } = params;
+  const { score } = creditRating(existingLoans, perkScoreBonus);
   if (score < offer.minScore) {
     throw new Error(`That desk needs a credit score of ${offer.minScore}; yours is ${score}.`);
   }
@@ -116,7 +123,7 @@ export async function takeLoan(params: {
       company_id: companyId,
       principal: offer.principal,
       balance: offer.principal,
-      daily_rate: offer.dailyRate,
+      daily_rate: discountedRate(offer, rateDiscountPercent),
       term_days: offer.termDays,
       taken_on_day: currentDay,
       due_day: currentDay + offer.termDays,

@@ -249,8 +249,13 @@ export async function claimObjective(params: {
   memberId: string;
   companyId: string;
   objective: ObjectiveDef;
+  /** Goal-Getter / Archivist perks, as a percentage on top. */
+  rewardBonusPercent?: number;
 }): Promise<ObjectiveClaimRow> {
-  const { memberId, companyId, objective } = params;
+  const { memberId, companyId, objective, rewardBonusPercent = 0 } = params;
+  const multiplier = 1 + rewardBonusPercent / 100;
+  const rewardMoney = Math.round(objective.rewardMoney * multiplier);
+  const rewardXp = Math.round(objective.rewardXp * multiplier);
   const { data, error } = await supabase
     .from("objective_claims")
     .insert({
@@ -258,8 +263,8 @@ export async function claimObjective(params: {
       company_id: companyId,
       objective_key: objective.key,
       period: objective.period,
-      reward_money: objective.rewardMoney,
-      reward_xp: objective.rewardXp,
+      reward_money: rewardMoney,
+      reward_xp: rewardXp,
     })
     .select()
     .single();
@@ -267,7 +272,7 @@ export async function claimObjective(params: {
     if (error.code === "23505") throw new Error("You've already claimed that objective.");
     throw error;
   }
-  if (objective.rewardMoney > 0) await awardMoney(memberId, objective.rewardMoney);
-  if (objective.rewardXp > 0) await awardXp(memberId, objective.rewardXp);
+  if (rewardMoney > 0) await awardMoney(memberId, rewardMoney);
+  if (rewardXp > 0) await awardXp(memberId, rewardXp);
   return data;
 }

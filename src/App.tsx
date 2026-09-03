@@ -60,6 +60,9 @@ const StockMarketPage = lazy(() =>
 );
 const BankPage = lazy(() => import("./pages/BankPage").then((m) => ({ default: m.BankPage })));
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage").then((m) => ({ default: m.AnalyticsPage })));
+const DeskPage = lazy(() => import("./pages/DeskPage").then((m) => ({ default: m.DeskPage })));
+const PerksPage = lazy(() => import("./pages/PerksPage").then((m) => ({ default: m.PerksPage })));
+const ProjectsPage = lazy(() => import("./pages/ProjectsPage").then((m) => ({ default: m.ProjectsPage })));
 
 type Tab =
   | "dashboard"
@@ -75,12 +78,24 @@ type Tab =
   | "stocks"
   | "bank"
   | "analytics"
+  | "desk"
+  | "perks"
+  | "projects"
   | "archive"
   | "calendar";
 
-const APP_VERSION = "1.5.0";
+const APP_VERSION = "1.6.0";
 
 const CHANGELOG: { version: string; notes: string[] }[] = [
+  {
+    version: "1.6.0",
+    notes: [
+      "Your Desk — a customisable office with a Cosmetics Shop, and you can visit coworkers' desks.",
+      "Perks — spend career levels on a three-branch tree that raises payouts, XP, objectives and credit.",
+      "Projects — group work into an initiative with a target and a bonus pool split between contributors.",
+      "Company Treasury — a cut of every payout builds a shared pot that funds those bonus pools.",
+    ],
+  },
   {
     version: "1.5.0",
     notes: [
@@ -119,6 +134,9 @@ const TAB_META: { id: Tab; label: string; emoji: string }[] = [
   { id: "work", label: "My Work", emoji: "📥" },
   { id: "inbox", label: "Inbox", emoji: "✉️" },
   { id: "company", label: "Company", emoji: "🏛" },
+  { id: "projects", label: "Projects", emoji: "🚩" },
+  { id: "desk", label: "Your Desk", emoji: "🪑" },
+  { id: "perks", label: "Perks", emoji: "🌟" },
   { id: "calendar", label: "Calendar", emoji: "🗓" },
   { id: "meetings", label: "Board Meetings", emoji: "📅" },
   { id: "updates", label: "Corporate Updates", emoji: "📰" },
@@ -520,7 +538,7 @@ function App() {
             />
           )}
           {tab === "work" && (
-            <WorkPage profile={profile} onProfileChanged={refreshProfile} llmConfig={DEFAULT_LLM_CONFIG} />
+            <WorkPage profile={profile} company={company} onProfileChanged={refreshProfile} llmConfig={DEFAULT_LLM_CONFIG} />
           )}
           {tab === "inbox" && <InboxPage profile={profile} llmConfig={DEFAULT_LLM_CONFIG} />}
           {tab === "company" && (
@@ -535,9 +553,19 @@ function App() {
             <StockMarketPage profile={profile} company={company} onProfileChanged={refreshProfile} />
           )}
           {tab === "bank" && (
-            <BankPage profile={profile} company={company} onProfileChanged={refreshProfile} />
+            <BankPage profile={profile} company={company} onProfileChanged={refreshProfile} onCompanyChanged={refreshCompany} />
           )}
           {tab === "analytics" && <AnalyticsPage profile={profile} company={company} />}
+          {tab === "desk" && <DeskPage profile={profile} onProfileChanged={refreshProfile} />}
+          {tab === "perks" && <PerksPage profile={profile} onProfileChanged={refreshProfile} />}
+          {tab === "projects" && (
+            <ProjectsPage
+              profile={profile}
+              company={company}
+              onProfileChanged={refreshProfile}
+              onCompanyChanged={refreshCompany}
+            />
+          )}
           {tab === "archive" && <ArchivePage profile={profile} />}
           {tab === "clients" && (
             <AiClients

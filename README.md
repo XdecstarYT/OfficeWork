@@ -485,7 +485,80 @@ A much larger follow-up pass, organized by area. Roughly 20 batches, each typech
   sized with CSS, so it scales with its container; values are exposed as
   `<title>` tooltips. Daily figures export to CSV.
 
-Not yet built: an avatar/office world, cosmetics.
+### Your Desk
+
+- A **customisable office**, drawn as SVG rather than assembled from stock
+  art: wall and floor as tinted shapes, a desk and rug drawn as real
+  furniture in the colour you bought, and everything else placed on top as
+  emoji. Adding an item to the catalog is one entry in
+  `src/data/cosmetics.ts` and nothing else.
+- A **Cosmetics Shop** with nine slots — desk, chair, monitor, mug, lamp,
+  plant, wall art, rug, office pet — from a $25 rubber duck to a $500
+  mahogany executive desk and an actual window. Buying equips it
+  immediately; owned items can be swapped back and forth for free.
+- **Paint and flooring** are free and unlimited: six wall colours and five
+  floors, including a checkerboard drawn as an SVG pattern.
+- Deliberately **zero gameplay effect**. The Office Shop on the Company tab
+  is where money buys payout bonuses; keeping the two catalogs apart means
+  neither has to be balanced against the other.
+- **Wander the floor** to see what your coworkers have done with their
+  offices, and open any one of them full-size.
+- New table `member_desks`. Items owned and items equipped are stored
+  separately, so swapping a poster out never makes you re-buy the old one,
+  and free starter items are re-derived on read rather than written into
+  every row — adding a free item to the catalog later gives it to everyone.
+
+### Perks
+
+- A **three-branch perk tree** — Rainmaking (payouts), Treasury (credit),
+  Craft (XP and objectives) — with three tiers each, gated on career level
+  and on taking the tier below.
+- Points come from **career levels** (one per level past the first), so
+  perks are a long-run spend of the XP that already drives levelling rather
+  than a new currency to grind. A free respec clears everything and gives
+  the points back.
+- Every effect is applied at exactly one place in the app, noted on the
+  field that defines it, so a perk can't quietly do nothing:
+  payouts and XP in My Work, reward size on objective claims, the daily rate
+  and credit score at the Bank, and the company's cut of your payouts.
+  Percentage discounts are capped when they stack.
+- New table `member_perks`, unique on `(member_id, perk_id)`.
+
+### Projects
+
+- **Multi-document initiatives** with an icon, a target number of documents,
+  an optional due Day, and a **bonus pool**.
+- The pool is taken out of the treasury the moment the project opens, so the
+  owner can't promise the same money to two projects; cancelling refunds it.
+  On delivery it is split between contributors in proportion to how many of
+  the project's documents each completed, and the delivery is announced as a
+  Corporate Update.
+- Work is filed under a project either when it's assigned (a picker in the
+  assign modal) or afterwards from the project itself — already-completed
+  documents count the moment they're filed.
+- **Progress is derived from the documents**, not from a counter column, so
+  it can never drift from what the Archive actually shows.
+- New table `company_projects` plus `documents.project_id`. Only the owner
+  can open, deliver, or cancel one.
+
+### Company Treasury
+
+- A configurable **cut of every completed task payout** (0–50%, default 10%)
+  builds a shared company pot, which is what funds project bonus pools. The
+  owner can also spend it directly, with a reason.
+- Every movement is written to a **ledger** the whole company can read —
+  contributions, project funding, refunds, withdrawals.
+- Only a company's owner may `UPDATE public.companies`, but every member's
+  work funds the treasury. That is bridged by one narrow `SECURITY DEFINER`
+  function, `contribute_to_treasury`, which only ever *adds*, rejects
+  non-positive and implausibly large amounts, resolves the company from the
+  caller's own membership rather than a parameter, and writes the balance and
+  the ledger row in the same statement so the two can't disagree.
+- New columns `companies.treasury` and `companies.treasury_cut_percent`, plus
+  a `treasury_transactions` ledger table.
+
+Not yet built: cosmetics that affect other people's screens, a walkable
+office map.
 
 ## Getting started
 
