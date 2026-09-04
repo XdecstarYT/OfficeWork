@@ -436,7 +436,9 @@ A much larger follow-up pass, organized by area. Roughly 20 batches, each typech
 - New column `companies.parent_company_id`, plus RLS so a company's members
   can see its subsidiaries and a subsidiary's members can see their parent
   — and only someone who actually owns a company can declare it as the
-  parent of a new one.
+  parent of a new one. (The first version of both of those policies was
+  wrong; see [A policy on a table must never read that same
+  table](#a-policy-on-a-table-must-never-read-that-same-table).)
 
 ### Objectives
 
@@ -830,6 +832,54 @@ while still working from a pure static frontend.
   fire at all — a table created without that is a silent no-op, not an
   error, which is exactly what broke "Start Game" (the owner's click
   updated the database fine, but no client ever heard about it).
+
+### A policy on a table must never read that same table
+
+The Subsidiaries feature added a policy that asked "is this row my company's
+parent?" with a sub-`SELECT` on `companies` — from inside a `companies`
+SELECT policy. Evaluating that sub-query re-runs the same policy, so Postgres
+aborted **every read of the table** with `42P17 infinite recursion detected
+in policy for relation "companies"`. In the app that surfaced as
+"Couldn't load your company" on startup: the game would not load at all.
+
+Any lookup a policy needs from its own table (or from another RLS-protected
+table, if that could chain back) belongs in a `SECURITY DEFINER` helper in
+the `private` schema, which bypasses RLS and therefore terminates —
+`private.my_company_id()`, `private.my_parent_company_id()` and
+`private.owns_company()` all exist for exactly this reason.
+
+The same migration fixed a second bug in the same feature: the insert check
+read `p.id = p.parent_company_id`, which compares a row to *itself*, so it
+could only ever match a company that was its own parent. No such row can
+exist, which means **founding a subsidiary was always denied** — the feature
+had never worked against the real database. It does now.
+
+Two things are worth knowing about how this got through:
+
+- The mocked-Supabase verification harness does **not** enforce RLS — it is
+  an in-memory PostgREST stand-in, so it can catch a wrong query but never a
+  wrong policy. A green harness says nothing about whether policies are
+  sound.
+- The recursion is not detected when the policy is created, only when a row
+  is read, so `apply_migration` succeeded and nothing looked wrong until a
+  real signed-in user loaded the game.
+
+The check that does catch it, run against the real database as a real user:
+
+```sql
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"<a real user id>","role":"authenticated"}';
+select count(*) from public.companies;   -- errors 42P17 if a policy recurses
+```
+
+and this finds the shape before it bites:
+
+```sql
+select tablename, policyname from pg_policies
+where schemaname = 'public'
+  and (coalesce(qual,'') || ' ' || coalesce(with_check,''))
+      ~ ('(^|[^._a-zA-Z])' || tablename || '([^._a-zA-Z]|$)');
+```
 
 ## Build order
 
